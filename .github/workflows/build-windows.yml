@@ -1,0 +1,76 @@
+# Compila pmb_docs e pmb_sheets per Windows (installer NSIS) e la suite pmb_office, dal codice del repository.
+# Serve anche alla firma del codice con SignPath: gli installatori firmati devono nascere da una compilazione automatica e verificabile.
+# Si lancia a mano (scheda Actions > build-windows > Run workflow). Gli installatori NON sono firmati finché la firma non è attiva.
+name: build-windows
+on:
+  workflow_dispatch:
+    inputs:
+      versione_suite:
+        description: 'Versione della suite (vuoto = la data di oggi, AAAA.M.G)'
+        required: false
+        default: ''
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            pmb_docs/src-tauri
+            pmb_sheets/pmb_sheets/src-tauri
+
+      # i due programmi: installer NSIS; ognuno va in RILASCI\<programma>\<versione>, dove lo cerca crea-suite.ps1
+      - name: compila pmb_docs e pmb_sheets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($p in @(@{ n = 'pmb_docs'; d = 'pmb_docs' }, @{ n = 'pmb_sheets'; d = 'pmb_sheets/pmb_sheets' })) {
+            Push-Location $p.d
+            npm ci
+            if ($LASTEXITCODE -ne 0) { throw "npm ci non riuscito per $($p.n)" }
+            npx tauri build --bundles nsis
+            if ($LASTEXITCODE -ne 0) { throw "compilazione non riuscita per $($p.n)" }
+            $v = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+            $setup = Get-ChildItem src-tauri/target/release/bundle/nsis -Filter "$($p.n)_${v}_x64-setup.exe" | Select-Object -First 1
+            if (-not $setup) { throw "manca l'installer di $($p.n) $v" }
+            Pop-Location
+            $dest = "RILASCI/$($p.n)/$v"
+            New-Item -ItemType Directory -Force $dest | Out-Null
+            Copy-Item $setup.FullName $dest
+            Write-Host "$($p.n) $v -> $dest/$($setup.Name)"
+          }
+
+      - name: suite pmb_office
+        shell: pwsh
+        run: |
+          $a = @{}; if ('${{ inputs.versione_suite }}') { $a.Versione = '${{ inputs.versione_suite }}' }
+          ./suite/crea-suite.ps1 @a
+
+      # prova: la suite si installa davvero (in silenzio, entrambi i programmi) e i due eseguibili ci sono
+      - name: prova di installazione
+        shell: pwsh
+        run: |
+          $suite = Get-ChildItem RILASCI/pmb_office -Recurse -Filter 'pmb_office_*_x64-setup.exe' | Select-Object -First 1
+          $proc = Start-Process $suite.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "la suite è uscita con codice $($proc.ExitCode)" }
+          # l'eseguibile installato si chiama come il programma (pmb_docs.exe) o come il binario Rust (pmb-docs-shell.exe)
+          foreach ($exe in 'pmb?docs*.exe', 'pmb?sheets*.exe') {
+            $trovato = Get-ChildItem "$env:ProgramFiles\pmb_office", "$env:LOCALAPPDATA\Programs" -Recurse -Filter $exe -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -notmatch 'uninstall|setup' } | Select-Object -First 1
+            if (-not $trovato) { throw "dopo l'installazione manca $exe" }
+            Write-Host "installato: $($trovato.FullName)"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pmb_office-windows
+          path: |
+            RILASCI/pmb_office/
+            RILASCI/pmb_docs/
+            RILASCI/pmb_sheets/
+          if-no-files-found: error

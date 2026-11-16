@@ -1,0 +1,93 @@
+# Compila pmb_docs e pmb_sheets per Mac (Apple Silicon e Intel insieme, "universal"), poi la suite pmb_office (.pkg con una casella per programma).
+# Si lancia a mano (scheda Actions > build-mac > Run workflow): i minuti Mac di un repository privato sono pochi.
+# Non firmato e non notarizzato: al primo avvio il Mac chiede conferma (tasto destro > Apri).
+name: build-mac
+on:
+  workflow_dispatch:
+    inputs:
+      versione_suite:
+        description: 'Versione della suite (vuoto = la data di oggi, AAAA.M.G)'
+        required: false
+        default: ''
+jobs:
+  mac:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [pmb_docs, pmb_sheets/pmb_sheets]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.app }}/src-tauri
+      - run: npm ci
+      # le icone del Mac (.icns) si ricavano dall'icona PNG del programma solo qui, senza cambiare i file del repository
+      - run: npx tauri icon src-tauri/icons/icon.png
+      # prove della parte nativa su un Mac vero (per pmb_docs anche il correttore ortografico del Mac): servono le pagine già compilate
+      - run: npm run build
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - run: npx tauri build --target universal-apple-darwin --bundles app,dmg
+      - name: nome dell'artefatto
+        id: nome
+        run: echo "nome=$(basename '${{ matrix.app }}')" >> "$GITHUB_OUTPUT"
+      # il .app si impacchetta con ditto, che conserva permessi e collegamenti del pacchetto (serve alla suite)
+      - name: pacchetto .app per la suite
+        run: ditto -c -k --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.nome.outputs.nome }}.app ${{ steps.nome.outputs.nome }}-app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.nome.outputs.nome }}-mac
+          path: ${{ matrix.app }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.nome.outputs.nome }}-app
+          path: ${{ matrix.app }}/${{ steps.nome.outputs.nome }}-app.zip
+          if-no-files-found: error
+          retention-days: 3
+
+  suite:
+    needs: mac
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-app'
+          path: app
+          merge-multiple: true
+      - name: suite pmb_office (.pkg)
+        env:
+          VERSIONE_SUITE: ${{ inputs.versione_suite }}
+        run: |
+          cd app
+          ditto -x -k pmb_docs-app.zip .
+          ditto -x -k pmb_sheets-app.zip .
+          cd ..
+          bash suite/mac/crea-suite-mac.sh app/pmb_docs.app app/pmb_sheets.app uscita
+      # prova: si installa davvero sul Mac di GitHub (con le due caselle scelte) e si controlla che i programmi siano in Applicazioni
+      - name: prova di installazione
+        run: |
+          sudo installer -pkg uscita/pmb_office_*_universal.pkg -target /
+          for p in pmb_docs pmb_sheets; do
+            test -d "/Applications/$p.app" || { echo "manca $p"; ls -la /Applications; exit 1; }
+            ese="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "/Applications/$p.app/Contents/Info.plist")"
+            test -x "/Applications/$p.app/Contents/MacOS/$ese"
+            echo "$p $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "/Applications/$p.app/Contents/Info.plist"): $(lipo -archs "/Applications/$p.app/Contents/MacOS/$ese")"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pmb_office-mac
+          path: uscita/
+          if-no-files-found: error
