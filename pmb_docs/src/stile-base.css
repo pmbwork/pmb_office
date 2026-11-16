@@ -1,0 +1,10 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background-color: #f9fbfd; }
+/* Stampa: foglio A4 senza margini della stampante (i margini di un pollice sono già nell'editor) e niente barre di scorrimento. */
+@page { size: A4; margin: 0; }
+@media print {
+  html, body { width: auto; height: auto; overflow: visible; background-color: #ffffff; }
+  docs-guscio { height: auto; overflow: visible; }
+}
+/* Il segno ▾ delle caselle della barra strumenti, reso invisibile (il triangolino vero lo disegna la barra con una maschera). */
+@font-face { font-family: 'FrecciaDocs'; src: local('Segoe UI Symbol'), local('Arial'); unicode-range: U+25BE; size-adjust: 1%; }

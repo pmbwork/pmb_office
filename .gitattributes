@@ -1,0 +1,3 @@
+# gli script per Mac e Linux devono avere i fine riga Unix anche se il repository si aggiorna da Windows
+*.sh text eol=lf
+*.yml text eol=lf

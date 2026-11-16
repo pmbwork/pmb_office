@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Testi comuni di pmb_docs e pmb_sheets per l'installer in italiano (si aggiungono a quelli di Tauri). -->
+<WixLocalization Culture="it-it" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+  <String Id="PmbAvvia">Avvia</String>
+  <String Id="PmbDisinstalla">Disinstalla</String>
+  <String Id="PmbApriCon">Apri con</String>
+</WixLocalization>

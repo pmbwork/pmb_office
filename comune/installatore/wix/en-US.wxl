@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- pmb_docs texts for the English installer (added to the ones from Tauri). -->
+<WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+  <String Id="PmbAvvia">Run</String>
+  <String Id="PmbDisinstalla">Uninstall</String>
+  <String Id="PmbApriCon">Open with</String>
+</WixLocalization>

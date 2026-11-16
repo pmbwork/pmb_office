@@ -31,13 +31,27 @@ Italian and English: choose in *Tools › Preferences* (Automatic follows the sy
 
 ## Licenza · Licence
 
-pmb_docs e pmb_sheets sono **software libero** con licenza **GNU GPL v3** (file [LICENSE](LICENSE)). Il **codice sorgente completo** si può chiedere a PMB dalla voce *Segnala un bug o invia un feedback* dei programmi. Il nome PMB, il logo PMB e i nomi pmb_office, pmb_docs e pmb_sheets appartengono a PMB e non sono coperti dalla licenza.
+pmb_docs e pmb_sheets sono **software libero** con licenza **GNU GPL v3** (file [LICENSE](LICENSE)). Il **codice sorgente completo** è in questo repository (vedi sotto). Il nome PMB, il logo PMB e i nomi pmb_office, pmb_docs e pmb_sheets appartengono a PMB e non sono coperti dalla licenza.
 
-pmb_docs and pmb_sheets are **free software** under the **GNU GPL v3** licence ([LICENSE](LICENSE)). The **complete source code** can be requested from PMB through *Report a bug or send feedback* in the programs. The PMB name and logo and the names pmb_office, pmb_docs and pmb_sheets belong to PMB and are not covered by the licence.
+pmb_docs and pmb_sheets are **free software** under the **GNU GPL v3** licence ([LICENSE](LICENSE)). The **complete source code** is in this repository (see below). The PMB name and logo and the names pmb_office, pmb_docs and pmb_sheets belong to PMB and are not covered by the licence.
 
 Le licenze dei componenti di terze parti sono nei programmi: *Informazioni › Licenze di terze parti*.
 Third-party licences are in the programs: *About › Third-party licences*.
 
+## Codice sorgente · Source code
+
+| Cartella · Folder | Contenuto · Contents |
+|---|---|
+| [`pmb_docs/`](pmb_docs) | documenti di testo · text documents (Tauri 2 + TypeScript) |
+| [`pmb_sheets/pmb_sheets/`](pmb_sheets/pmb_sheets) | fogli di calcolo · spreadsheets (Tauri 2 + TypeScript) |
+| [`comune/`](comune) | codice in comune ai due programmi · code shared by both programs |
+| [`suite/`](suite) | installatori della suite · suite installers (Windows NSIS, macOS pkg) |
+| [`media/`](media) | loghi ufficiali · official logos |
+
+Per compilare servono Node.js 22, Rust e, su Windows, Visual Studio Build Tools: in ogni programma `npm install`, `npm test`, `npx tauri build`. Manuale tecnico: [MANUALE-UTENTE.md](MANUALE-UTENTE.md).
+To build you need Node.js 22, Rust and, on Windows, Visual Studio Build Tools: in each program run `npm install`, `npm test`, `npx tauri build`. Technical manual (Italian): [MANUALE-UTENTE.md](MANUALE-UTENTE.md).
+
+Le licenze dei componenti di terze parti sono nei programmi: *Informazioni › Licenze di terze parti*.
 ## Segnalazioni · Feedback
 
 Usa la voce *Segnala un bug o invia un feedback* dei programmi (menu *Informazioni*, o il pulsante *Segnalazione bug*).

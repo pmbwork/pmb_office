@@ -1,0 +1,87 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/schema.json",
+  "productName": "pmb_docs",
+  "version": "0.4.8",
+  "identifier": "com.pmb.docs",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "pmb_docs",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "decorations": false,
+        "resizable": true,
+        "transparent": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://script.google.com https://script.googleusercontent.com;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "pdoc",
+          "fdoc"
+        ],
+        "name": "Documento pmb_docs",
+        "description": "Documento pmb_docs",
+        "role": "Editor",
+        "mimeType": "application/json"
+      }
+    ],
+    "windows": {
+      "wix": {
+        "fragmentPaths": [
+          "wix/apri-con.wxs"
+        ],
+        "componentRefs": [
+          "ApriConPmbDocs"
+        ],
+        "template": "../../comune/installatore/wix/main.wxs",
+        "language": {
+          "it-IT": {
+            "localePath": "../../comune/installatore/wix/it-IT.wxl"
+          },
+          "en-US": {
+            "localePath": "../../comune/installatore/wix/en-US.wxl"
+          }
+        }
+      },
+      "nsis": {
+        "template": "../../comune/installatore/installer.nsi",
+        "installerHooks": "nsis/hooks.nsh",
+        "installMode": "perMachine",
+        "languages": [
+          "Italian",
+          "English"
+        ],
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "sidebarImage": "../../suite/media/laterale.bmp",
+        "headerImage": "../../suite/media/testata.bmp",
+        "uninstallerHeaderImage": "../../suite/media/testata.bmp",
+        "startMenuFolder": "pmb_office"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+target/
+**/src-tauri/gen/
+*.log
+__pycache__/
+.DS_Store
+Thumbs.db
+# copie di conflitto della sincronizzazione Proton Drive
+*# Edit conflict*
+*# Name clash*
+# installer: vanno nelle Releases di GitHub, non nel codice
+*.msi
+*.pmbup
+*-setup.exe

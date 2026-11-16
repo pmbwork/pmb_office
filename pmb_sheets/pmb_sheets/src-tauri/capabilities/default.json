@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permessi della finestra principale. La barra del titolo e' disegnata dal programma (decorations: false): per spostare la finestra trascinandola e per ingrandirla con il doppio clic servono questi due permessi di Tauri. I comandi del programma (salvataggio, apertura link...) non passano da qui.",
+  "windows": ["main"],
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize"
+  ]
+}

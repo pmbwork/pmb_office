@@ -1,0 +1,22 @@
+{
+  "activeMilestone": "M3",
+  "minTests": 684,
+  "milestones": {
+    "M0": {
+      "minTests": 654,
+      "descrizione": "Cancello M0 chiuso con 654 test unitari verdi"
+    },
+    "M1": {
+      "minTests": 654,
+      "descrizione": "Cancello M1 con struttura e formule"
+    },
+    "M2": {
+      "minTests": 654,
+      "descrizione": "Cancello M2 con filtri, ordinamento, convalida dati"
+    },
+    "M3": {
+      "minTests": 684,
+      "descrizione": "Cancello M3 con 274 funzioni censite, array dinamici spill, localizzazione IT/EN, grafici SVG nativi e tabelle pivot"
+    }
+  }
+}

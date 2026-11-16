@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/schema.json",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "pmb_docs",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "decorations": true,
+        "resizable": true,
+        "transparent": false,
+        "center": true
+      }
+    ]
+  },
+  "bundle": {
+    "icon": [
+      "icons/icon.icns",
+      "icons/icon.png"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "pdoc",
+          "fdoc"
+        ],
+        "name": "Documento pmb_docs",
+        "description": "Documento pmb_docs",
+        "role": "Editor",
+        "mimeType": "application/json"
+      },
+      {
+        "ext": [
+          "docx"
+        ],
+        "name": "Documento Word",
+        "description": "Documento Word (.docx)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "odt"
+        ],
+        "name": "Documento OpenDocument",
+        "description": "Documento OpenDocument (.odt)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "txt",
+          "md"
+        ],
+        "name": "Testo",
+        "description": "Testo semplice o Markdown",
+        "role": "Editor",
+        "rank": "Alternate"
+      }
+    ]
+  }
+}

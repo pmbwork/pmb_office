@@ -1,0 +1,21 @@
+# Dipendenze e artefatti di compilazione pesano centinaia di MB e non vanno mai committati
+node_modules/
+dist/
+data/
+
+# Artefatti Rust e Tauri
+src-tauri/target/
+target/
+
+# Log e file temporanei
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# File di sistema e IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

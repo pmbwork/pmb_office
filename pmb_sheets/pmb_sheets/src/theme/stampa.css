@@ -1,0 +1,5 @@
+/* Stampa di Fogli: pagina A4 con margini di 15 mm (il resto della stampa lo decide lo stile del componente) */
+@page {
+  size: A4;
+  margin: 15mm;
+}

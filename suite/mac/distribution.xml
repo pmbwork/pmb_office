@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Suite pmb_office per Mac: la schermata "Personalizza" mostra una casella per programma (customize="always").
+     I segnaposto @V_...@ li riempie crea-suite-mac.sh. -->
+<installer-gui-script minSpecVersion="2">
+  <title>pmb_office @V_SUITE@</title>
+  <welcome file="benvenuto.html" mime-type="text/html"/>
+  <license file="LICENSE.txt" mime-type="text/plain"/>
+  <!-- il logo ufficiale di pmb_office (media/logo), come nelle immagini della suite di Windows -->
+  <background file="logo.png" mime-type="image/png" alignment="bottomleft" scaling="proportional"/>
+  <background-darkAqua file="logo.png" mime-type="image/png" alignment="bottomleft" scaling="proportional"/>
+  <options customize="always" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+  <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
+  <volume-check>
+    <allowed-os-versions><os-version min="11.0"/></allowed-os-versions>
+  </volume-check>
+  <choices-outline>
+    <line choice="pmb_docs"/>
+    <line choice="pmb_sheets"/>
+  </choices-outline>
+  <choice id="pmb_docs" title="pmb_docs @V_DOCS@" description="Documenti di testo / Text documents (.docx, .odt, .pdoc)" start_selected="true">
+    <pkg-ref id="com.pmb.docs.pkg"/>
+  </choice>
+  <choice id="pmb_sheets" title="pmb_sheets @V_SHEETS@" description="Fogli di calcolo / Spreadsheets (.xlsx, .ods, .csv)" start_selected="true">
+    <pkg-ref id="com.pmb.sheets.pkg"/>
+  </choice>
+  <pkg-ref id="com.pmb.docs.pkg" version="@V_DOCS@" onConclusion="none">pmb_docs.pkg</pkg-ref>
+  <pkg-ref id="com.pmb.sheets.pkg" version="@V_SHEETS@" onConclusion="none">pmb_sheets.pkg</pkg-ref>
+</installer-gui-script>
