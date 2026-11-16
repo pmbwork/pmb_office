@@ -20,8 +20,8 @@ jobs:
       run:
         working-directory: ${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -45,12 +45,12 @@ jobs:
       # il .app si impacchetta con ditto, che conserva permessi e collegamenti del pacchetto (serve alla suite)
       - name: pacchetto .app per la suite
         run: ditto -c -k --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.nome.outputs.nome }}.app ${{ steps.nome.outputs.nome }}-app.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.nome.outputs.nome }}-mac
           path: ${{ matrix.app }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.nome.outputs.nome }}-app
           path: ${{ matrix.app }}/${{ steps.nome.outputs.nome }}-app.zip
@@ -61,8 +61,8 @@ jobs:
     needs: mac
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
         with:
           pattern: '*-app'
           path: app
@@ -86,7 +86,7 @@ jobs:
             test -x "/Applications/$p.app/Contents/MacOS/$ese"
             echo "$p $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "/Applications/$p.app/Contents/Info.plist"): $(lipo -archs "/Applications/$p.app/Contents/MacOS/$ese")"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pmb_office-mac
           path: uscita/
