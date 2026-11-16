@@ -11,7 +11,7 @@ Un solo file da scaricare per chi vuole pmb_docs, pmb_sheets o tutti e due: fine
 ## Come si rilascia
 1. Si rilasciano i programmi come sempre (versione, compilazione `--bundles nsis,msi`, per pmb_docs anche `.pmbup` e MSI bilingue) in `RILASCI`.
 2. `powershell -ExecutionPolicy Bypass -File suite\crea-suite.ps1` → `RILASCI/pmb_office/<AAAA.M.G>/` con la suite e `CONTENUTO.txt` (versioni e impronte SHA-256).
-3. `... crea-suite.ps1 -Consegna` la copia anche nella cartella pubblica `Shared with me\pmb_office` (controlla che la copia sia identica; non sovrascrive mai una suite già consegnata).
+3. Si pubblica su GitHub con `repo-pubblico\pubblica-release.ps1 -Windows <versione> -Mac <versione>` (unico canale di condivisione dal 2026-11-16; la cartella condivisa di Proton Drive non si usa più).
 
 La versione della suite è la data; i numeri dei programmi dentro si leggono dai loro `tauri.conf.json`. La grafica (icona e due immagini) sta in `suite/media` (vedi `media/LEGGIMI.md`), ricavata dai loghi in `media/logo`.
 

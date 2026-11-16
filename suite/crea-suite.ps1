@@ -1,10 +1,9 @@
 # Costruisce l'installer della suite pmb_office (pmb_docs + pmb_sheets, con le due caselle) a partire dagli installer NSIS già in RILASCI.
 # Uso (da qualsiasi cartella), dopo aver rilasciato le versioni dei due programmi in RILASCI\pmb_docs\<v> e RILASCI\pmb_sheets\<v>:
 #   powershell -ExecutionPolicy Bypass -File suite\crea-suite.ps1                 # costruisce in RILASCI\pmb_office\<data>
-#   powershell -ExecutionPolicy Bypass -File suite\crea-suite.ps1 -Consegna       # e lo copia nella cartella pubblica (controlla SHA-256, non sovrascrive)
 # Le versioni dei programmi si leggono dai loro tauri.conf.json; la versione della suite è la data (AAAA.M.G).
 # Icona e immagini: suite\media (vedi suite\media\LEGGIMI.md); senza il logo della suite si usa l'icona di pmb_docs.
-param([switch]$Consegna, [string]$Destinazione = (Join-Path $PSScriptRoot '..\..\..\..\..\pmb_office'), [string]$Versione = '')
+param([string]$Versione = '')
 $ErrorActionPreference = 'Stop'
 $qui = $PSScriptRoot
 $radice = (Resolve-Path (Join-Path $qui '..')).Path              # progetti\pmb_office
@@ -48,12 +47,4 @@ $righe = @("pmb_office $Versione ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))", '',
   "$(Split-Path $uscita -Leaf)   SHA-256 $((Get-FileHash $uscita -Algorithm SHA256).Hash)")
 Set-Content -Path (Join-Path $cartella 'CONTENUTO.txt') -Value $righe -Encoding utf8
 Write-Host ("Suite: {0} ({1:N2} MB) con pmb_docs {2} e pmb_sheets {3}" -f $uscita, ((Get-Item $uscita).Length / 1MB), $vDocs, $vSheets)
-
-if ($Consegna) {
-  if (-not (Test-Path $Destinazione)) { throw "Non trovo la cartella di destinazione: $Destinazione" }
-  $dest = Join-Path $Destinazione (Split-Path $uscita -Leaf)
-  if (Test-Path $dest) { throw "Esiste già ${dest}: non sovrascrivo una suite già consegnata (rilancia con -Versione A.B.C diversa)" }
-  Copy-Item $uscita $dest
-  if ((Get-FileHash $uscita -Algorithm SHA256).Hash -ne (Get-FileHash $dest -Algorithm SHA256).Hash) { throw "Copia non identica: $dest (cancellala e rilancia)" }
-  Write-Host "Consegnata in $dest (copia verificata)"
-}
+# Si pubblica su GitHub con repo-pubblico\pubblica-release.ps1 (unico canale dal 2026-11-16: la cartella condivisa non si usa più).
