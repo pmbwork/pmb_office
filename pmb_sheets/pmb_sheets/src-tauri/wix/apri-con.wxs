@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fa comparire pmb_sheets nell'elenco «Apri con» di Windows per questi formati SENZA diventare il programma predefinito
+     (non tocca .xlsx/.csv di Excel). Come wix/apri-con.wxs di pmb_docs: la suite si comporta allo stesso modo. -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="ApriConPmbSheets" Guid="3D8E2A71-5C64-4F19-B0E7-9A1C6D2F4E85">
+        <RegistryKey Root="HKLM" Key="Software\Classes\Applications\pmb-sheets-shell.exe">
+          <RegistryValue Name="FriendlyAppName" Type="string" Value="pmb_sheets" KeyPath="yes" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\Applications\pmb-sheets-shell.exe\shell\open\command">
+          <RegistryValue Type="string" Value="&quot;[INSTALLDIR]pmb-sheets-shell.exe&quot; &quot;%1&quot;" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\Applications\pmb-sheets-shell.exe\SupportedTypes">
+          <RegistryValue Name=".xlsx" Type="string" Value="" />
+          <RegistryValue Name=".ods" Type="string" Value="" />
+          <RegistryValue Name=".csv" Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xlsx\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.ods\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.csv\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

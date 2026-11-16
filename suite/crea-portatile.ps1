@@ -6,8 +6,8 @@
 #     pmb_sheets\pmb_sheets.exe  + data\
 #     Avvia-pmb_docs.cmd, Avvia-pmb_sheets.cmd   avvio autolocalizzato (regole dell'ambiente pocket: funziona con qualsiasi lettera e su qualsiasi PC)
 #     LEGGIMI.txt, LICENSE.txt
-# Con -Device mette anche, nella radice del device, Avvia-pmb_docs.cmd e Avvia-pmb_sheets.cmd che richiamano quelli della cartella
-# (come Avvia-Firefox.cmd), e il controllo dei programmi sta in Controllo-PC-nuovo.cmd del device.
+# Con -Device mette anche, in Program_Portable (regola 7 dell'ambiente pocket: in radice solo AVVIA-VSCODIUM.cmd), Avvia-pmb_docs.cmd e
+# Avvia-pmb_sheets.cmd che richiamano quelli della cartella (come Avvia-Firefox.cmd); il controllo sta in Controllo-PC-nuovo.cmd del device.
 # I programmi riconoscono la cartella webview2 e passano da soli in modalità portatile (src-tauri/src/lib.rs, «Modalità portatile»).
 # Uso:
 #   powershell -ExecutionPolicy Bypass -File suite\crea-portatile.ps1                        # costruisce in C:\AI_system\build-cache\pmb_office_portatile
@@ -82,7 +82,7 @@ pmb_office portatile - pmb_docs $vDocs, pmb_sheets $vSheets
 
 Per un device esterno (per esempio AI_PRO): tutto resta sul device, niente si installa o si scrive nel PC ospite.
 
-Avvio:   Avvia-pmb_docs.cmd   oppure   Avvia-pmb_sheets.cmd   (anche dalla radice del device; doppio clic, nessuna installazione,
+Avvio:   Avvia-pmb_docs.cmd   oppure   Avvia-pmb_sheets.cmd   (anche da Program_Portable; doppio clic, nessuna installazione,
          nessun permesso di amministratore). Funziona con qualsiasi lettera di unita' e su qualsiasi PC con Windows.
 
 Che cosa c'è:
@@ -139,13 +139,15 @@ if ($Device) {
     if ($a -ne $b) { throw "Sul device $($p.n).exe non coincide con quello compilato" }
   }
   Write-Host "Copiato e verificato in $dest (cartelle data lasciate com'erano)"
-  # punti d'ingresso nella radice del device (come Avvia-Firefox.cmd): richiamano il launcher dentro Program_Portable\pmb_office
-  $radiceDevice = Split-Path (Resolve-Path $Device).Path -Parent
-  if ((Split-Path $Device -Leaf) -eq 'Program_Portable' -and $radiceDevice) {
+  # punti d'ingresso in Program_Portable (regola 7 dell'ambiente pocket, dal 2026-11-15: in radice solo AVVIA-VSCODIUM.cmd),
+  # come Avvia-Firefox.cmd: richiamano il launcher autolocalizzato dentro pmb_office\, con percorsi relativi alla propria cartella
+  if ((Split-Path $Device -Leaf) -eq 'Program_Portable') {
     foreach ($p in $programmi) {
-      $testo = "@echo off`r`nREM Punto d'ingresso di $($p.n) (pmb_office): richiama il launcher dentro Program_Portable\pmb_office\ (autolocalizzato).`r`nset `"ROOT=%~dp0`"`r`ncall `"%ROOT%Program_Portable\pmb_office\Avvia-$($p.n).cmd`" %*`r`n"
-      [IO.File]::WriteAllText((Join-Path $radiceDevice "Avvia-$($p.n).cmd"), $testo, [Text.Encoding]::ASCII)
+      $testo = "@echo off`r`nREM Avvio di $($p.n) (pmb_office): richiama il launcher dentro pmb_office\ (autolocalizzato).`r`nREM In Program_Portable dal 2026-11-15: in radice resta solo AVVIA-VSCODIUM.cmd (regola 7 dell'ambiente pocket).`r`nset `"PP=%~dp0`"`r`ncall `"%PP%pmb_office\Avvia-$($p.n).cmd`" %*`r`n"
+      [IO.File]::WriteAllText((Join-Path $Device "Avvia-$($p.n).cmd"), $testo, [Text.Encoding]::ASCII)
     }
-    Write-Host "Punti d'ingresso nella radice del device: Avvia-pmb_docs.cmd, Avvia-pmb_sheets.cmd"
+    Write-Host "Punti d'ingresso in Program_Portable: Avvia-pmb_docs.cmd, Avvia-pmb_sheets.cmd"
+    $radiceDevice = Split-Path (Resolve-Path $Device).Path -Parent
+    foreach ($p in $programmi) { if (Test-Path (Join-Path $radiceDevice "Avvia-$($p.n).cmd")) { Write-Warning "In radice c'è ancora Avvia-$($p.n).cmd: la regola 7 lo vieta, va tolto" } }
   }
 }

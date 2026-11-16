@@ -24,6 +24,43 @@
     ],
     "macOS": {
       "minimumSystemVersion": "11.0"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "psheet"
+        ],
+        "name": "Foglio pmb_sheets",
+        "description": "Foglio pmb_sheets (.psheet)",
+        "role": "Editor"
+      },
+      {
+        "ext": [
+          "xlsx"
+        ],
+        "name": "Cartella di lavoro Excel",
+        "description": "Cartella di lavoro Excel (.xlsx)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "ods"
+        ],
+        "name": "Foglio OpenDocument",
+        "description": "Foglio di calcolo OpenDocument (.ods)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "csv"
+        ],
+        "name": "Valori separati da virgola",
+        "description": "Valori separati da virgola (.csv)",
+        "role": "Editor",
+        "rank": "Alternate"
+      }
+    ]
   }
 }
