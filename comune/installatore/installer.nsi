@@ -1,5 +1,10 @@
 ; Modello dell'installer NSIS comune a pmb_docs e pmb_sheets (la suite pmb_office deve avere finestre uguali): e' quello di Tauri,
 ; con la cartella di installazione Programmi\pmb_office\<programma> e le immagini della suite anche nella disinstallazione.
+;
+; Derived from the NSIS installer template of the Tauri bundler
+; (https://github.com/tauri-apps/tauri, crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi),
+; Copyright (c) 2017 - Present Tauri Apps Contributors, licensed under MIT OR Apache-2.0.
+; Modifications for pmb_office by PMB, distributed under GPL-3.0 as part of pmb_office.
 Unicode true
 ManifestDPIAware true
 ; Add in `dpiAwareness` `PerMonitorV2` to manifest for Windows 10 1607+ (note this should not affect lower versions since they should be able to ignore this and pick up `dpiAware` `true` set by `ManifestDPIAware true`)

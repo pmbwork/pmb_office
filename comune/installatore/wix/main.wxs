@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Derived from the WiX (MSI) template of the Tauri bundler
+  (https://github.com/tauri-apps/tauri, crates/tauri-bundler/src/bundle/windows/msi/main.wxs),
+  Copyright (c) 2017 - Present Tauri Apps Contributors, licensed under MIT OR Apache-2.0.
+  Modifications for pmb_office by PMB, distributed under GPL-3.0 as part of pmb_office.
+-->
 <?if $(sys.BUILDARCH)="x86"?>
     <?define Win64 = "no" ?>
     <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
