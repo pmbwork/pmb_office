@@ -15,26 +15,27 @@ describe('T021: menu di pmb_docs', () => {
     expect(MENU.map((m) => m.etichetta)).toEqual(['File', 'Modifica', 'Visualizza', 'Inserisci', 'Formato', 'Strumenti', 'Informazioni', 'Segnalazione bug']);
   });
   it('menu File', () => {
-    expect(comp('file').split('|')).toEqual('Nuovo|Apri@Ctrl+O|Salva@Ctrl+S|Salva con nome@Ctrl+Maiusc+S|Scarica*|Rinomina|Cronologia versioni|Dettagli|Correttore lingua*|Impostazione pagina|Anteprima di stampa|Stampa@Ctrl+P'.split('|'));
+    expect(comp('file').split('|')).toEqual('Nuovo|Apri@Ctrl+O|Salva@Ctrl+S|Salva con nome@Ctrl+Maiusc+S|Scarica*|Rinomina|Cronologia versioni|Dettagli|Password per aprire|Correttore lingua*|Impostazione pagina|Anteprima di stampa|Stampa@Ctrl+P'.split('|'));
   });
   it('menu Modifica', () => {
     expect(comp('modifica').split('|')).toEqual('Annulla@Ctrl+Z|Ripeti@Ctrl+Y|Taglia@Ctrl+X|Copia@Ctrl+C|Incolla@Ctrl+V|Incolla senza formattazione@Ctrl+Maiusc+V|Seleziona tutto@Ctrl+A|Elimina|Trova e sostituisci@Ctrl+H'.split('|'));
   });
   it('menu Visualizza', () => {
-    expect(comp('visualizza').split('|')).toEqual('Modalità*|Mostra layout di stampa|Mostra righello|Mostra barra degli strumenti delle equazioni|Mostra caratteri non stampabili@Ctrl+Maiusc+P|Schermo intero|Nascondi i menu@Ctrl+Maiusc+F|Personalizza barra degli strumenti'.split('|'));
+    expect(comp('visualizza').split('|')).toEqual('Modalità*|Mostra layout di stampa|Mostra righello|Mostra barra degli strumenti delle equazioni|Mostra caratteri non stampabili@Ctrl+Maiusc+P|Mostra commenti e modifiche|Mostra struttura del documento|Schermo intero|Nascondi i menu@Ctrl+Maiusc+F|Personalizza barra degli strumenti'.split('|'));
   });
   it('menu Inserisci', () => {
-    expect(comp('inserisci').split('|')).toEqual('Immagine|Tabella|Componenti di base*|Link@Ctrl+K|Disegno*|Grafico*|Simboli|Equazione|Tab@Maiusc+F11|Linea orizzontale|Interruzione*|Segnalibro|Elementi di pagina*'.split('|'));
+    expect(comp('inserisci').split('|')).toEqual('Immagine|Codice QR|Tabella|Componenti di base*|Link@Ctrl+K|Commento@Ctrl+Alt+M|Disegno*|Grafico*|Simboli|Equazione|Tab@Maiusc+F11|Linea orizzontale|Data e ora|Didascalia|Riferimento incrociato|Interruzione*|Caratteri speciali*|Segnalibro|Sommario|Aggiorna sommario|Elementi di pagina*'.split('|'));
   });
   it('menu Formato', () => {
-    expect(comp('formato').split('|')).toEqual('Testo*|Stili paragrafo|Allinea e applica rientro|Interlinea e spaziatura paragrafo|Colonne*|Elenchi puntati e numerati|Intestazioni e piè di pagina|Numeri di pagina|Orientamento pagina|Passa al formato Senza pagine|Tabella|Immagine|Bordi e linee*|Cancella formattazione@Ctrl+\\'.split('|'));
+    expect(comp('formato').split('|')).toEqual('Testo*|Stili paragrafo|Allinea e applica rientro|Interlinea e spaziatura paragrafo|Colonne*|Elenchi puntati e numerati|Intestazioni e piè di pagina|Filigrana|Numeri di pagina|Orientamento pagina|Passa al formato Senza pagine|Tabella|Immagine|Bordi e linee*|Cancella formattazione@Ctrl+\\'.split('|'));
   });
   it('menu Strumenti', () => {
-    expect(comp('strumenti').split('|')).toEqual('Ortografia e grammatica*|Conteggio parole@Ctrl+Maiusc+C|Numeri di riga|Dizionario@Ctrl+Maiusc+Y|Caratteri personali|Preferenze|Accessibilità'.split('|'));
+    expect(comp('strumenti').split('|')).toEqual('Ortografia e grammatica*|Conteggio parole@Ctrl+Maiusc+C|Revisioni*|Numeri di riga|Proteggi documento|Leggi ad alta voce@Ctrl+Alt+Spazio|Controlla accessibilità|Stampa unione|Dizionario@Ctrl+Maiusc+Y|Correzione automatica|Caratteri personali|Preferenze|Accessibilità'.split('|'));
   });
   it('nessuna voce vietata (condivisione, AI, estensioni)', () => {
     const tutte = MENU.flatMap((m) => m.voci.map((v) => v.etichetta.toLowerCase())).join('|');
-    for (const vietata of ['condividi', 'email', 'commento', 'gemini', 'estensioni', 'guida', 'firma', 'smart chip', 'drive']) {
+    // commenti e revisioni ci sono dal 2026-11-20 (richiesta dell'utente, studio di Microsoft Office): sono sul computer, non in rete
+    for (const vietata of ['condividi', 'email', 'gemini', 'estensioni', 'guida', 'firma', 'smart chip', 'drive']) {
       expect(tutte.includes(vietata), vietata).toBe(false);
     }
   });

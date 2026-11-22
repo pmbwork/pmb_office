@@ -289,6 +289,18 @@ describe('T463: chiudere la finestra', () => {
     await vi.waitFor(() => expect(chiamate('destroy_window')).toHaveLength(1));
   });
 
+  it('con modifiche non salvate «Salva» salva e chiude, come in pmb_docs (2026-11-18)', async () => {
+    const { app, dentro } = await avvia();
+    const doc = await nuovoFoglio(app, dentro);
+    await modifica(doc);
+    const richiesta = app.richiediChiusuraApp();
+    await vi.waitFor(() => expect(dialogo(app)).not.toBeNull());
+    scegliNelDialogo(app, 'salva');
+    await richiesta;
+    expect(salva).toHaveBeenCalled();
+    expect(chiamate('destroy_window')).toHaveLength(1);
+  });
+
   it('la X della barra del titolo e File > Esci passano dallo stesso controllo', async () => {
     const { app, dentro } = await avvia();
     const doc = await nuovoFoglio(app, dentro);

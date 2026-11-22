@@ -9,7 +9,24 @@ import fs from 'node:fs';
 import path from 'node:path'; import { fileURLToPath } from 'node:url';
 
 // file delle credenziali: variabile PMB_CREDENZIALI, altrimenti la posizione standard rispetto a questo script (fuori dal progetto)
-const VAULT = process.env.PMB_CREDENZIALI || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../.claude/memory/credenziali_vault.md');
+// cerca .claude/memory/credenziali_vault.md risalendo dalle cartelle superiori: nel vault che contiene il progetto o in un vault accanto
+function trovaVault() {
+  const rel = path.join('.claude', 'memory', 'credenziali_vault.md');
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 8; i++) {
+    const qui = path.join(dir, rel);
+    if (fs.existsSync(qui)) return qui;
+    const padre = path.dirname(dir);
+    for (const fratello of fs.existsSync(padre) ? fs.readdirSync(padre) : []) {
+      const lì = path.join(padre, fratello, rel);
+      if (fs.existsSync(lì)) return lì;
+    }
+    if (padre === dir) break;
+    dir = padre;
+  }
+  throw new Error('File delle credenziali non trovato: impostare la variabile PMB_CREDENZIALI');
+}
+const VAULT = process.env.PMB_CREDENZIALI || trovaVault();
 const USCITA = path.join(process.cwd(), 'src-tauri', 'src', 'chiave_pubblica.rs');
 const MARCA = '-----BEGIN PRIVATE KEY-----';
 

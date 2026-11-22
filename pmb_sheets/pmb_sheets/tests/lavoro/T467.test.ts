@@ -36,7 +36,7 @@ describe('T467: cambiando foglio si vedono i dati del foglio scelto', () => {
     const visti: Array<{ fogli: string[]; attivo: string }> = [];
     grid.addEventListener('sheets-changed', (e) => visti.push((e as CustomEvent).detail));
     await grid.handleAddSheet('Altro');
-    expect(visti.at(-1)).toEqual({ fogli: [grid['getDoc']().activeSheetName === 'Altro' ? visti.at(-1)!.fogli[0] : '', 'Altro'].filter(Boolean), attivo: 'Altro', colori: {} });
+    expect(visti.at(-1)).toEqual({ fogli: [grid['getDoc']().activeSheetName === 'Altro' ? visti.at(-1)!.fogli[0] : '', 'Altro'].filter(Boolean), nascosti: [], attivo: 'Altro', colori: {} });
   });
 });
 

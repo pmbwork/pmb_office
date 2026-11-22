@@ -115,7 +115,8 @@ describe('T324: l\'azione alterna', () => {
 describe('T324: Formato › Testo', () => {
   it('le sei voci e le scorciatoie nei dati', () => {
     const testo = MENU.find((m) => m.id === 'formato')!.voci.find((v) => v.etichetta === 'Testo')!;
-    expect(testo.figli?.map((f) => [f.etichetta, f.scorciatoia])).toEqual([
+    // dal 0.4.15 seguono le sei voci delle maiuscole e minuscole
+    expect(testo.figli?.slice(0, 6).map((f) => [f.etichetta, f.scorciatoia])).toEqual([
       ['Grassetto', 'Ctrl+B'], ['Corsivo', 'Ctrl+I'], ['Sottolineato', 'Ctrl+U'], ['Barrato', 'Alt+Maiusc+5'], ['Apice', 'Ctrl+.'], ['Pedice', 'Ctrl+,'],
     ]);
   });

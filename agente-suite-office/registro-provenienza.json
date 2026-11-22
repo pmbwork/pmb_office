@@ -1,0 +1,305 @@
+{
+  "descrizione": "Registro di provenienza di pmb_office, letto da agente-suite-office (originale in vault di lavoro di PMB, .claude/agenti/agente-suite-office). Sono dati di questo progetto: ogni voce si aggiunge solo dopo aver verificato origine e licenza; il motivo resta scritto qui.",
+  "progetto": {
+    "nome": "pmb_office",
+    "licenza": "GPL-3.0",
+    "titolare": "PMB",
+    "generatoreElenco": "comune/scripts/genera-licenze.mjs",
+    "fileCondizioni": [
+      "comune/src/informazioni/condizioni.ts"
+    ],
+    "app": {
+      "pmb_docs": {
+        "cartella": "pmb_docs",
+        "elencoComponenti": "pmb_docs/src/guscio/licenze-terze.ts",
+        "caratteri": "pmb_docs/src/assets/fonts",
+        "documentoLicenze": "pmb_docs/THIRD-PARTY-NOTICES.md"
+      },
+      "pmb_sheets": {
+        "cartella": "pmb_sheets/pmb_sheets",
+        "elencoComponenti": "pmb_sheets/pmb_sheets/src/components/licenze-terze.ts",
+        "caratteri": "pmb_sheets/pmb_sheets/src/assets/fonts"
+      }
+    }
+  },
+  "licenzeAmmesse": [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "0BSD",
+    "Zlib",
+    "Unlicense",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "MPL-2.0",
+    "OFL-1.1",
+    "BSL-1.0"
+  ],
+  "licenzeVietate": [
+    "GPL-2\\.0-only",
+    "GPL-2\\.0(?!-or-later|\\+)",
+    "AGPL",
+    "SSPL",
+    "BUSL",
+    "Commons-Clause",
+    "CC-BY-NC",
+    "CC-BY-ND",
+    "NonCommercial",
+    "Proprietary",
+    "UNLICENSED",
+    "Elastic-2\\.0",
+    "JSON"
+  ],
+  "noticeRiportati": [],
+  "caratteriPropri": [],
+  "avvisiAmmessi": [
+    {
+      "file": "comune/installatore/installer.nsi",
+      "origine": "modello NSIS del bundler di Tauri (MIT OR Apache-2.0), modificato per pmb_office",
+      "deveContenere": "Tauri Apps Contributors, licensed under MIT OR Apache-2.0"
+    },
+    {
+      "file": "comune/installatore/wix/main.wxs",
+      "origine": "modello WiX del bundler di Tauri (MIT OR Apache-2.0), modificato per pmb_office",
+      "deveContenere": "Tauri Apps Contributors, licensed under MIT OR Apache-2.0"
+    },
+    {
+      "file": "pmb_docs/src/guscio/licenze-terze.ts",
+      "origine": "file generato: elenco dei componenti di terze parti e testi delle loro licenze (obbligo delle licenze stesse)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/src/components/licenze-terze.ts",
+      "origine": "file generato: elenco dei componenti di terze parti e testi delle loro licenze"
+    },
+    {
+      "file": "comune/scripts/genera-licenze.mjs",
+      "origine": "script del progetto che riconosce i testi delle licenze (contiene le frasi da cercare)"
+    },
+    {
+      "file": "agente-suite-office/**",
+      "origine": "questo agente (contiene le frasi da cercare)"
+    },
+    {
+      "file": "LICENSE",
+      "origine": "testo della GNU GPL v3 (Free Software Foundation), licenza del progetto"
+    },
+    {
+      "file": "pmb_docs/THIRD-PARTY-NOTICES.md",
+      "origine": "documento sui componenti di terze parti"
+    },
+    {
+      "file": "pmb_docs/dependencies-allowed.json",
+      "origine": "registro delle dipendenze ammesse"
+    },
+    {
+      "file": "repo-github/LICENSE",
+      "origine": "testo della GNU GPL v3 nella cartella di lavoro"
+    }
+  ],
+  "righeAmmesse": [],
+  "risorse": [
+    {
+      "percorso": "media/logo/*",
+      "origine": "loghi ufficiali di PMB Office, creati per il progetto",
+      "licenza": "marchio di PMB (README, GPL-3.0 sezione 7)"
+    },
+    {
+      "percorso": "pmb_docs/media/logo/*",
+      "origine": "loghi ufficiali di PMB Docs, creati per il progetto",
+      "licenza": "marchio di PMB"
+    },
+    {
+      "percorso": "pmb_sheets/media/logo/*",
+      "origine": "loghi ufficiali di PMB Sheets, creati per il progetto",
+      "licenza": "marchio di PMB"
+    },
+    {
+      "percorso": "pmb_docs/src-tauri/icons/*",
+      "origine": "icone ricavate dal logo di PMB Docs",
+      "licenza": "marchio di PMB"
+    },
+    {
+      "percorso": "pmb_sheets/pmb_sheets/src-tauri/icons/*",
+      "origine": "icone ricavate dal logo di PMB Sheets",
+      "licenza": "marchio di PMB"
+    },
+    {
+      "percorso": "suite/media/*",
+      "origine": "icona e immagini dell'installatore della suite, ricavate dai loghi di PMB Office",
+      "licenza": "marchio di PMB"
+    },
+    {
+      "percorso": "pmb_docs/src/assets/fonts/**",
+      "origine": "file dei caratteri copiati dai pacchetti @fontsource (Google Fonts); licenza controllata dal controllo «Caratteri» sull'elenco dei componenti",
+      "licenza": "OFL-1.1 / Apache-2.0"
+    },
+    {
+      "percorso": "pmb_sheets/pmb_sheets/src/assets/fonts/**",
+      "origine": "file dei caratteri dei pacchetti @fontsource (Inter, Roboto)",
+      "licenza": "OFL-1.1 / Apache-2.0"
+    },
+    {
+      "percorso": "pmb_docs/tests/file-prova/**",
+      "origine": "documenti di prova creati per il progetto con pmb_docs, Microsoft Word e LibreOffice (testi scritti per le prove); i .doc con crea-con-libreoffice.py",
+      "licenza": "GPL-3.0 (progetto)"
+    },
+    {
+      "percorso": "comune/tests/file-prova/**",
+      "origine": "file cifrati di prova creati per il progetto con pmb, Word, Excel e LibreOffice",
+      "licenza": "GPL-3.0 (progetto)"
+    },
+    {
+      "percorso": "pmb_sheets/pmb_sheets/tests/file-prova/xls/irs-excel4.xls*",
+      "origine": "tabella del Data Book 2001 dell'IRS (https://www.irs.gov/pub/irs-soi/01db11ex.xls) e sua conversione con LibreOffice; vedi LEGGIMI.md della cartella",
+      "licenza": "pubblico dominio (opera del governo federale USA, 17 U.S.C. §105)"
+    },
+    {
+      "percorso": "pmb_sheets/pmb_sheets/tests/file-prova/**",
+      "origine": "fogli di prova creati per il progetto con pmb_sheets, Microsoft Excel e LibreOffice; i .xls con crea-con-libreoffice.py",
+      "licenza": "GPL-3.0 (progetto)"
+    },
+    {
+      "percorso": "pmb_sheets/pmb_sheets/verifica/*.png",
+      "origine": "schermate di pmb_sheets prese dalle prove",
+      "licenza": "GPL-3.0 (progetto)"
+    },
+    {
+      "percorso": "pmb_sheets/pmb_sheets/verifiche-a-mano/*",
+      "origine": "fogli di prova creati per le verifiche a mano",
+      "licenza": "GPL-3.0 (progetto)"
+    }
+  ],
+  "limiti": [
+    "Trova i segni riconoscibili di materiale altrui (avvisi di copyright, testi di licenza, dichiarazioni di derivazione, file senza origine registrata, dipendenze con licenze incompatibili); non può dimostrare che nessuna riga del codice sia stata copiata senza dichiararlo.",
+    "La scansione settimanale con ScanCode riconosce testi di licenza e avvisi di copyright anche parziali, non il codice riscritto o tradotto da un altro programma.",
+    "Brevetti: non si verificano in automatico. I formati usati sono standard pubblici (ISO/IEC 29500 Office Open XML, coperto dalla Microsoft Open Specification Promise; ISO/IEC 26300 OpenDocument; ISO 32000 PDF); una verifica di libertà d'azione su brevetti richiede un consulente in proprietà industriale.",
+    "Marchi: si controllano i nomi dei programmi, delle finestre e dei file grafici; l'uso dei nomi di formati e programmi altrui nei testi (per esempio «compatibile con Word») resta da valutare a mano.",
+    "Non è un parere legale."
+  ],
+  "scancodeAmmessi": [
+    {
+      "file": "AUDIT-LICENZE.md",
+      "motivo": "documento del progetto che cita i nomi delle licenze (verificato a mano il 2026-11-22): nessun codice o testo altrui"
+    },
+    {
+      "file": "MANUALE-UTENTE.md",
+      "motivo": "documento del progetto che cita i nomi delle licenze (verificato a mano il 2026-11-22): nessun codice o testo altrui"
+    },
+    {
+      "file": "README.md",
+      "motivo": "documento del progetto che cita i nomi delle licenze (verificato a mano il 2026-11-22): nessun codice o testo altrui; dice «GPL versione 3», la GPL-2.0 riconosciuta è un errore di ScanCode"
+    },
+    {
+      "file": "comune/src/informazioni/condizioni.ts",
+      "motivo": "condizioni d'uso del programma: citano la GPL-3.0 e le licenze dei componenti (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "suite/genera-testi-licenze.mjs",
+      "motivo": "script del progetto che prepara i testi delle licenze per l'installatore"
+    },
+    {
+      "file": "suite/mac/distribution.xml",
+      "motivo": "installatore Mac: rimanda al file della licenza (LICENSE.txt)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/CONSEGNA-*.md",
+      "motivo": "documento del progetto che cita i nomi delle licenze (verificato a mano il 2026-11-22): nessun codice o testo altrui (documento interno, non va nel pubblico)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/RAPPORTO-*.md",
+      "motivo": "documento del progetto che cita i nomi delle licenze (verificato a mano il 2026-11-22): nessun codice o testo altrui (documento interno, non va nel pubblico)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/README.md",
+      "motivo": "documento del progetto che cita i nomi delle licenze (verificato a mano il 2026-11-22): nessun codice o testo altrui (documento interno, non va nel pubblico; «UPL-1.0» riconosciuta per errore da «licenza permissiva»)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/LICENZE-TERZI.md",
+      "motivo": "documento sulle licenze dei componenti di terze parti"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/dependencies-allowed.json",
+      "motivo": "registro delle dipendenze ammesse con le loro licenze"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/scripts/verify-all.ps1",
+      "motivo": "script di verifica che controlla le sigle delle licenze"
+    },
+    {
+      "file": "pmb_docs/tests/lavoro/T451.test.ts",
+      "motivo": "test delle condizioni d'uso e delle licenze mostrate nel programma"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/tests/lavoro/T451.test.ts",
+      "motivo": "test delle condizioni d'uso e delle licenze mostrate nel programma"
+    },
+    {
+      "file": "pmb_docs/tests/lavoro/T464.test.ts",
+      "motivo": "test dei testi dell'interfaccia (cita «nessuna garanzia»)"
+    },
+    {
+      "file": "comune/src/icone.ts",
+      "motivo": "tracciati delle icone Material di Google, Apache-2.0: componente dichiarato nell'elenco del programma («Material Icons e Material Symbols»)"
+    },
+    {
+      "file": "comune/src/icone-material.ts",
+      "motivo": "tracciati delle icone Material Icons ufficiali di Google, Apache-2.0: componente dichiarato nell'elenco del programma"
+    },
+    {
+      "file": "comune/scripts/genera-icone-material.py",
+      "motivo": "script che genera icone-material.ts dalle icone ufficiali di Google (Apache-2.0)"
+    },
+    {
+      "file": "pmb_docs/scripts/genera-caratteri.mjs",
+      "motivo": "script che copia i caratteri dai pacchetti @fontsource (OFL-1.1), dichiarati nell'elenco del programma"
+    },
+    {
+      "file": "pmb_docs/src/assets/fonts/caratteri-extra.css",
+      "motivo": "dichiarazioni dei caratteri inclusi (OFL-1.1), dichiarati nell'elenco del programma"
+    },
+    {
+      "file": "pmb_docs/src/editor/correzione.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22) (sostituzione automatica (c)→©, (r)→®, (tm)→™)"
+    },
+    {
+      "file": "pmb_docs/src/i18n/en-interfaccia.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22) (traduzione di «Marchio registrato»)"
+    },
+    {
+      "file": "pmb_docs/tests/lavoro/T030.test.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "pmb_docs/tests/lavoro/T304.test.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "pmb_docs/tests/lavoro/T305.test.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/scripts/bench-engine.mjs",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/scripts/smoke_sheet_helper.mjs",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/src/formati/xlsx-extra.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22) (daArgb(c.attributi.rgb))"
+    },
+    {
+      "file": "pmb_sheets/pmb_sheets/tests/sheet/pivot-engine.test.ts",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    },
+    {
+      "file": "suite/prove/prova_suite.py",
+      "motivo": "falso positivo di ScanCode: «(c)» letto in una variabile chiamata c o in un testo del programma, nessun avviso di copyright (verificato a mano il 2026-11-22)"
+    }
+  ]
+}

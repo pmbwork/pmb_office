@@ -1,4 +1,4 @@
-import { t, localeCorrente, impostaLingua, risolviLingua } from '../i18n/lingua';
+import { t, localeCorrente, impostaLingua, risolviLingua, linguaCorrente } from '../i18n/lingua';
 import { css, unsafeCSS } from 'lit';
 import { html } from '../i18n/html';
 import { LOGO_PMB_DOCS_ORIZZONTALE } from './logo-pmb';
@@ -15,6 +15,29 @@ import './docs-versioni';
 import type { DocsVersioni } from './docs-versioni';
 import './docs-nota';
 import './docs-segnalibri';
+import './docs-stili';
+import './docs-protezione';
+import './docs-password-file';
+import './docs-testo-alternativo';
+import './docs-accessibilita';
+import './docs-stampa-unione';
+import './docs-didascalia';
+import './docs-riferimento';
+import { bersagliRiferimento, type Bersaglio } from '../modello/riferimenti';
+import { formatiDataOra } from '../modello/data-ora';
+import { campiMancanti, campiUsati, copieDi, documentoUnito } from '../modello/unione';
+import { leggiElenco, type ElencoDati } from '@comune/formati/elenco-dati';
+import { controllaAccessibilita, type ProblemaAccessibilita } from '../modello/accessibilita';
+import type { DocsPasswordFile } from './docs-password-file';
+import { PasswordRichiesta } from '@comune/protezione/password-file';
+import './docs-qr';
+import './docs-filigrana';
+import type { DocsFiligrana } from './docs-filigrana';
+import { ferma as fermaLettura, leggi as leggiAdAltaVoce, staLeggendo } from '@comune/voce';
+import type { ModoMaiuscole } from '../modello/maiuscole';
+import type { DocsProtezione } from './docs-protezione';
+import './docs-commenti';
+import './docs-struttura';
 import './docs-ortografia';
 import './docs-informazioni';
 import './docs-segnala';
@@ -36,6 +59,10 @@ import { TIPI_GRAFICO, type TipoGrafico } from './grafico';
 import { COMPONENTI } from './componenti';
 import { VOCI_BORDO } from './bordi-dati';
 import './docs-dizionario';
+import './docs-correzione';
+import './docs-uscita';
+import { vociContestuali, type RigaContestuale } from './docs-menu-contestuale';
+import { SOSTITUZIONI_PREDEFINITE } from '../editor/correzione';
 import './docs-preferenze';
 import { leggiPreferenze, salvaPreferenze, LINGUE, type Preferenze } from './preferenze';
 import { suggerisciNativo, lingueDisponibili } from '../editor/ortografia-nativa';
@@ -43,7 +70,12 @@ import type { ErroreOrtografia } from '../editor/docs-editor';
 import { testoParagrafo, type VoceSegnalibro } from '../modello/documento';
 import type { DocsNota } from './docs-nota';
 import type { DocsSegnalibri } from './docs-segnalibri';
-import { leggiVersioni, salvaNuovaVersione, eliminaVersione, type VersioneSalvata } from '../formati/versioni';
+import type { DocsStili } from './docs-stili';
+import type { VoceStile } from '../modello/stili';
+import type { DocsCommenti } from './docs-commenti';
+import { autoreValido, type VoceCommento, type VoceRevisione } from '../modello/revisioni';
+import type { VoceStruttura } from '../modello/sommario';
+import { leggiVersioni, migraVersioni, salvaNuovaVersione, eliminaVersione, type VersioneSalvata } from '../formati/versioni';
 import './docs-imposta-pagina';
 import type { DocsImpostaPagina } from './docs-imposta-pagina';
 import './docs-righello-verticale';
@@ -65,7 +97,8 @@ import type { DocsMargini } from './docs-margini';
 import { allineamentoMargine, testoDaParagrafi, type Allineamento, type Paragrafo } from '../modello/documento';
 import type { DocsLink } from './docs-link';
 import type { StatoLink } from '../editor/link';
-import { apriIndirizzo, chiamaTauri } from './tauri';
+import { apriIndirizzo, chiamaTauri, dentroTauri } from './tauri';
+import { manigliaNativa } from '@comune/file-nativi';
 import { migraChiavi } from './migrazione';
 import type { DocsTrova } from './docs-trova';
 import type { OpzioniRicerca } from '../editor/ricerca';
@@ -73,12 +106,15 @@ import './docs-popup';
 import './docs-finestra';
 import { LIVELLI_ZOOM, popupAllineaRientro, popupElenchi, popupPerComando, popupZoom, statoBarra, type Popup, type StatoBarra } from './popup-dati';
 import { ESTENSIONI_APRI, FORMATI, TITOLO_PREDEFINITO, esportaSchede, importa, nomeFile, titoloDaNome, type FormatoId } from '../formati/file';
-import { assicuraScrittura, salvaSuDisco, scegliFile, scegliFileConManiglia, scriviSuManiglia, type ManiglioFile } from '../formati/file-io';
+import { assicuraScrittura, salvaSuDisco, SALVATAGGIO_ANNULLATO, scegliFile, scegliFileConManiglia, scriviSuManiglia, type ManiglioFile } from '../formati/file-io';
 import { ACCETTA_IMMAGINI, leggiImmagine } from '../formati/immagine';
 import { popupImmagine } from './immagine-dati';
+import './docs-ritaglio';
+import type { DocsRitaglio } from './docs-ritaglio';
+import { ritagliaImmagine, trasformaImmagine, type Ritaglio, type Trasformazione } from './immagine-trasforma';
 import type { Immagine } from '../modello/documento';
 import { cursore, statoIniziale } from '../modello/documento';
-import { MISURE, COLORI, STILI } from './misure';
+import { MISURE, COLORI, STILI, TEMA_SCURO } from './misure';
 import type { Documento } from '../modello/documento';
 import { Recupero, archivioDa, type Recuperato } from '../formati/recupero';
 
@@ -121,10 +157,52 @@ export class DocsGuscio extends LinguaElement {
   @state() private elencoVersioni: VersioneSalvata[] = [];
   @state() private notaAperta = false;
   @state() private segnalibriAperti = false;
+  @state() private stiliAperti = false;
+  @state() private qrAperto = false;
+  @state() private filigranaAperta = false;
+  /** la finestra del testo alternativo dell'immagine selezionata (con il testo di partenza) */
+  @state() private testoAlternativoAperto: string | null = null;
+  /** la finestra del controllo accessibilità, con i problemi trovati */
+  @state() private accessibilitaAperta: ProblemaAccessibilita[] | null = null;
+  /** Strumenti › Stampa unione: la finestra aperta, l'elenco scelto (resta finché il programma è aperto) e l'ultimo errore */
+  @state() private unioneAperta = false;
+  /** la finestra di Inserisci › Didascalia… */
+  @state() private didascaliaAperta = false;
+  /** la finestra di Inserisci › Riferimento incrociato…, con i paragrafi a cui si può rimandare (null = chiusa) */
+  @state() private riferimentoAperto: Bersaglio[] | null = null;
+  @state() private elencoUnione: { nome: string; dati: ElencoDati } | null = null;
+  @state() private erroreUnione = '';
+  /** Si può sostituire nelle prove: sceglie il file dell'elenco. */
+  scegliElenco: () => Promise<File | null> = () => scegliFile('.xlsx,.xlsm,.ods,.csv,.tsv,.txt');
+  @state() private protezioneAperta: { togli: boolean; errore: string } | null = null;
+  /** la finestra della password per aprire: chiederla per un file cifrato («apri») o impostarla per il documento («imposta») */
+  @state() private passwordFileAperta: { modo: 'apri' | 'imposta'; nome: string; errore: string; haPassword?: boolean; file?: File; maniglia?: ManiglioFile | null } | null = null;
+  /** la password per aprire del documento (solo in memoria): con lei i .docx e .odt si salvano cifrati */
+  private passwordApertura: string | undefined;
+  @state() private ritaglioDi: Immagine | null = null;
+  @state() private elencoStili: VoceStile[] = [];
+  @state() private stileCorrente: string | undefined = undefined;
+  @state() private erroreStili = '';
+  /** pannello «Commenti e modifiche» a destra del documento */
+  @state() private pannelloCommenti = false;
+  @state() private nuovoCommento = false;
+  @state() private elencoCommenti: VoceCommento[] = [];
+  @state() private elencoRevisioni: VoceRevisione[] = [];
+  @state() private registraModifiche = false;
+  @state() private commentoAttivo: string | undefined = undefined;
+  /** pannello «Struttura del documento» a sinistra */
+  @state() private pannelloStruttura = false;
+  @state() private vociStruttura: VoceStruttura[] = [];
+  @state() private titoloCorrente: number | null = null;
   @state() private prefs: Preferenze = leggiPreferenze(depositoLocale());
   @state() private lingueWindows: string[] = [];
   @state() private dialogoPref: 'preferenze' | 'accessibilita' | null = null;
   @state() private dizionarioAperto = false;
+  @state() private correzioneAperta = false;
+  /** la domanda «Salvare le modifiche?» mentre si chiude il programma */
+  @state() private uscitaAperta = false;
+  /** menu del tasto destro sul documento, se è aperto */
+  @state() private menuContestuale: { x: number; y: number; voci: RigaContestuale[] } | null = null;
   @state() private informazioniAperte: PaginaInformazioni | null = null;
   @state() private segnalaAperta = false;
   @state() private caratteriAperti = false;
@@ -158,7 +236,20 @@ export class DocsGuscio extends LinguaElement {
   /** la copia di emergenza trovata all'avvio, in attesa che l'utente scelga se ripristinarla: finché c'è, il salvataggio automatico non scrive */
   @state() private recuperabile: Recuperato | null = null;
   /** il salvataggio automatico del documento aperto: sostituibile (nei test e in altri ambienti) */
-  recupero = new Recupero(archivioDa(depositoLocale()));
+  recupero = new Recupero(archivioDa(depositoLocale()), { dopoScrittura: (esito) => this.suEsitoRecupero(esito) });
+  /** l'ultimo problema della copia di emergenza di cui si è già avvisato (l'avviso non si ripete a ogni scrittura), come in pmb_sheets */
+  private avvisoRecuperoDato: string | null = null;
+  /** Se la copia di emergenza non si può scrivere (documento troppo grande o deposito pieno) lo si dice una volta: altrimenti si crede di essere protetti. */
+  private suEsitoRecupero(esito: string): void {
+    if ((esito === 'troppo-grande' || esito === 'errore') && this.avvisoRecuperoDato !== esito) {
+      this.avvisoRecuperoDato = esito;
+      this.mostraAvviso(esito === 'troppo-grande'
+        ? t('Documento molto grande: la copia automatica di emergenza non funziona, salva spesso (Ctrl+S).')
+        : t('La copia automatica di emergenza non si riesce a scrivere: salva spesso (Ctrl+S).'));
+    } else if (esito === 'scritto' || esito === 'vuoto') {
+      this.avvisoRecuperoDato = null;
+    }
+  }
   private ultimoDoc: Documento | null = null;
   private ultimoTitolo = '';
   private timerAvviso = 0;
@@ -227,6 +318,7 @@ export class DocsGuscio extends LinguaElement {
   impostaColonne(n: number): void {
     this.colonne = Math.max(1, Math.min(3, n));
     this.editor()?.impostaColonne(this.colonne);
+    this.editor()?.focalizza();
     this.mostraAvviso(this.colonne === 1 ? t('Impostato a 1 colonna') : t('Impostato a {} colonne', this.colonne));
   }
 
@@ -261,8 +353,20 @@ export class DocsGuscio extends LinguaElement {
     this.editor()?.applicaAzione({ tipo: 'testo', testo: s });
   };
 
+  /**
+   * Di quale documento è la cronologia delle versioni: il file (percorso) quando si conosce (finestre di Windows, doppio clic, pocket),
+   * altrimenti il titolo. Prima era sempre il titolo: due documenti con lo stesso nome, o tutti i «senza titolo», mescolavano le versioni.
+   */
+  private idVersioni(): string {
+    const percorso = (this.maniglia as { percorso?: unknown } | null)?.percorso ?? (this.origine as { percorso?: unknown } | null)?.percorso;
+    if (typeof percorso !== 'string' || percorso === '') return this.titolo;
+    const id = `file:${percorso}`;
+    migraVersioni(depositoLocale(), this.titolo, id);
+    return id;
+  }
+
   apriVersioni(): void {
-    this.elencoVersioni = leggiVersioni(depositoLocale(), this.titolo);
+    this.elencoVersioni = leggiVersioni(depositoLocale(), this.idVersioni());
     this.versioniAperte = true;
     void this.updateComplete.then(() => {
       this.renderRoot.querySelector<DocsVersioni>('docs-versioni')?.focalizza();
@@ -279,10 +383,14 @@ export class DocsGuscio extends LinguaElement {
     const nome = (e as CustomEvent).detail.nome as string | undefined;
     const ed = this.editor();
     if (!ed) return;
-    const salvata = salvaNuovaVersione(depositoLocale(), this.titolo, ed.stato.doc, nome);
+    const id = this.idVersioni();
+    const salvata = salvaNuovaVersione(depositoLocale(), this.titolo, ed.stato.doc, nome, Date.now(), id);
     if (salvata) {
-      this.elencoVersioni = leggiVersioni(depositoLocale(), this.titolo);
+      this.elencoVersioni = leggiVersioni(depositoLocale(), id);
       this.mostraAvviso(t('Versione salvata con successo'));
+    } else {
+      // prima non si diceva niente: si credeva di avere la versione
+      this.mostraAvviso(t('Non riesco a salvare la versione: lo spazio per le versioni è pieno. Elimina qualche versione vecchia.'));
     }
   };
 
@@ -293,13 +401,14 @@ export class DocsGuscio extends LinguaElement {
     this.dimenticaOrtografia();
     ed.impostaStato({ doc: v.doc, sel: cursore(0, 0), pendenti: null });
     this.chiudiVersioni();
-    this.mostraAvviso(t('Versione ripristinata: {}', v.nome || 'Versione senza nome'));
+    this.mostraAvviso(t('Versione ripristinata: {}', v.nome || t('Versione senza nome')));
   };
 
   private suEliminaVersione = (e: Event): void => {
     const id = (e as CustomEvent).detail.id as string;
-    eliminaVersione(depositoLocale(), this.titolo, id);
-    this.elencoVersioni = leggiVersioni(depositoLocale(), this.titolo);
+    const idDoc = this.idVersioni();
+    eliminaVersione(depositoLocale(), idDoc, id);
+    this.elencoVersioni = leggiVersioni(depositoLocale(), idDoc);
   };
 
   apriNotaPiePagina(): void {
@@ -343,6 +452,226 @@ export class DocsGuscio extends LinguaElement {
     this.elencoSegnalibri = ed.segnalibri();
   };
 
+  // ---- immagini: ruotare, capovolgere, ritagliare ----
+  private async trasformaImmagine(op: Trasformazione): Promise<void> {
+    const ed = this.editor();
+    const im = ed?.immagineCorrente();
+    if (!ed || !im) { this.mostraAvviso(t('Seleziona prima un\'immagine')); return; }
+    const nuova = await trasformaImmagine(im, op);
+    if (!nuova || !ed.sostituisciImmagineSelezionata(nuova)) this.mostraAvviso(t('Non si riesce a cambiare questa immagine'));
+    ed.focalizza();
+  }
+  apriRitaglio(): void {
+    const im = this.editor()?.immagineCorrente();
+    if (!im) { this.mostraAvviso(t('Seleziona prima un\'immagine')); return; }
+    this.ritaglioDi = im;
+    this.segnaApertura('ritaglio');
+    void this.updateComplete.then(() => { this.renderRoot.querySelector<DocsRitaglio>('docs-ritaglio')?.focalizza(); });
+  }
+  chiudiRitaglio(): void {
+    if (!this.ritaglioDi) return;
+    this.ritaglioDi = null;
+    this.editor()?.focalizza();
+  }
+  private suRitaglia = async (e: Event): Promise<void> => {
+    const r = (e as CustomEvent).detail as Ritaglio;
+    const im = this.ritaglioDi;
+    this.ritaglioDi = null;
+    const ed = this.editor();
+    if (!im || !ed) return;
+    if (r.sx + r.dx + r.su + r.giu > 0) {
+      const nuova = await ritagliaImmagine(im, r);
+      if (!nuova || !ed.sostituisciImmagineSelezionata(nuova)) this.mostraAvviso(t('Non si riesce a cambiare questa immagine'));
+    }
+    ed.focalizza();
+  };
+
+  // ---- leggi ad alta voce (voci di Windows del computer, comune/src/voce.ts) ----
+  /** Comincia a leggere la selezione (o dal paragrafo del cursore alla fine); se sta già leggendo, si ferma. */
+  alternaLettura(): void {
+    if (staLeggendo()) { fermaLettura(); this.mostraAvviso(t('Lettura fermata')); return; }
+    const ed = this.editor();
+    if (!ed) return;
+    const lingua = this.prefs.lingua || 'it-IT';
+    const ok = leggiAdAltaVoce({ pezzi: ed.testoDaLeggere(), lingua, fine: () => this.requestUpdate() });
+    this.mostraAvviso(ok ? t('Lettura ad alta voce: Esc o di nuovo Strumenti › Leggi ad alta voce per fermarla') : t('Non c\'è niente da leggere, o Windows non ha una voce installata per questa lingua'));
+    ed.focalizza();
+  }
+
+  // ---- password per aprire (file cifrati) ----
+  private apriPasswordFile(): void {
+    this.passwordFileAperta = { modo: 'imposta', nome: this.titoloVisibile(this.titolo), errore: '', haPassword: this.passwordApertura !== undefined };
+    this.segnaApertura('password');
+    void this.updateComplete.then(() => this.renderRoot.querySelector<DocsPasswordFile>('docs-password-file')?.focalizza());
+  }
+  chiudiPasswordFile(): void {
+    const p = this.passwordFileAperta;
+    if (!p) return;
+    this.passwordFileAperta = null;
+    if (p.modo === 'apri') this.mostraAvviso(t('«{}» non aperto: serve la password', p.nome));
+    this.editor()?.focalizza();
+  }
+  private suConfermaPasswordFile = async (e: Event): Promise<void> => {
+    const password = (e as CustomEvent).detail.password as string;
+    const p = this.passwordFileAperta;
+    if (!p) return;
+    if (p.modo === 'apri') { if (p.file) await this.apriFile(p.file, p.maniglia ?? null, password); return; }
+    this.passwordApertura = password === '' ? undefined : password;
+    this.passwordFileAperta = null;
+    this.mostraAvviso(password === '' ? t('Password per aprire tolta: vale dal prossimo salvataggio') : t('Password per aprire impostata: vale dal prossimo salvataggio in .docx o .odt'));
+    this.editor()?.focalizza();
+  };
+
+  // ---- stampa unione ----
+  apriUnione(): void {
+    this.unioneAperta = true;
+    this.erroreUnione = '';
+    this.segnaApertura('unione');
+    void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-stampa-unione')?.focalizza());
+  }
+  chiudiUnione(): void { this.unioneAperta = false; this.editor()?.focalizza(); }
+  private async suScegliElenco(): Promise<void> {
+    const f = await this.scegliElenco();
+    if (!f) return;
+    try {
+      const dati = await leggiElenco(new Uint8Array(await f.arrayBuffer()), f.name, linguaCorrente() !== 'en');
+      if (dati.colonne.length === 0) { this.erroreUnione = t('L\'elenco è vuoto: la prima riga deve avere i nomi delle colonne'); return; }
+      this.elencoUnione = { nome: f.name, dati };
+      this.erroreUnione = '';
+    } catch (e) {
+      this.erroreUnione = t('Non riesco a leggere l\'elenco «{}»: {}', f.name, (e as Error).message);
+    }
+  }
+  private suInserisciCampo(nome: string): void {
+    const ed = this.editor();
+    if (!ed) return;
+    ed.inserisciCampoUnione(nome);
+    this.requestUpdate();
+  }
+  /** Crea il documento unito in una scheda nuova (il modello resta com'è nella sua scheda). */
+  private suUnisci(): void {
+    const ed = this.editor();
+    const el = this.elencoUnione;
+    if (!ed || !el) return;
+    if (this.schede.length >= SCHEDE_MASSIME) { this.erroreUnione = t('Al massimo {} schede: chiudine una per creare il documento unito', SCHEDE_MASSIME); return; }
+    const unito = documentoUnito(ed.documentoCorrente(), el.dati);
+    const copie = copieDi(el.dati);
+    this.memorizzaSchedaAttiva();
+    this.schede = [...this.schede, { titolo: titoloNuovaScheda(this.schede.map((s) => s.titolo)), stato: null }];
+    this.schedaAttiva = this.schede.length - 1;
+    ed.impostaStato({ doc: unito, sel: cursore(0, 0), pendenti: null });
+    this.schedeCambiate();
+    this.unioneAperta = false;
+    this.mostraAvviso(copie === 1 ? t('Documento unito: 1 copia, nella scheda «{}»', nomeScheda(this.schede[this.schedaAttiva].titolo)) : t('Documento unito: {} copie, nella scheda «{}»', copie, nomeScheda(this.schede[this.schedaAttiva].titolo)));
+    ed.focalizza();
+  }
+
+  /** Strumenti › Controlla accessibilità: rifà il controllo e apre (o aggiorna) la finestra con i problemi. */
+  controllaAccessibilita(): void {
+    const doc = this.editor()?.documentoCorrente();
+    if (!doc) return;
+    const prima = this.accessibilitaAperta === null;
+    this.accessibilitaAperta = controllaAccessibilita(doc);
+    if (prima) this.segnaApertura('accessibilita');
+    void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-accessibilita')?.focalizza());
+  }
+
+  /** Formato › Immagine › Testo alternativo…: la descrizione dell'immagine selezionata per i lettori di schermo. */
+  apriTestoAlternativo(): void {
+    const im = this.editor()?.immagineCorrente();
+    if (!im) { this.mostraAvviso(t('Seleziona prima un\'immagine')); return; }
+    this.testoAlternativoAperto = im.d ?? '';
+    this.segnaApertura('testo-alternativo');
+    void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-testo-alternativo')?.focalizza());
+  }
+
+  // ---- protezione del documento (sola lettura) ----
+  /** Strumenti › Proteggi documento: se non è protetto si apre la finestra per proteggerlo; se lo è si toglie la protezione (con la
+   *  finestra della password, se ne ha una). */
+  private async apriProtezione(): Promise<void> {
+    const ed = this.editor();
+    if (!ed) return;
+    if (ed.protetto() && !ed.protettoConPassword()) {
+      await ed.togliProtezione('');
+      this.mostraAvviso(t('Il documento non è più protetto'));
+      ed.focalizza();
+      return;
+    }
+    this.protezioneAperta = { togli: ed.protetto(), errore: '' };
+    this.segnaApertura('protezione');
+    void this.updateComplete.then(() => { this.renderRoot.querySelector<DocsProtezione>('docs-protezione')?.focalizza(); });
+  }
+  chiudiProtezione(): void {
+    if (!this.protezioneAperta) return;
+    this.protezioneAperta = null;
+    this.editor()?.focalizza();
+  }
+  private suConfermaProtezione = async (e: Event): Promise<void> => {
+    const password = (e as CustomEvent).detail.password as string;
+    const ed = this.editor();
+    const p = this.protezioneAperta;
+    if (!ed || !p) return;
+    if (!p.togli) {
+      ed.proteggi(password);
+      this.protezioneAperta = null;
+      this.mostraAvviso(t('Documento protetto: è in sola lettura'));
+      ed.focalizza();
+      return;
+    }
+    if (!(await ed.togliProtezione(password))) { this.protezioneAperta = { ...p, errore: t('La password non è giusta') }; return; }
+    this.protezioneAperta = null;
+    this.mostraAvviso(t('Il documento non è più protetto'));
+    ed.focalizza();
+  };
+  private suDocumentoProtetto = (): void => { this.mostraAvviso(t('Il documento è protetto (sola lettura): Strumenti › Proteggi documento per togliere la protezione')); };
+
+  // ---- stili personali ----
+  apriStili(): void {
+    this.aggiornaElencoStili();
+    this.erroreStili = '';
+    this.stiliAperti = true;
+    this.segnaApertura('stili');
+    void this.updateComplete.then(() => { this.renderRoot.querySelector<DocsStili>('docs-stili')?.focalizza(); });
+  }
+  chiudiStili(): void {
+    if (!this.stiliAperti) return;
+    this.stiliAperti = false;
+    this.editor()?.focalizza();
+  }
+  private aggiornaElencoStili(): void {
+    const ed = this.editor();
+    this.elencoStili = ed?.stili() ?? [];
+    this.stileCorrente = ed?.stileAlCursore();
+  }
+  private suCreaStile = (e: Event): void => {
+    const nome = (e as CustomEvent).detail.nome as string;
+    const motivo = this.editor()?.creaStile(nome) ?? null;
+    this.erroreStili = motivo ? t(motivo) : '';
+    if (!motivo) { this.renderRoot.querySelector<DocsStili>('docs-stili')?.svuota(); this.mostraAvviso(t('Stile «{}» creato e applicato', nome.trim())); }
+    this.aggiornaElencoStili();
+  };
+  private suApplicaStile = (e: Event): void => {
+    this.editor()?.applicaAzione({ tipo: 'stilePersonale', id: (e as CustomEvent).detail.id as string });
+    this.erroreStili = '';
+    this.aggiornaElencoStili();
+  };
+  private suAggiornaStile = (e: Event): void => {
+    this.editor()?.aggiornaStile((e as CustomEvent).detail.id as string);
+    this.erroreStili = '';
+    this.aggiornaElencoStili();
+  };
+  private suRinominaStile = (e: Event): void => {
+    const d = (e as CustomEvent).detail as { id: string; nome: string };
+    const motivo = this.editor()?.rinominaStile(d.id, d.nome) ?? null;
+    this.erroreStili = motivo ? t(motivo) : '';
+    this.aggiornaElencoStili();
+  };
+  private suEliminaStile = (e: Event): void => {
+    this.editor()?.eliminaStile((e as CustomEvent).detail.id as string);
+    this.erroreStili = '';
+    this.aggiornaElencoStili();
+  };
+
   alternaNumeriRiga(): void {
     this.numeriRiga = !this.numeriRiga;
     this.requestUpdate();
@@ -361,8 +690,23 @@ export class DocsGuscio extends LinguaElement {
       ['immagini', this.equazioneAperta || this.disegnoAperto || this.graficoAperto !== null, () => { this.chiudiFinestreImmagine(); }],
       ['ortografia', this.ortografiaAperta !== null, () => this.chiudiOrtografia()],
       ['dizionario', this.dizionarioAperto, () => this.chiudiDizionario()],
+      ['correzione', this.correzioneAperta, () => this.chiudiCorrezione()],
+      ['uscita', this.uscitaAperta, () => { this.uscitaAperta = false; this.editor()?.focalizza(); }],
       ['preferenze', this.dialogoPref !== null, () => this.chiudiPreferenze()],
       ['segnalibri', this.segnalibriAperti, () => this.chiudiSegnalibri()],
+      ['stili', this.stiliAperti, () => this.chiudiStili()],
+      ['filigrana', this.filigranaAperta, () => { this.filigranaAperta = false; this.editor()?.focalizza(); }],
+      ['unione', this.unioneAperta, () => this.chiudiUnione()],
+      ['didascalia', this.didascaliaAperta, () => { this.didascaliaAperta = false; this.editor()?.focalizza(); }],
+      ['riferimento', this.riferimentoAperto !== null, () => { this.riferimentoAperto = null; this.editor()?.focalizza(); }],
+      ['accessibilita', this.accessibilitaAperta !== null, () => { this.accessibilitaAperta = null; this.editor()?.focalizza(); }],
+      ['testo-alternativo', this.testoAlternativoAperto !== null, () => { this.testoAlternativoAperto = null; this.editor()?.focalizza(); }],
+      ['qr', this.qrAperto, () => { this.qrAperto = false; this.editor()?.focalizza(); }],
+      ['protezione', this.protezioneAperta !== null, () => this.chiudiProtezione()],
+      ['password', this.passwordFileAperta !== null, () => this.chiudiPasswordFile()],
+      ['ritaglio', this.ritaglioDi !== null, () => this.chiudiRitaglio()],
+      ['commenti', this.pannelloCommenti, () => this.chiudiPannelloCommenti()],
+      ['struttura', this.pannelloStruttura, () => this.chiudiStruttura()],
       ['informazioni', this.informazioniAperte !== null, () => this.chiudiInformazioni()],
       ['segnala', this.segnalaAperta, () => this.chiudiSegnala()],
       ['caratteri', this.caratteriAperti, () => this.chiudiCaratteri()],
@@ -532,7 +876,7 @@ export class DocsGuscio extends LinguaElement {
   // ---- preferenze, correttore ortografico, dizionario ----
   /** Cambia le preferenze, le salva sul computer e le applica subito. */
   private cambiaPreferenze(parziale: Partial<Preferenze>): void {
-    this.prefs = { ...this.prefs, ...parziale };
+    this.prefs = { ...this.prefs, ...parziale, ...(parziale.tema ? { temaScelto: true } : {}) };
     salvaPreferenze(depositoLocale(), this.prefs);
     this.applicaPreferenze();
   }
@@ -557,6 +901,12 @@ export class DocsGuscio extends LinguaElement {
     ed.toggleAttribute('alto-contrasto', p.altoContrasto);
     ed.impostaDizionario(p.dizionario);
     ed.impostaOrtografia(p.ortografia, p.lingua);
+    ed.impostaMaiuscolaAutomatica(p.maiuscolaAutomatica);
+    ed.autore = autoreValido(p.autore);
+    ed.impostaCorrezione({
+      sostituzioni: p.sostituzioniAutomatiche, virgolette: p.virgoletteTipografiche, trattini: p.trattiniTipografici,
+      dueMaiuscole: p.correggiDueMaiuscole, blocMaiusc: p.correggiBlocMaiusc, elenchi: p.elenchiAutomatici, elenco: p.sostituzioni ?? SOSTITUZIONI_PREDEFINITE,
+    });
   }
 
   private apriPreferenze(modo: 'preferenze' | 'accessibilita'): void {
@@ -642,6 +992,14 @@ export class DocsGuscio extends LinguaElement {
     if (typeof indexedDB === 'undefined') return;
     void caricaPersonali(depositoIndexedDb()).then(() => this.editor()?.requestUpdate());
   }
+  /** Finestra Correzione automatica (Strumenti › Correzione automatica, o dalle Preferenze). */
+  private apriCorrezione(): void {
+    this.dialogoPref = null;
+    this.correzioneAperta = true;
+    this.segnaApertura('correzione');
+    void this.updateComplete.then(() => { this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-correzione')?.focalizza(); });
+  }
+  private chiudiCorrezione(): void { if (!this.correzioneAperta) return; this.correzioneAperta = false; this.editor()?.focalizza(); }
   private chiudiDizionario(): void { if (!this.dizionarioAperto) return; this.dizionarioAperto = false; this.editor()?.focalizza(); }
   private suDizionarioAggiungi = (e: Event): void => {
     const parola = ((e as CustomEvent).detail.parola as string).trim();
@@ -797,8 +1155,12 @@ export class DocsGuscio extends LinguaElement {
     if (this.prefs.menuNascosti) s.push('visualizza›Nascondi i menu');
     s.push(this.prefs.tema === 'sistema' ? 'visualizza›Modalità›Tema di sistema' : this.tema === 'scuro' ? 'visualizza›Modalità›Tema scuro' : 'visualizza›Modalità›Tema chiaro');
     if (this.numeriRiga) s.push('strumenti›Numeri di riga');
+    if (this.registraModifiche) s.push('strumenti›Revisioni›Registra modifiche');
+    if (this.pannelloCommenti) s.push('visualizza›Mostra commenti e modifiche');
+    if (this.pannelloStruttura) s.push('visualizza›Mostra struttura del documento');
     if (this.prefs.ortografia) s.push('strumenti›Ortografia e grammatica›Sottolinea gli errori mentre scrivi');
-    s.push(`formato›Colonne›${this.colonne === 1 ? '1 colonna' : `${this.colonne} colonne`}`);
+    const colonne = this.editor()?.colonne ?? this.colonne;
+    s.push(`formato›Colonne›${colonne === 1 ? '1 colonna' : `${colonne} colonne`}`);
     const lingua = LINGUE.find(([c]) => c === this.prefs.lingua);
     if (lingua) s.push(`file›Correttore lingua›${lingua[1]}`);
     return s;
@@ -815,40 +1177,29 @@ export class DocsGuscio extends LinguaElement {
 
   alternaSchermoIntero(): void {
     this.schermoIntero = !this.schermoIntero;
-    if (this.schermoIntero) {
-      try {
-        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-          void document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } catch {
-        // no-op
-      }
-    } else {
-      try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          void document.exitFullscreen().catch(() => {});
-        }
-      } catch {
-        // no-op
-      }
+    this.applicaSchermoIntero(this.schermoIntero);
+  }
+
+  /** Nel programma lo schermo intero lo fa la finestra (parte nativa); nel browser la pagina (requestFullscreen). */
+  private applicaSchermoIntero(attivo: boolean): void {
+    if (dentroTauri()) { void chiamaTauri('imposta_schermo_intero', { attivo }); return; }
+    try {
+      if (attivo && !document.fullscreenElement && document.documentElement.requestFullscreen) void document.documentElement.requestFullscreen().catch(() => {});
+      if (!attivo && document.fullscreenElement && document.exitFullscreen) void document.exitFullscreen().catch(() => {});
+    } catch {
+      // il browser non lo permette: restano nascosti solo menu e barre
     }
   }
 
   /** Il browser consuma il primo Esc per uscire dal pieno schermo senza avvisare la pagina: si allinea qui lo stato dell'app. */
   private suFullscreenChange = (): void => {
-    if (!document.fullscreenElement && this.schermoIntero) this.schermoIntero = false;
+    if (!dentroTauri() && !document.fullscreenElement && this.schermoIntero) this.schermoIntero = false;
   };
 
   esciSchermoIntero(): void {
     if (!this.schermoIntero) return;
     this.schermoIntero = false;
-    try {
-      if (document.fullscreenElement && document.exitFullscreen) {
-        void document.exitFullscreen().catch(() => {});
-      }
-    } catch {
-      // no-op
-    }
+    this.applicaSchermoIntero(false);
   }
 
   impostaTema(t: 'chiaro' | 'scuro'): void {
@@ -871,10 +1222,10 @@ export class DocsGuscio extends LinguaElement {
     @media (max-width: 999px) { .titolo-documento { max-width: 180px; } }
     .titolo-documento { order: 2; font: 500 16px ${unsafeCSS(STILI.fontBase)}; color: ${unsafeCSS(COLORI.testo)}; padding: 2px 6px; border-radius: 4px; white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
     span.titolo-documento { cursor: text; }
-    span.titolo-documento:hover { background: #e8eaed; }
+    span.titolo-documento:hover { background: var(--pmb-hover, #e8eaed); }
     span.titolo-documento:focus-visible { outline: 2px solid #0b57d0; outline-offset: 1px; }
-    input.titolo-documento { width: 320px; padding: 1px 5px; border: 1px solid #0b57d0; outline: none; background: #ffffff; box-sizing: border-box; height: 26px; }
-    .stato-salvataggio { order: 3; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; font: 12px Roboto, Arial, sans-serif; color: #5f6368; user-select: none; }
+    input.titolo-documento { width: 320px; padding: 1px 5px; border: 1px solid #0b57d0; outline: none; background: var(--pmb-superficie, #ffffff); box-sizing: border-box; height: 26px; }
+    .stato-salvataggio { order: 3; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; font: 12px Roboto, Arial, sans-serif; color: var(--pmb-testo-2, #5f6368); user-select: none; }
     .stato-salvataggio svg { width: 16px; height: 16px; color: #188038; }
     .stato-salvataggio.da-salvare .punto { width: 8px; height: 8px; border-radius: 50%; background: #e37400; }
     :host([tema="scuro"]) span.titolo-documento:hover { background: #3c4043; }
@@ -886,10 +1237,16 @@ export class DocsGuscio extends LinguaElement {
     .area-editor::-webkit-scrollbar { width: 15px; height: 15px; }
     .area-editor::-webkit-scrollbar-track, .area-editor::-webkit-scrollbar-corner { background: transparent; }
     .area-editor::-webkit-scrollbar-button { display: none; }
-    .area-editor::-webkit-scrollbar-thumb { background: #e1e3e1; background-clip: padding-box; border-style: solid; border-color: transparent; border-width: 0 4px 0 3px; border-radius: 8px; }
+    .area-editor::-webkit-scrollbar-thumb { background: var(--pmb-hover, #e1e3e1); background-clip: padding-box; border-style: solid; border-color: transparent; border-width: 0 4px 0 3px; border-radius: 8px; }
     docs-menubar { position: absolute; left: ${unsafeCSS(String(MISURE.barraMenu.x))}px; top: ${unsafeCSS(String(MISURE.barraMenu.y + 4))}px; }
     .contenitore-strumenti { position: absolute; left: ${unsafeCSS(String(MISURE.barraStrumenti.x))}px; right: ${unsafeCSS(String(MISURE.barraStrumenti.margineLaterale))}px; top: ${unsafeCSS(String(MISURE.barraStrumenti.y))}px; }
-    .righello { position: absolute; left: ${unsafeCSS(String(MISURE.righello.x))}px; right: ${unsafeCSS(String(MISURE.barraStrumenti.margineLaterale))}px; top: ${unsafeCSS(String(MISURE.righello.y))}px; height: ${unsafeCSS(String(MISURE.righello.altezza))}px; background: ${unsafeCSS(COLORI.sfondoApp)}; border-bottom: 1px solid #c4c7c5; display: flex; justify-content: flex-start; padding-left: max(calc(var(--sx-minimo, 301px) - 16px), calc((100vw - var(--larghezza-foglio, 794px) - 38px) / 2 - 16px)); overflow: hidden; }
+    .righello { position: absolute; left: ${unsafeCSS(String(MISURE.righello.x))}px; right: ${unsafeCSS(String(MISURE.barraStrumenti.margineLaterale))}px; top: ${unsafeCSS(String(MISURE.righello.y))}px; height: ${unsafeCSS(String(MISURE.righello.altezza))}px; background: ${unsafeCSS(COLORI.sfondoApp)}; border-bottom: 1px solid var(--pmb-bordo, #c4c7c5); display: flex; justify-content: flex-start; padding-left: max(calc(var(--sx-minimo, 301px) - 16px), calc((100vw - var(--larghezza-foglio, 794px) - 38px) / 2 - 16px)); overflow: hidden; }
+    :host([con-commenti]) .area-editor { right: 320px; }
+    :host([con-struttura]) .area-editor { left: 260px; }
+    docs-struttura { position: absolute; left: 0; width: 260px; bottom: 0; top: 160px; z-index: 6; -webkit-app-region: no-drag; }
+    @media print { docs-struttura { display: none !important; } }
+    docs-commenti { position: absolute; right: 0; width: 320px; bottom: 0; top: 160px; z-index: 6; -webkit-app-region: no-drag; }
+    @media print { docs-commenti { display: none !important; } }
     .area-editor { position: absolute; left: 0; right: 0; top: ${unsafeCSS(String(MISURE.areaEditor.y))}px; bottom: 0; overflow: auto; display: flex; justify-content: flex-start; align-items: flex-start; }
     .pagina { position: relative; flex: none; margin-left: max(var(--sx-minimo, 301px), calc((100vw - var(--larghezza-foglio, 794px) - 38px) / 2)); width: ${unsafeCSS(String(MISURE.pagina.larghezza))}px; margin-top: ${unsafeCSS(String(MISURE.pagina.y - MISURE.areaEditor.y))}px; margin-bottom: 24px; }
     .trascina { position: absolute; left: 0; top: 0; right: 138px; height: 64px; -webkit-app-region: drag; }
@@ -901,7 +1258,7 @@ export class DocsGuscio extends LinguaElement {
     docs-schede { position: absolute; left: 12px; top: 212px; bottom: 16px; width: 200px; z-index: 12; -webkit-app-region: no-drag; }
     @media (max-width: 1100px) { docs-schede { width: 150px; } }
     docs-link { position: absolute; right: 28px; top: 222px; z-index: 16; -webkit-app-region: no-drag; }
-    docs-conteggio, docs-imposta-pagina, docs-simboli, docs-versioni, docs-nota, docs-segnalibri, docs-informazioni, docs-segnala, docs-caratteri, docs-personalizza-barra, docs-aggiornamento, docs-ortografia, docs-dizionario, docs-preferenze, docs-equazione, docs-grafico, docs-disegno, docs-dettagli { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 25; -webkit-app-region: no-drag; }
+    docs-conteggio, docs-imposta-pagina, docs-simboli, docs-versioni, docs-nota, docs-segnalibri, docs-stili, docs-ritaglio, docs-protezione, docs-password-file, docs-testo-alternativo, docs-accessibilita, docs-stampa-unione, docs-didascalia, docs-riferimento, docs-filigrana, docs-informazioni, docs-segnala, docs-caratteri, docs-personalizza-barra, docs-aggiornamento, docs-ortografia, docs-dizionario, docs-correzione, docs-uscita, docs-preferenze, docs-equazione, docs-grafico, docs-disegno, docs-dettagli { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 25; -webkit-app-region: no-drag; }
     .avviso { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; max-width: 80%; padding: 14px 24px; border-radius: 4px; background: #323232; color: #ffffff; font-size: 14px; }
     .recupero { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 21; display: flex; align-items: center; gap: 16px; max-width: 80%; padding: 8px 8px 8px 24px; border-radius: 4px; background: #323232; color: #ffffff; font-size: 14px; }
     .recupero button { height: 36px; padding: 0 12px; border: 0; border-radius: 4px; background: none; color: #a8c7fa; font: inherit; font-weight: 500; cursor: default; }
@@ -960,6 +1317,7 @@ export class DocsGuscio extends LinguaElement {
       border: none;
     }
     :host([tema="scuro"]) {
+      ${unsafeCSS(TEMA_SCURO)}
       background: #1e1f20;
       color: #e3e3e3;
     }
@@ -974,7 +1332,7 @@ export class DocsGuscio extends LinguaElement {
       background: #444746;
     }
     @media print {
-      :host { height: auto; overflow: visible; background: #ffffff; }
+      :host { height: auto; overflow: visible; background: var(--pmb-superficie, #ffffff); }
       docs-schede, .trascina, .intestazione, docs-menubar, .contenitore-strumenti, .righello, docs-trova, docs-link, docs-finestra, .avviso { display: none; }
       .recupero { display: none; }
       .area-editor { position: static; display: block; overflow: visible; }
@@ -993,8 +1351,8 @@ export class DocsGuscio extends LinguaElement {
     if (barra > 0) righello.style.paddingRight = `${barra}px`; else righello.removeAttribute('style');
   }
   private aggiornaLarghezza = () => { this.larghezza = window.innerWidth; this.allineaRighello(); };
-  connectedCallback() { super.connectedCallback(); impostaLingua(risolviLingua(this.prefs.interfaccia)); this.recuperabile = this.recupero.trova(); window.addEventListener('pagehide', this.suPagehide); window.addEventListener('resize', this.aggiornaLarghezza); window.addEventListener('beforeprint', this.suPrimaDiStampare); window.addEventListener('afterprint', this.suDopoStampa); window.addEventListener('keydown', this.suTastoGuscio); window.addEventListener('mousedown', this.suPressioneCopiaFormato, true); window.addEventListener('mouseup', this.suRilascioCopiaFormato); document.addEventListener('fullscreenchange', this.suFullscreenChange); try { window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', this.suTemaSistema); } catch { /* senza matchMedia il tema di sistema resta quello letto all'avvio */ } this.aggiornaLarghezza(); }
-  disconnectedCallback() { window.removeEventListener('pagehide', this.suPagehide); this.recupero.scriviOra(); window.removeEventListener('resize', this.aggiornaLarghezza); window.removeEventListener('beforeprint', this.suPrimaDiStampare); window.removeEventListener('afterprint', this.suDopoStampa); window.removeEventListener('keydown', this.suTastoGuscio); window.removeEventListener('mousedown', this.suPressioneCopiaFormato, true); window.removeEventListener('mouseup', this.suRilascioCopiaFormato); document.removeEventListener('fullscreenchange', this.suFullscreenChange); try { window.matchMedia?.('(prefers-color-scheme: dark)').removeEventListener('change', this.suTemaSistema); } catch { /* vedi connectedCallback */ } window.clearTimeout(this.timerAvviso); this.osservaArea?.disconnect(); super.disconnectedCallback(); }
+  connectedCallback() { super.connectedCallback(); impostaLingua(risolviLingua(this.prefs.interfaccia)); this.recuperabile = this.recupero.trova(); window.addEventListener('pagehide', this.suPagehide); window.addEventListener('resize', this.aggiornaLarghezza); window.addEventListener('beforeprint', this.suPrimaDiStampare); window.addEventListener('afterprint', this.suDopoStampa); window.addEventListener('keydown', this.suTastoGuscio); window.addEventListener('contextmenu', this.bloccaMenuBrowser); window.addEventListener('chiusura-richiesta', this.suChiusuraRichiesta); void chiamaTauri('proteggi_chiusura', { attiva: true }); window.addEventListener('mousedown', this.suPressioneCopiaFormato, true); window.addEventListener('mouseup', this.suRilascioCopiaFormato); document.addEventListener('fullscreenchange', this.suFullscreenChange); try { window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', this.suTemaSistema); } catch { /* senza matchMedia il tema di sistema resta quello letto all'avvio */ } this.aggiornaLarghezza(); }
+  disconnectedCallback() { window.removeEventListener('pagehide', this.suPagehide); this.recupero.scriviOra(); window.removeEventListener('resize', this.aggiornaLarghezza); window.removeEventListener('beforeprint', this.suPrimaDiStampare); window.removeEventListener('afterprint', this.suDopoStampa); window.removeEventListener('keydown', this.suTastoGuscio); window.removeEventListener('contextmenu', this.bloccaMenuBrowser); window.removeEventListener('chiusura-richiesta', this.suChiusuraRichiesta); window.removeEventListener('mousedown', this.suPressioneCopiaFormato, true); window.removeEventListener('mouseup', this.suRilascioCopiaFormato); document.removeEventListener('fullscreenchange', this.suFullscreenChange); try { window.matchMedia?.('(prefers-color-scheme: dark)').removeEventListener('change', this.suTemaSistema); } catch { /* vedi connectedCallback */ } window.clearTimeout(this.timerAvviso); this.osservaArea?.disconnect(); super.disconnectedCallback(); }
   /** Stampa il documento (o lo salva in PDF dalla finestra di stampa): l'editor si prepara con prima della stampa e torna com'era dopo. */
   stampa(): void { window.print(); }
   private suPrimaDiStampare = (): void => { this.editor()?.preparaStampa(); };
@@ -1002,13 +1360,19 @@ export class DocsGuscio extends LinguaElement {
   private editor(): DocsEditor | null { return this.renderRoot.querySelector<DocsEditor>('docs-editor'); }
   /** Se il sistema ha passato al programma un file («Apri con» o doppio clic; sul Mac dal Finder), lo apre. */
   private async apriDaAvvio(): Promise<void> {
-    const nome = await chiamaTauri<string | null>('nome_file_di_avvio');
-    if (!nome) return;
-    const grezzo = await chiamaTauri<ArrayBuffer | ArrayLike<number>>('leggi_file_di_avvio');
+    // nome, percorso ed eventuale problema (src-tauri/src/lib.rs, file_di_avvio: uguale in pmb_sheets); i byte si leggono grezzi con file_leggi
+    const avvio = await chiamaTauri<{ nome: string; percorso: string; problema?: string | null }>('file_di_avvio');
+    if (!avvio || !avvio.nome) return;
+    // il file c'è ma non si apre: lo si dice, invece di aprire un documento vuoto senza spiegazioni
+    if (avvio.problema === 'TROPPO_GRANDE') { this.mostraAvviso(t('«{}» è troppo grande per essere aperto (oltre 100 MB)', avvio.nome)); return; }
+    if (avvio.problema === 'FORMATO_NON_SUPPORTATO') { this.mostraAvviso(t('«{}»: questo tipo di file non si apre con pmb_docs', avvio.nome)); return; }
+    if (avvio.problema) { this.mostraAvviso(t('Non trovo il file «{}»', avvio.nome)); return; }
+    const grezzo = await chiamaTauri<ArrayBuffer | ArrayLike<number>>('file_leggi', { percorsoFile: avvio.percorso });
     // la parte nativa manda i byte come ArrayBuffer o come elenco di numeri, secondo il percorso di Tauri
     const byte = grezzo instanceof ArrayBuffer ? new Uint8Array(grezzo) : grezzo && typeof grezzo.length === 'number' ? Uint8Array.from(grezzo as ArrayLike<number>) : null;
-    if (!byte) { this.mostraAvviso(t('Non riesco a leggere "{}"', nome)); return; }
-    await this.apriFile(new File([byte], nome), null);
+    if (!byte) { this.mostraAvviso(t('Non riesco a leggere "{}"', avvio.nome)); return; }
+    // con il percorso, «Salva» riscrive il file sul posto invece di chiedere dove salvarlo
+    await this.apriFile(new File([byte], avvio.nome), manigliaNativa(avvio.percorso));
   }
 
   protected firstUpdated(): void {
@@ -1072,9 +1436,18 @@ export class DocsGuscio extends LinguaElement {
     this.popup = null;
     if (azione?.tipo === 'scarica') { void this.scarica(azione.formato as FormatoId); return; }
     if (azione?.tipo === 'apri-caratteri') { this.apriCaratteri(); return; }
+    if (azione?.tipo === 'apri-stili') { this.apriStili(); return; }
+    if (azione?.tipo === 'trasforma-immagine') { void this.trasformaImmagine(azione.op as Trasformazione); return; }
+    if (azione?.tipo === 'apri-ritaglio') { this.apriRitaglio(); return; }
+    if (azione?.tipo === 'apri-testo-alternativo') { this.apriTestoAlternativo(); return; }
+    if (azione?.tipo === 'aggiorna-stile') { this.editor()?.aggiornaStile(azione.id as string); this.editor()?.focalizza(); return; }
     if (azione?.tipo === 'zoom') {
       this.impostaZoom(Number(azione.valore));
       return;
+    }
+    if (azione?.tipo === 'modificaTabella') {
+      const motivo = this.editor()?.motivoTabella(azione.op);
+      if (motivo) { this.mostraAvviso(t(motivo)); this.editor()?.focalizza(); return; }
     }
     this.editor()?.applicaAzione(azione);
   };
@@ -1130,9 +1503,14 @@ export class DocsGuscio extends LinguaElement {
     if (!ed || !f) return;
     try {
       const istantanea = this.schedeComplete();
-      const bytes = await esportaSchede(istantanea, formato);
+      const bytes = await esportaSchede(istantanea, formato, this.passwordApertura);
+      if (this.passwordApertura && formato !== 'docx' && formato !== 'odt' && formato !== 'pdf') this.mostraAvviso(t('La password per aprire si conserva solo nei file .docx e .odt: questo file non è protetto.'));
       const m = await this.salva(nomeFile(this.titoloVisibile(this.titolo), formato), bytes, f.mime, this.origine);
-      if (formato !== 'pdf' && m && typeof (m as ManiglioFile).createWritable === 'function') { this.maniglia = m as ManiglioFile; this.origine = null; this.formatoManiglia = formato; }
+      // finestra «Salva con nome» annullata: niente è stato salvato, il documento resta da salvare e la copia di emergenza resta
+      if (m === SALVATAGGIO_ANNULLATO) return;
+      // il PDF è una copia da leggere, non si riapre per continuare a scrivere: il documento resta da salvare
+      if (formato === 'pdf') { this.mostraAvviso(t('Esportato in PDF: il documento resta da salvare')); return; }
+      if (m && typeof (m as ManiglioFile).createWritable === 'function') { this.maniglia = m as ManiglioFile; this.origine = null; this.formatoManiglia = formato; }
       this.segnaSalvato(istantanea); // salvato: la copia di emergenza non serve più (se non si è scritto altro nel frattempo)
     } catch (e) {
       this.mostraAvviso(t('Non riesco a salvare il file: {}', (e as Error).message));
@@ -1153,7 +1531,7 @@ export class DocsGuscio extends LinguaElement {
     }
     try {
       const istantanea = this.schedeComplete();
-      const bytes = await esportaSchede(istantanea, this.formatoManiglia);
+      const bytes = await esportaSchede(istantanea, this.formatoManiglia, this.passwordApertura);
       await scriviSuManiglia(this.maniglia, bytes);
       this.segnaSalvato(istantanea);
       this.mostraAvviso(t('Documento salvato'));
@@ -1176,11 +1554,13 @@ export class DocsGuscio extends LinguaElement {
   }
 
   /** Apre un file già in mano (scelto nella finestra di Apri, oppure passato da Windows con «Apri con» o doppio clic). */
-  async apriFile(file: File, maniglia: ManiglioFile | null): Promise<void> {
+  async apriFile(file: File, maniglia: ManiglioFile | null, password?: string): Promise<void> {
     const ed = this.editor();
     if (!ed) return;
     try {
-      const r = await importa(new Uint8Array(await file.arrayBuffer()), file.name);
+      const r = await importa(new Uint8Array(await file.arrayBuffer()), file.name, password);
+      this.passwordFileAperta = null;
+      this.passwordApertura = r.password;
       if (r.schede) this.caricaSchede(r.schede); else { this.unaScheda(); ed.impostaStato({ doc: r.doc, sel: cursore(0, 0), pendenti: null }); }
       this.recupero.scarta(); // il file aperto è già su disco
       this.ricordaSalvato(this.schedeComplete());
@@ -1193,13 +1573,24 @@ export class DocsGuscio extends LinguaElement {
       this.formatoManiglia = scrivibile ? scrivibile.id : 'docx';
       this.avviso = null;
       ed.focalizza();
+      if (r.avviso) this.mostraAvviso(r.avviso);
     } catch (e) {
+      // il file ha la password per aprire: la si chiede (di nuovo, se era sbagliata) e si riprova
+      if (e instanceof PasswordRichiesta) {
+        this.passwordFileAperta = { modo: 'apri', nome: file.name, errore: e.sbagliata ? t('La password non è giusta') : '', file, maniglia };
+        this.segnaApertura('password');
+        await this.updateComplete;
+        this.renderRoot.querySelector<DocsPasswordFile>('docs-password-file')?.focalizza();
+        return;
+      }
+      this.passwordFileAperta = null;
       this.mostraAvviso(t('Non riesco ad aprire "{}": {}', file.name, (e as Error).message));
     }
   }
 
   nuovo(): void {
     this.unaScheda();
+    this.passwordApertura = undefined;
     this.editor()?.impostaStato(statoIniziale());
     this.ricordaSalvato(this.schedeComplete());
     this.recupero.scarta(); // documento nuovo: niente da recuperare
@@ -1288,6 +1679,8 @@ export class DocsGuscio extends LinguaElement {
   /** Le voci dei sottomenu del menu Formato che dipendono dal punto del documento (stile, allineamento, interlinea, elenco,
    *  tabella, immagine): le stesse dei riquadri della barra degli strumenti, con la spunta sulla scelta attuale. */
   private sottovociMenu = (menu: string, voce: string): SottovoceDinamica[] => {
+    // Inserisci › Data e ora: la data e l'ora di adesso nei formati più usati (si scrive come testo)
+    if (menu === 'inserisci' && voce === 'Data e ora') return formatiDataOra(new Date(), linguaCorrente() === 'en').map((f) => ({ etichetta: f, azione: { tipo: 'incolla', testo: f } }));
     if (menu !== 'formato') return [];
     const s = this.barra ?? undefined;
     switch (voce) {
@@ -1295,8 +1688,8 @@ export class DocsGuscio extends LinguaElement {
       case 'Interlinea e spaziatura paragrafo': return popupPerComando('interlinea', s)?.voci ?? [];
       case 'Stili paragrafo': return popupPerComando('stile-paragrafo', s)?.voci ?? [];
       case 'Elenchi puntati e numerati': return popupElenchi(s).voci;
-      case 'Tabella': return this.editor()?.inTabella() ? popupTabella().voci : [{ etichetta: t('Metti il cursore in una tabella'), disabilitata: true }];
-      case 'Immagine': return this.editor()?.immagineSelezionata() ? popupImmagine().voci : [{ etichetta: t('Seleziona prima un\'immagine'), disabilitata: true }];
+      case 'Tabella': return this.editor()?.inTabella() ? popupTabella(this.editor()?.inRigaIntestazione()).voci : [{ etichetta: t('Metti il cursore in una tabella'), disabilitata: true }];
+      case 'Immagine': return this.editor()?.immagineSelezionata() ? popupImmagine(this.editor()?.immagineCorrente()).voci : [{ etichetta: t('Seleziona prima un\'immagine'), disabilitata: true }];
       default: return [];
     }
   };
@@ -1382,6 +1775,135 @@ export class DocsGuscio extends LinguaElement {
     this.mostraAvviso(r.conteggio === 1 ? t('Sostituita 1 occorrenza') : t('Sostituite {} occorrenze', r.conteggio));
   };
 
+  // ---- struttura del documento e sommario ----
+  private aggiornaStruttura(): void {
+    if (!this.pannelloStruttura) return;
+    const ed = this.editor();
+    if (!ed) return;
+    this.vociStruttura = ed.struttura();
+    this.titoloCorrente = ed.titoloAlCursore();
+  }
+  private apriStruttura(): void {
+    this.pannelloStruttura = true;
+    this.toggleAttribute('con-struttura', true);
+    this.aggiornaStruttura();
+    this.segnaApertura('struttura');
+    void this.updateComplete.then(() => {
+      const area = this.renderRoot.querySelector<HTMLElement>('.area-editor');
+      const p = this.renderRoot.querySelector<HTMLElement>('docs-struttura');
+      if (area && p) p.style.top = `${area.offsetTop}px`;
+    });
+  }
+  private chiudiStruttura(): void {
+    this.pannelloStruttura = false;
+    this.toggleAttribute('con-struttura', false);
+    this.editor()?.focalizza();
+  }
+  private suVaiStruttura = (e: Event): void => { this.editor()?.vaiATitolo(Number((e as CustomEvent).detail.p)); };
+  private inserisciSommario(): void {
+    const ed = this.editor();
+    if (!ed) return;
+    if (!ed.inserisciSommario()) this.mostraAvviso(ed.inTabella() ? t('Metti il cursore fuori da una tabella per inserire il sommario') : t('Nessun titolo: usa gli stili Titolo 1, 2 e 3 per i titoli del documento'));
+  }
+  private aggiornaSommario(): void {
+    const ed = this.editor();
+    if (!ed) return;
+    if (!ed.haSommario) { this.mostraAvviso(t('Il documento non ha un sommario: Inserisci › Sommario')); return; }
+    ed.aggiornaSommario();
+    this.mostraAvviso(t('Sommario aggiornato'));
+  }
+
+  // ---- commenti e modifiche registrate ----
+  /** Rilegge dall'editor commenti, modifiche e stato della registrazione (dopo ogni cambio del documento). */
+  private aggiornaCommenti(): void {
+    const ed = this.editor();
+    if (!ed) return;
+    this.registraModifiche = ed.registraModifiche;
+    if (!this.pannelloCommenti) return;
+    this.elencoCommenti = ed.commenti();
+    this.elencoRevisioni = ed.revisioni();
+    this.commentoAttivo = ed.commentoAlCursore();
+    ed.evidenziaCommento(this.commentoAttivo);
+  }
+  private apriPannelloCommenti(nuovo = false): void {
+    this.pannelloCommenti = true;
+    this.toggleAttribute('con-commenti', true);
+    if (nuovo) this.nuovoCommento = true;
+    this.aggiornaCommenti();
+    this.segnaApertura('commenti');
+    void this.updateComplete.then(() => { this.posizionaPannello(); if (nuovo) this.renderRoot.querySelector<DocsCommenti>('docs-commenti')?.focalizza(); });
+  }
+  private chiudiPannelloCommenti(): void {
+    this.pannelloCommenti = false;
+    this.nuovoCommento = false;
+    this.toggleAttribute('con-commenti', false);
+    this.editor()?.evidenziaCommento(undefined);
+    this.editor()?.focalizza();
+  }
+  /** Il pannello comincia dove comincia l'area del documento (che cambia con righello, menu nascosti, schermo intero). */
+  private posizionaPannello(): void {
+    const area = this.renderRoot.querySelector<HTMLElement>('.area-editor');
+    const pannello = this.renderRoot.querySelector<HTMLElement>('docs-commenti');
+    if (area && pannello) pannello.style.top = `${area.offsetTop}px`;
+  }
+  /** Inserisci › Commento: serve del testo selezionato (o il cursore dentro una parola); il pannello si apre con la casella pronta. */
+  private iniziaCommento(): void {
+    const ed = this.editor();
+    if (!ed) return;
+    if (ed.selezioneVuota && !ed.parolaAlCursore()) { this.mostraAvviso(t('Seleziona il testo da commentare')); return; }
+    this.apriPannelloCommenti(true);
+  }
+  private suNuovoCommento = (e: Event): void => {
+    const ed = this.editor();
+    if (!ed) return;
+    const id = ed.aggiungiCommento(String((e as CustomEvent).detail.testo ?? ''));
+    if (id === null) { this.mostraAvviso(t('Seleziona il testo da commentare')); return; }
+    this.nuovoCommento = false;
+    this.aggiornaCommenti();
+    ed.focalizza();
+  };
+  private suEventoCommenti = (e: Event): void => {
+    const ed = this.editor();
+    if (!ed) return;
+    const d = (e as CustomEvent).detail as { id?: string; testo?: string; risolto?: boolean; p?: number; o?: number; fine?: number };
+    const selezioneModifica = (): void => { if (d.p !== undefined && d.o !== undefined && d.fine !== undefined) ed.selezionaIntervallo({ p: d.p, o: d.o }, { p: d.p, o: d.fine }); };
+    switch (e.type) {
+      case 'rispondi': ed.rispondiCommento(d.id!, d.testo ?? ''); break;
+      case 'risolvi': ed.risolviCommento(d.id!, d.risolto === true); break;
+      case 'elimina': ed.eliminaCommento(d.id!); break;
+      case 'elimina-tutti': ed.eliminaTuttiICommenti(); break;
+      case 'vai': ed.vaiACommento(d.id!); break;
+      case 'vai-modifica': selezioneModifica(); break;
+      case 'accetta': selezioneModifica(); ed.risolviRevisioni(true, false); break;
+      case 'rifiuta': selezioneModifica(); ed.risolviRevisioni(false, false); break;
+      case 'accetta-tutte': if (!ed.risolviRevisioni(true, true)) this.mostraAvviso(t('Nessuna modifica registrata')); break;
+      case 'rifiuta-tutte': if (!ed.risolviRevisioni(false, true)) this.mostraAvviso(t('Nessuna modifica registrata')); break;
+      case 'registra': this.alternaRegistrazione(); break;
+      case 'annulla-nuovo': this.nuovoCommento = false; ed.focalizza(); break;
+      default: break;
+    }
+    this.aggiornaCommenti();
+    // dopo un pulsante del pannello si torna a scrivere nel documento (Ctrl+Z, Canc e le frecce vanno all'editor); le caselle restano a chi scrive
+    if (!['rispondi', 'annulla-nuovo'].includes(e.type)) ed.focalizza();
+  };
+  private alternaRegistrazione(): void {
+    const ed = this.editor();
+    if (!ed) return;
+    ed.alternaRegistrazione();
+    this.registraModifiche = ed.registraModifiche;
+    this.mostraAvviso(this.registraModifiche ? t('Registrazione delle modifiche accesa: quello che scrivi e cancelli resta segnato') : t('Registrazione delle modifiche spenta'));
+  }
+  /** Strumenti › Revisioni: le voci del sottomenu. */
+  private voceRevisioni(voce: string): void {
+    const ed = this.editor();
+    if (!ed) return;
+    if (voce === 'Registra modifiche') { this.alternaRegistrazione(); return; }
+    if (voce === 'Accetta modifica' || voce === 'Rifiuta modifica') { if (!ed.risolviRevisioni(voce.startsWith('Accetta'), false)) this.mostraAvviso(t('Metti il cursore su una modifica registrata')); return; }
+    if (voce === 'Accetta tutte le modifiche' || voce === 'Rifiuta tutte le modifiche') { if (!ed.risolviRevisioni(voce.startsWith('Accetta'), true)) this.mostraAvviso(t('Nessuna modifica registrata')); return; }
+    if (voce === 'Modifica successiva' || voce === 'Modifica precedente') { if (!ed.vaiARevisione(voce === 'Modifica successiva' ? 1 : -1)) this.mostraAvviso(t('Nessun\'altra modifica registrata')); return; }
+    if (voce === 'Commenti e modifiche') { this.apriPannelloCommenti(); return; }
+  }
+
   private suVoceMenu = (e: Event): void => {
     const { menu, voce } = (e as CustomEvent).detail as { menu: string; voce: string };
     if (menu === 'modifica') {
@@ -1423,6 +1945,12 @@ export class DocsGuscio extends LinguaElement {
       return;
     }
     if (menu === 'inserisci' && voce === 'Link') { void this.apriLink(); return; }
+    if (menu === 'inserisci' && voce === 'Commento') { this.iniziaCommento(); return; }
+    if (menu === 'inserisci' && voce === 'Sommario') { this.inserisciSommario(); return; }
+    if (menu === 'inserisci' && voce === 'Aggiorna sommario') { this.aggiornaSommario(); return; }
+    if (menu === 'visualizza' && voce === 'Mostra struttura del documento') { if (this.pannelloStruttura) this.chiudiStruttura(); else this.apriStruttura(); return; }
+    if (menu === 'strumenti' && (e as CustomEvent).detail.padre === 'Revisioni') { this.voceRevisioni(voce); return; }
+    if (menu === 'visualizza' && voce === 'Mostra commenti e modifiche') { if (this.pannelloCommenti) this.chiudiPannelloCommenti(); else this.apriPannelloCommenti(); return; }
     if (menu === 'inserisci' && voce === 'Tabella') { void this.apriTabella(); return; }
     if (menu === 'formato' && voce === 'Intestazioni e piè di pagina') { void this.apriMargini('intestazione'); return; }
     if (menu === 'formato' && voce === 'Numeri di pagina') { void this.apriMargini('piede', true); return; }
@@ -1432,6 +1960,10 @@ export class DocsGuscio extends LinguaElement {
     }
     if (menu === 'inserisci' && voce === 'Immagine') { void this.inserisciImmagine(); return; }
     if (menu === 'inserisci' && voce === 'Salto di pagina') { this.editor()?.inserisciSaltoPagina(); return; }
+    if (menu === 'inserisci' && voce === 'Interruzione di colonna') { this.editor()?.inserisciSaltoColonna(); if ((this.editor()?.colonne ?? 1) < 2) this.mostraAvviso(t('Interruzione di colonna inserita: si vede con il testo in 2 o 3 colonne (Formato › Colonne)')); return; }
+    if (menu === 'inserisci' && voce === 'Spazio non divisibile') { this.editor()?.inserisciCarattere('\u00a0'); return; }
+    if (menu === 'inserisci' && voce === 'Trattino non divisibile') { this.editor()?.inserisciCarattere('\u2011'); return; }
+    if (menu === 'inserisci' && voce === 'Trattino facoltativo') { this.editor()?.inserisciCarattere('\u00ad'); return; }
     if (menu === 'inserisci' && voce === 'Linea orizzontale') { this.editor()?.inserisciLineaOrizzontale(); return; }
     if (menu === 'inserisci' && (voce === 'Simboli' || voce === 'Caratteri speciali')) { this.apriSimboli(); return; }
     if (menu === 'formato' && (e as CustomEvent).detail.padre === 'Bordi e linee') {
@@ -1476,10 +2008,31 @@ export class DocsGuscio extends LinguaElement {
       if (voce === 'Sottolinea gli errori mentre scrivi') { this.cambiaPreferenze({ ortografia: !this.prefs.ortografia }); this.mostraAvviso(this.prefs.ortografia ? t('Errori di ortografia sottolineati') : t('Errori di ortografia non sottolineati')); return; }
     }
     if (menu === 'strumenti' && voce === 'Dizionario') { this.apriDizionario(); return; }
+    if (menu === 'strumenti' && voce === 'Correzione automatica') { this.apriCorrezione(); return; }
     if (menu === 'strumenti' && voce === 'Caratteri personali') { this.apriCaratteri(); return; }
     if (menu === 'strumenti' && voce === 'Preferenze') { this.apriPreferenze('preferenze'); return; }
     if (menu === 'strumenti' && voce === 'Accessibilità') { this.apriPreferenze('accessibilita'); return; }
     if (menu === 'strumenti' && voce === 'Numeri di riga') { this.alternaNumeriRiga(); return; }
+    if (menu === 'strumenti' && voce === 'Proteggi documento') { void this.apriProtezione(); return; }
+    if (menu === 'strumenti' && voce === 'Leggi ad alta voce') { this.alternaLettura(); return; }
+    if (menu === 'strumenti' && voce === 'Controlla accessibilità') { this.controllaAccessibilita(); return; }
+    if (menu === 'strumenti' && voce === 'Stampa unione') { this.apriUnione(); return; }
+    if (menu === 'inserisci' && voce === 'Riferimento incrociato') {
+      const ed = this.editor();
+      if (!ed) return;
+      this.riferimentoAperto = bersagliRiferimento(ed.stato.doc);
+      this.segnaApertura('riferimento');
+      void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-riferimento')?.focalizza());
+      return;
+    }
+    if (menu === 'inserisci' && voce === 'Didascalia') {
+      this.didascaliaAperta = true;
+      this.segnaApertura('didascalia');
+      void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-didascalia')?.focalizza());
+      return;
+    }
+    if (menu === 'formato' && voce === 'Filigrana') { this.filigranaAperta = true; this.segnaApertura('filigrana'); void this.updateComplete.then(() => this.renderRoot.querySelector<DocsFiligrana>('docs-filigrana')?.focalizza()); return; }
+    if (menu === 'inserisci' && voce === 'Codice QR') { this.qrAperto = true; this.segnaApertura('qr'); return; }
     if (menu === 'inserisci' && (voce === 'Nota a piè di pagina' || voce === 'Nota')) { this.apriNotaPiePagina(); return; }
     if (menu === 'formato' && voce === 'Immagine') {
       if (!this.editor()?.immagineSelezionata()) { this.mostraAvviso(t('Seleziona prima un\'immagine')); return; }
@@ -1488,7 +2041,7 @@ export class DocsGuscio extends LinguaElement {
       this.popupId = 'immagine';
       this.popupX = r ? r.left : 0;
       this.popupY = r ? r.bottom + 2 : 0;
-      this.popup = popupImmagine();
+      this.popup = popupImmagine(this.editor()?.immagineCorrente());
       return;
     }
     if (menu === 'formato' && voce === 'Tabella') {
@@ -1498,14 +2051,19 @@ export class DocsGuscio extends LinguaElement {
       this.popupId = 'tabella';
       this.popupX = r ? r.left : 0;
       this.popupY = r ? r.bottom + 2 : 0;
-      this.popup = popupTabella();
+      this.popup = popupTabella(this.editor()?.inRigaIntestazione());
       return;
     }
     if (menu === 'formato' && voce === 'Cancella formattazione') {
       this.editor()?.cancellaFormattazione();
       return;
     }
-    if (menu === 'formato' && (e as CustomEvent).detail.padre === 'Testo') { this.editor()?.eseguiComando(voce.toLowerCase()); return; }
+    if (menu === 'formato' && (e as CustomEvent).detail.padre === 'Testo') {
+      // maiuscole e minuscole (come Formato › Testo di LibreOffice)
+      const modi: Record<string, ModoMaiuscole> = { MAIUSCOLO: 'maiuscolo', minuscolo: 'minuscolo', 'Iniziali Maiuscole': 'iniziali', Frase: 'frase', iNVERTI: 'inverti', 'Cambia (giro)': 'giro' };
+      if (modi[voce]) { this.editor()?.applicaAzione({ tipo: 'maiuscole', modo: modi[voce] }); return; }
+      this.editor()?.eseguiComando(voce.toLowerCase()); return;
+    }
     if (menu === 'formato' && (e as CustomEvent).detail.padre === 'Colonne') {
       const v = (e as CustomEvent).detail.voce;
       if (v === '1 colonna') this.impostaColonne(1);
@@ -1517,11 +2075,8 @@ export class DocsGuscio extends LinguaElement {
     if (menu !== 'file') return;
     if (voce === 'Stampa' || voce === 'Anteprima di stampa') { this.stampa(); return; }
     if (voce === 'Nuovo' || voce === 'Documento di testo') this.nuovoConConferma();
-    else if (voce === 'Foglio di calcolo') {
-      try { window.open('../pmb_sheets/index.html', '_blank'); } catch {}
-      return;
-    }
     else if (voce === 'Dettagli') this.apriDettagli();
+    else if (voce === 'Password per aprire') this.apriPasswordFile();
     else if (voce === 'Apri') void this.apriConConferma();
     else if (voce === 'Salva') void this.salvaDocumento();
     else if (voce === 'Salva con nome') { this.maniglia = null; void this.scarica(this.formatoManiglia); }
@@ -1554,7 +2109,77 @@ export class DocsGuscio extends LinguaElement {
     this.editor()?.annullaCopiaFormato();
     this.copiaFormatoAttiva = false;
   }
+  // ---- chiusura del programma (X della finestra, Alt+F4, barra delle applicazioni) ----
+  /** La shell Tauri chiede di chiudere: senza modifiche si chiude subito, altrimenti si chiede Salva / Non salvare / Annulla. */
+  private suChiusuraRichiesta = (): void => { void this.richiediChiusura(); };
+  async richiediChiusura(): Promise<void> {
+    // domanda già aperta: la pagina è viva e lo ridice alla shell a ogni nuova X, altrimenti la terza X entro 10 s (decidi_chiusura in lib.rs)
+    // la scambierebbe per una pagina bloccata e chiuderebbe senza salvare (trovato con la prova fisica del 2026-11-19)
+    if (this.uscitaAperta) { void chiamaTauri('proteggi_chiusura', { attiva: true }); this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-uscita')?.focalizza(); return; }
+    if (!this.modificato()) { await chiamaTauri('destroy_window'); return; }
+    this.uscitaAperta = true;
+    this.segnaApertura('uscita');
+    await this.updateComplete;
+    this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-uscita')?.focalizza();
+    // la domanda è comparsa: la pagina è viva, quindi una nuova X (anche un doppio clic) deve trovare la domanda, non chiudere senza salvare
+    void chiamaTauri('proteggi_chiusura', { attiva: true });
+  }
+  private suSceltaUscita = async (e: Event): Promise<void> => {
+    const scelta = (e as CustomEvent).detail.scelta as 'salva' | 'esci' | 'annulla';
+    this.uscitaAperta = false;
+    // la pagina ha risposto: una nuova X entro 10 secondi deve chiedere di nuovo (la shell altrimenti chiuderebbe senza domande)
+    if (scelta === 'annulla') { void chiamaTauri('proteggi_chiusura', { attiva: true }); this.editor()?.focalizza(); return; }
+    if (scelta === 'salva') {
+      await this.salvaDocumento();
+      // se il salvataggio non è riuscito o la finestra «Salva con nome» è stata annullata, si resta nel programma
+      if (this.modificato()) { void chiamaTauri('proteggi_chiusura', { attiva: true }); this.mostraAvviso(t('Il documento non è stato salvato: il programma resta aperto')); return; }
+    } else {
+      // «Non salvare»: la copia di emergenza non serve più, altrimenti alla prossima apertura proporrebbe di recuperare ciò che si è scelto di buttare
+      this.recupero.scarta();
+    }
+    await chiamaTauri('destroy_window');
+  };
+
+  /** Fuori dal documento il menu del browser (Indietro, Aggiorna, Ispeziona...) non serve: resta solo nelle caselle di testo delle finestre, come in pmb_sheets. */
+  private bloccaMenuBrowser = (e: Event): void => {
+    const t = e.composedPath()[0];
+    if ((t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) && !t.classList.contains('ingresso')) return;
+    e.preventDefault();
+  };
+  /** Tasto destro sul documento: il menu con Taglia, Copia, Incolla e le altre voci di Modifica. */
+  private suMenuContestuale = (e: MouseEvent): void => {
+    e.preventDefault();
+    const ed = this.editor();
+    if (!ed) return;
+    const { selezione } = ed.preparaMenuContestuale(e.clientX, e.clientY);
+    this.menuContestuale = { x: e.clientX, y: e.clientY, voci: vociContestuali(selezione) };
+  };
+  /** Dal tasto Menu della tastiera o da Maiusc+F10: il menu si apre al cursore, con il fuoco sulla prima voce. */
+  private apriMenuContestualeDaTastiera(): void {
+    const ed = this.editor();
+    if (!ed) return;
+    const { x, y } = ed.puntoCursore();
+    this.menuContestuale = { x, y, voci: vociContestuali(!ed.selezioneVuota) };
+    void this.updateComplete.then(() => { this.renderRoot.querySelector<HTMLElement & { focalizza(): void }>('docs-menu-contestuale')?.focalizza(); });
+  }
+  private suSceltaContestuale = (e: Event): void => {
+    const { menu, voce } = (e as CustomEvent).detail as { menu: string; voce: string };
+    this.menuContestuale = null;
+    this.editor()?.focalizza();
+    this.suVoceMenu(new CustomEvent('voce-menu', { detail: { menu, voce } }));
+  };
+  private chiudiMenuContestuale = (e: Event): void => {
+    this.menuContestuale = null;
+    if ((e as CustomEvent).detail?.tastiera) this.editor()?.focalizza();
+  };
   private suTastoGuscio = (e: KeyboardEvent): void => {
+    if ((e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey)) && e.composedPath().some((n) => n instanceof HTMLElement && n.tagName === 'DOCS-EDITOR')) {
+      e.preventDefault();
+      this.apriMenuContestualeDaTastiera();
+      return;
+    }
+    if (e.key === 'Escape' && staLeggendo() && !e.ctrlKey && !e.metaKey) { e.preventDefault(); fermaLettura(); this.mostraAvviso(t('Lettura fermata')); return; }
+    if (e.ctrlKey && e.altKey && (e.code === 'Space' || e.key === ' ')) { e.preventDefault(); this.alternaLettura(); return; }
     if (e.key === 'Escape' && this.copiaFormatoAttiva && !e.ctrlKey && !e.metaKey) { e.preventDefault(); this.annullaCopiaFormato(); this.mostraAvviso(t('Copia formato annullato')); return; }
     if (e.key === 'F11' && e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); this.nuovaScheda(); return; } // Maiusc+F11: nuova scheda
     if (e.key === 'F11') { e.preventDefault(); this.alternaSchermoIntero(); return; }
@@ -1576,6 +2201,11 @@ export class DocsGuscio extends LinguaElement {
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P' || e.code === 'KeyP')) {
       e.preventDefault();
       this.alternaCaratteriNonStampabili();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && (e.key === 'm' || e.key === 'M' || e.code === 'KeyM')) {
+      e.preventDefault();
+      this.iniziaCommento();
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'f' || e.key === 'F' || e.code === 'KeyF')) {
@@ -1605,6 +2235,8 @@ export class DocsGuscio extends LinguaElement {
   };
   private suCambio = (e: Event): void => {
     this.barra = statoBarra((e as CustomEvent).detail.stato);
+    this.aggiornaCommenti();
+    this.aggiornaStruttura();
     this.copiaDiEmergenza();
     if (this.trovaAperta) { const ed = this.editor(); if (ed) this.ricerca = ed.statoRicerca(); }
     this.allineaRighello();
@@ -1641,7 +2273,12 @@ export class DocsGuscio extends LinguaElement {
       <docs-menubar .spuntate=${this.vociSpuntate()} .sottovoci=${this.sottovociMenu} @voce-menu=${this.suVoceMenu} @azione-menu=${this.suAzioneMenu}></docs-menubar>
       <div class="contenitore-strumenti"><docs-toolbar .larghezza=${this.larghezza} .valori=${{ ...(this.barra?.valori ?? {}), 'zoom': `${this.zoom}% ▾` }} .attivi=${[...(this.barra?.attivi ?? []), ...(this.copiaFormatoAttiva ? ['copia-formato'] : []), ...(this.prefs.ortografia ? ['ortografia'] : [])]} .barra=${this.prefs.barra} ?menuNascosti=${this.prefs.menuNascosti} @comando=${this.suComando} @voce-menu=${this.suVoceMenu} @barra-cambiata=${this.suBarraCambiata} @personalizza-barra=${() => this.apriPersonalizza()}></docs-toolbar></div>
       <div class="righello" aria-label="Righello">${this.righelloVisibile ? html`<docs-righello .geometria=${{ larghezza: calcolaGeometria(this.impostazioniPagina).larghezza, margineSinistro: this.impostazioniPagina.margineSinistro, margineDestro: this.impostazioniPagina.margineDestro }} @cambio-margine=${this.suCambioMargineRighello} @fine-margine=${() => this.editor()?.focalizza()}></docs-righello>` : ''}</div>
-      <main class="area-editor" @wheel=${this.suRotella} @cambio=${this.suCambio} @dizionario=${this.suDizionarioCambiato} @apri-link=${this.suApriLink} @immagine-incollata=${this.suImmagineIncollata}><div class="pagina zoom-${this.zoom} orientamento-${this.impostazioniPagina.orientamento} formato-${this.impostazioniPagina.formato.toLowerCase()}${this.senzaPagine ? ' senza-pagine' : ''}" role="textbox" aria-multiline="true" aria-label="Documento">${this.righelloVisibile ? html`<docs-righello-verticale class="righello-v" .zoom=${this.zoom / 100} .geometria=${{ altezza: calcolaGeometria(this.impostazioniPagina).altezza, margineAlto: this.impostazioniPagina.margineAlto, margineBasso: this.impostazioniPagina.margineBasso }} @cambio-margine-v=${this.suCambioMargineVerticale} @fine-margine=${() => this.editor()?.focalizza()}></docs-righello-verticale>` : ''}<docs-editor .impostazioniPagina=${this.impostazioniPagina} .senzaPagine=${this.senzaPagine} .mostraNonStampabili=${this.caratteriNonStampabili} .colonne=${this.colonne}></docs-editor></div></main>
+      <main class="area-editor" @contextmenu=${this.suMenuContestuale} @wheel=${this.suRotella} @cambio=${this.suCambio} @documento-protetto=${this.suDocumentoProtetto} @dizionario=${this.suDizionarioCambiato} @apri-link=${this.suApriLink} @immagine-incollata=${this.suImmagineIncollata}><div class="pagina zoom-${this.zoom} orientamento-${this.impostazioniPagina.orientamento} formato-${this.impostazioniPagina.formato.toLowerCase()}${this.senzaPagine ? ' senza-pagine' : ''}" role="textbox" aria-multiline="true" aria-label="Documento">${this.righelloVisibile ? html`<docs-righello-verticale class="righello-v" .zoom=${this.zoom / 100} .geometria=${{ altezza: calcolaGeometria(this.impostazioniPagina).altezza, margineAlto: this.impostazioniPagina.margineAlto, margineBasso: this.impostazioniPagina.margineBasso }} @cambio-margine-v=${this.suCambioMargineVerticale} @fine-margine=${() => this.editor()?.focalizza()}></docs-righello-verticale>` : ''}<docs-editor .impostazioniPagina=${this.impostazioniPagina} .senzaPagine=${this.senzaPagine} .mostraNonStampabili=${this.caratteriNonStampabili}></docs-editor></div></main>
+      ${this.pannelloCommenti ? html`<docs-commenti .commenti=${this.elencoCommenti} .revisioni=${this.elencoRevisioni} .registra=${this.registraModifiche} .nuovo=${this.nuovoCommento} .attivo=${this.commentoAttivo}
+        @nuovo-commento=${this.suNuovoCommento} @rispondi=${this.suEventoCommenti} @risolvi=${this.suEventoCommenti} @elimina=${this.suEventoCommenti} @elimina-tutti=${this.suEventoCommenti}
+        @vai=${this.suEventoCommenti} @vai-modifica=${this.suEventoCommenti} @accetta=${this.suEventoCommenti} @rifiuta=${this.suEventoCommenti} @accetta-tutte=${this.suEventoCommenti}
+        @rifiuta-tutte=${this.suEventoCommenti} @registra=${this.suEventoCommenti} @annulla-nuovo=${this.suEventoCommenti} @chiudi=${() => this.chiudiPannelloCommenti()}></docs-commenti>` : ''}
+      ${this.pannelloStruttura ? html`<docs-struttura .voci=${this.vociStruttura} .corrente=${this.titoloCorrente} @vai=${this.suVaiStruttura} @chiudi=${() => this.chiudiStruttura()}></docs-struttura>` : ''}
       <docs-finestra></docs-finestra>
       ${this.trovaAperta ? html`<docs-trova .sostituzione=${this.sostituzione} .totale=${this.ricerca.totale} .corrente=${this.ricerca.corrente} .errore=${this.ricerca.errore} .troncato=${this.ricerca.troncato}
         @ricerca=${this.suRicerca} @successivo=${this.suPasso(1)} @precedente=${this.suPasso(-1)} @sostituisci=${this.suSostituisci} @sostituisci-tutto=${this.suSostituisciTutto} @chiudi=${() => this.chiudiTrova()}></docs-trova>` : ''}
@@ -1656,6 +2293,7 @@ export class DocsGuscio extends LinguaElement {
         <button class="ripristina" @click=${() => this.ripristina()}>Ripristina</button>
         <button class="scarta" @click=${() => this.scartaCopia()}>Scarta</button>
       </div>` : ''}
+      ${this.menuContestuale ? html`<docs-menu-contestuale .voci=${this.menuContestuale.voci} .x=${this.menuContestuale.x} .y=${this.menuContestuale.y} @scelta=${this.suSceltaContestuale} @chiudi=${this.chiudiMenuContestuale}></docs-menu-contestuale>` : ''}
       ${this.popup ? html`<docs-popup .popup=${this.popup} .x=${this.popupX} .y=${this.popupY} @scelta=${this.suScelta} @chiudi=${this.suChiudi}></docs-popup>` : ''}
       ${this.conteggioAperto && this.datiConteggio ? html`<docs-conteggio .dati=${this.datiConteggio} @chiudi=${() => this.chiudiConteggio()}></docs-conteggio>` : ''}
       ${this.dettagliAperti && this.datiDettagli ? html`<docs-dettagli .dati=${this.datiDettagli} @chiudi=${() => this.chiudiDettagli()}></docs-dettagli>` : ''}
@@ -1677,7 +2315,22 @@ export class DocsGuscio extends LinguaElement {
       ${this.ortografiaAperta ? html`<docs-ortografia .parola=${this.ortografiaAperta.parola} .contesto=${this.ortografiaAperta.contesto} .posizione=${this.ortografiaAperta.posizione} .azione=${this.ortografiaAperta.azione} .suggerimenti=${this.ortografiaAperta.suggerimenti}
         @cambia=${this.suOrtCambia} @cambia-tutto=${this.suOrtCambiaTutto} @ignora=${this.suOrtIgnora} @ignora-tutto=${this.suOrtIgnoraTutto} @aggiungi=${this.suOrtAggiungi} @chiudi=${() => this.chiudiOrtografia()}></docs-ortografia>` : ''}
       ${this.dizionarioAperto ? html`<docs-dizionario .parole=${this.elencoDizionario} @aggiungi=${this.suDizionarioAggiungi} @togli=${this.suDizionarioTogli} @chiudi=${() => this.chiudiDizionario()}></docs-dizionario>` : ''}
-      ${this.dialogoPref ? html`<docs-preferenze .preferenze=${this.prefs} .modo=${this.dialogoPref} .lingueDisponibili=${this.lingueWindows} @cambia=${(e: Event) => this.cambiaPreferenze((e as CustomEvent).detail.preferenze as Partial<Preferenze>)} @chiudi=${() => this.chiudiPreferenze()}></docs-preferenze>` : ''}
+      ${this.dialogoPref ? html`<docs-preferenze .preferenze=${this.prefs} .modo=${this.dialogoPref} .lingueDisponibili=${this.lingueWindows} @cambia=${(e: Event) => this.cambiaPreferenze((e as CustomEvent).detail.preferenze as Partial<Preferenze>)} @apri-correzione=${() => this.apriCorrezione()} @chiudi=${() => this.chiudiPreferenze()}></docs-preferenze>` : ''}
+      ${this.uscitaAperta ? html`<docs-uscita .nome=${this.titoloVisibile(this.titolo)} @scelta=${this.suSceltaUscita}></docs-uscita>` : ''}
+      ${this.correzioneAperta ? html`<docs-correzione .preferenze=${this.prefs} @cambia=${(e: Event) => this.cambiaPreferenze((e as CustomEvent).detail.preferenze as Partial<Preferenze>)} @chiudi=${() => this.chiudiCorrezione()}></docs-correzione>` : ''}
+      ${this.riferimentoAperto ? html`<docs-riferimento .bersagli=${this.riferimentoAperto} @chiudi=${() => { this.riferimentoAperto = null; this.editor()?.focalizza(); }} @applica=${(e: CustomEvent<{ p: number; modo: 'e' | 't' }>) => { this.riferimentoAperto = null; const ed = this.editor(); if (ed) { ed.inserisciRiferimento(e.detail.p, e.detail.modo); this.mostraAvviso(t('Riferimento inserito: il testo si aggiorna da solo')); ed.focalizza(); } }}></docs-riferimento>` : ''}
+      ${this.didascaliaAperta ? html`<docs-didascalia @chiudi=${() => { this.didascaliaAperta = false; this.editor()?.focalizza(); }} @applica=${(e: CustomEvent<{ serie: string; testo: string; sopra: boolean }>) => { this.didascaliaAperta = false; const ed = this.editor(); if (ed) { ed.inserisciDidascalia(e.detail.serie, e.detail.testo, e.detail.sopra); this.mostraAvviso(t('Didascalia «{}» inserita: il numero si aggiorna da solo', e.detail.serie)); ed.focalizza(); } }}></docs-didascalia>` : ''}
+      ${this.unioneAperta ? html`<docs-stampa-unione .nomeElenco=${this.elencoUnione?.nome ?? ''} .colonne=${this.elencoUnione?.dati.colonne ?? []} .copie=${this.elencoUnione ? copieDi(this.elencoUnione.dati) : 0}
+        .mancanti=${this.elencoUnione && this.editor() ? campiMancanti(this.editor()!.documentoCorrente(), this.elencoUnione.dati) : []} .campiNelTesto=${this.editor() ? campiUsati(this.editor()!.documentoCorrente()).length : 0} .errore=${this.erroreUnione}
+        @chiudi=${() => this.chiudiUnione()} @scegli-elenco=${() => void this.suScegliElenco()} @inserisci-campo=${(e: CustomEvent<{ nome: string }>) => this.suInserisciCampo(e.detail.nome)} @unisci=${() => this.suUnisci()}></docs-stampa-unione>` : ''}
+      ${this.accessibilitaAperta !== null ? html`<docs-accessibilita .problemi=${this.accessibilitaAperta} @chiudi=${() => { this.accessibilitaAperta = null; this.editor()?.focalizza(); }} @ricontrolla=${() => this.controllaAccessibilita()} @vai=${(e: CustomEvent<{ p: number; o: number; immagine: boolean }>) => { this.accessibilitaAperta = null; this.editor()?.vaiA(e.detail.p, e.detail.o, e.detail.immagine); }}></docs-accessibilita>` : ''}
+      ${this.testoAlternativoAperto !== null ? html`<docs-testo-alternativo .attuale=${this.testoAlternativoAperto} @chiudi=${() => { this.testoAlternativoAperto = null; this.editor()?.focalizza(); }} @applica=${(e: CustomEvent<{ testo: string }>) => { this.testoAlternativoAperto = null; const ed = this.editor(); if (ed) { ed.impostaTestoAlternativo(e.detail.testo); this.mostraAvviso(e.detail.testo.trim() ? t('Testo alternativo dell\'immagine impostato') : t('Testo alternativo tolto')); ed.focalizza(); } }}></docs-testo-alternativo>` : ''}
+      ${this.filigranaAperta ? html`<docs-filigrana .attuale=${this.editor()?.filigrana() ?? ''} @chiudi=${() => { this.filigranaAperta = false; this.editor()?.focalizza(); }} @applica=${(e: CustomEvent<{ testo: string }>) => { this.filigranaAperta = false; const ed = this.editor(); if (ed) { ed.impostaFiligrana(e.detail.testo); this.mostraAvviso(e.detail.testo.trim() ? t('Filigrana «{}» su ogni pagina', e.detail.testo.trim()) : t('Filigrana tolta')); ed.focalizza(); } }}></docs-filigrana>` : ''}
+      ${this.qrAperto ? html`<docs-qr @chiudi-dialogo=${() => { this.qrAperto = false; this.editor()?.focalizza(); }} @inserisci-qr=${(e: CustomEvent<{ s: string; w: number; h: number }>) => { this.qrAperto = false; const lato = Math.min(e.detail.w, 180); this.editor()?.applicaAzione({ tipo: 'immagine', immagine: { s: e.detail.s, w: lato, h: lato } }); }}></docs-qr>` : ''}
+      ${this.passwordFileAperta ? html`<docs-password-file .modo=${this.passwordFileAperta.modo} .nome=${this.passwordFileAperta.nome} .errore=${this.passwordFileAperta.errore} .haPassword=${!!this.passwordFileAperta.haPassword} @conferma=${this.suConfermaPasswordFile} @chiudi=${() => this.chiudiPasswordFile()}></docs-password-file>` : ''}
+      ${this.protezioneAperta ? html`<docs-protezione .togli=${this.protezioneAperta.togli} .errore=${this.protezioneAperta.errore} @conferma=${this.suConfermaProtezione} @chiudi=${() => this.chiudiProtezione()}></docs-protezione>` : ''}
+      ${this.ritaglioDi ? html`<docs-ritaglio .immagine=${this.ritaglioDi} @ritaglia=${this.suRitaglia} @chiudi=${() => this.chiudiRitaglio()}></docs-ritaglio>` : ''}
+      ${this.stiliAperti ? html`<docs-stili .voci=${this.elencoStili} .corrente=${this.stileCorrente} .errore=${this.erroreStili} @crea=${this.suCreaStile} @applica=${this.suApplicaStile} @aggiorna=${this.suAggiornaStile} @rinomina=${this.suRinominaStile} @elimina=${this.suEliminaStile} @chiudi=${() => this.chiudiStili()}></docs-stili>` : ''}
       ${this.segnalibriAperti ? html`<docs-segnalibri .voci=${this.elencoSegnalibri} @aggiungi=${this.suAggiungiSegnalibro} @vai=${this.suVaiSegnalibro} @togli=${this.suTogliSegnalibro} @chiudi=${() => this.chiudiSegnalibri()}></docs-segnalibri>` : ''}
       ${this.notaAperta ? html`<docs-nota @applica=${this.suApplicaNota} @chiudi=${() => this.chiudiNotaPiePagina()}></docs-nota>` : ''}
       ${this.avviso ? html`<div class="avviso" role="alert">${this.avviso}</div>` : ''}

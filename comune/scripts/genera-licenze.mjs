@@ -20,7 +20,7 @@ function leggiLicenze(dir) {
 }
 function copyright(testi, autori) {
   // salta le frasi standard delle licenze ("copyright notice", "copyright owner", "[yyyy]"): non sono titolari veri
-  const FRASE = /^copyright\s+(notice|owner|holder|license|statement|and|in|ownership)|\[(yyyy|name)|attached to the work|yyyy/i;
+  const FRASE = /^copyright\s+(notice|owner|holder|license|statement|and\b|in\b|ownership)|\[(yyyy|name)|attached to the work|\byyyy\b/i;
   for (const t of testi) { for (const riga of t.split(/\r?\n/)) { const m = RE_COPY.exec(riga); if (m && !FRASE.test(m[1].trim())) return m[1].trim().replace(/\s+/g, ' ').slice(0, 170); } }
   return autori && autori.length ? ('Copyright ' + autori.join(', ')).slice(0, 170) : 'Gli autori del progetto (nessun avviso indicato nel pacchetto)';
 }
@@ -33,7 +33,13 @@ const inGrafo = new Set();
 const pacchetti = new Map(); // id -> pacchetto, da tutte le piattaforme (ognuna elenca solo i suoi)
 let radice = '';
 for (const piattaforma of PIATTAFORME) {
-  const meta = JSON.parse(execFileSync('cargo', ['metadata', '--offline', '--format-version', '1', '--filter-platform', piattaforma, '--manifest-path', path.join(appDir, 'src-tauri', 'Cargo.toml')], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }));
+  // prima senza rete; se nella cache mancano i componenti di un'altra piattaforma (per esempio quelli solo Mac compilando su Windows)
+  // si riprova con la rete: prima l'errore fermava tutto e l'elenco restava vecchio (rfd mancava, 22/11)
+  const argomenti = ['metadata', '--format-version', '1', '--filter-platform', piattaforma, '--manifest-path', path.join(appDir, 'src-tauri', 'Cargo.toml')];
+  const opzioni = { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] };
+  let testo;
+  try { testo = execFileSync('cargo', ['--offline', ...argomenti], opzioni); } catch { testo = execFileSync('cargo', argomenti, opzioni); }
+  const meta = JSON.parse(testo);
   for (const n of meta.resolve.nodes) inGrafo.add(n.id);
   for (const p of meta.packages) pacchetti.set(p.id, p);
   radice = meta.resolve.root;
@@ -54,10 +60,14 @@ for (const [nome, k] of [...npm].sort((a, b) => a[0].localeCompare(b[0]))) {
   const testi = leggiLicenze(dir);
   testi.forEach((t) => fileLicenza.push({ nome, testo: t }));
   const autore = typeof pj.author === 'string' ? pj.author : pj.author?.name;
-  componenti.push([nome, pj.version ?? '', (typeof pj.license === 'string' ? pj.license : pj.license?.type) ?? '?', copyright(testi, autore ? [autore] : []), nome.startsWith('@fontsource/') ? 'carattere' : 'npm']);
+  // un pacchetto di un'altra piattaforma (per esempio @tauri-apps/cli-win32-x64-msvc su Linux) non è installato: versione e licenza
+  // si leggono dal package-lock, così l'elenco esce uguale su ogni sistema (su GitHub mancavano, 22/11)
+  const voce = lock.packages[k] ?? {};
+  const licenza = (typeof pj.license === 'string' ? pj.license : pj.license?.type) ?? voce.license ?? '?';
+  componenti.push([nome, pj.version ?? voce.version ?? '', licenza, copyright(testi, autore ? [autore] : []), nome.startsWith('@fontsource/') ? 'carattere' : 'npm']);
 }
 // ---- icone (tracciati incorporati nel codice) ----
-componenti.push(['Material Symbols Outlined (icone)', '', 'Apache-2.0', 'Copyright Google LLC', 'icone']);
+componenti.push(['Material Icons e Material Symbols (icone)', '', 'Apache-2.0', 'Copyright Google LLC', 'icone']);
 
 // ---- testi delle licenze: un testo per ogni sigla, ripulito dai copyright dei singoli pacchetti ----
 const marcatori = {

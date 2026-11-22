@@ -10,7 +10,7 @@ const AUTORI_SENZA_AVVISO = 'Gli autori del progetto (nessun avviso indicato nel
 const PREMESSA_LICENZA = "Copyright (c) i rispettivi titolari indicati nell'elenco dei componenti";
 import { t, linguaCorrente } from '../i18n/lingua';
 
-export const VERSIONE_APP = '0.4.8';
+export const VERSIONE_APP = '0.4.20';
 const ORIGINI: Record<string, string> = { rust: 'Rust', npm: 'JavaScript', carattere: 'Carattere', icone: 'Icone' };
 
 /** Finestra "Informazioni": che cos'è il programma, condizioni d'uso (software gratuito e open source con licenza GPL-3.0, nessuna garanzia) e tutte le licenze di terze parti. */
@@ -23,30 +23,30 @@ export class DocsInformazioni extends LinguaElement {
     :host-context([alto-contrasto]) button { color: #000000; }
     :host-context([alto-contrasto]) button:focus-visible, :host-context([alto-contrasto]) input:focus-visible, :host-context([alto-contrasto]) summary:focus-visible { outline: 3px solid #000000; outline-offset: 1px; }
     :host-context([alto-contrasto]) button[aria-selected="true"] { background: #000000; color: #ffffff; }
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { display: flex; flex-direction: column; width: 780px; max-width: calc(100vw - 32px); max-height: calc(100vh - 64px); box-sizing: border-box; padding: 20px 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { display: flex; flex-direction: column; width: 780px; max-width: calc(100vw - 32px); max-height: calc(100vh - 64px); box-sizing: border-box; padding: 20px 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
-    .marchio { display: flex; justify-content: center; background: #ffffff; border-radius: 8px; padding: 12px 0; margin-bottom: 10px; }
+    .marchio { display: flex; justify-content: center; background: var(--pmb-superficie, #ffffff); border-radius: 8px; padding: 12px 0; margin-bottom: 10px; }
     .marchio img { height: 88px; width: auto; display: block; }
     .testata { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
     .testata .nome { font-size: 18px; font-weight: 500; }
-    .schede { display: flex; gap: 4px; border-bottom: 1px solid #e8eaed; margin-bottom: 12px; }
-    .schede button { height: 36px; padding: 0 14px; border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; color: #444746; cursor: pointer; }
-    .schede button[aria-selected="true"] { color: #0b57d0; border-bottom-color: #0b57d0; font-weight: 500; }
+    .schede { display: flex; gap: 4px; border-bottom: 1px solid var(--pmb-bordo, #e8eaed); margin-bottom: 12px; }
+    .schede button { height: 36px; padding: 0 14px; border: 0; border-bottom: 3px solid transparent; background: none; font: inherit; color: var(--pmb-testo-2, #444746); cursor: pointer; }
+    .schede button[aria-selected="true"] { color: var(--pmb-accento, #0b57d0); border-bottom-color: #0b57d0; font-weight: 500; }
     .corpo { overflow-y: auto; flex: 1; min-height: 120px; padding-right: 6px; }
     h3 { margin: 16px 0 6px; font-size: 15px; font-weight: 500; }
     h3:first-child { margin-top: 0; }
     p { margin: 0 0 8px; line-height: 1.5; }
-    input[type=search] { width: 100%; box-sizing: border-box; height: 34px; padding: 0 10px; border: 1px solid #dadce0; border-radius: 4px; font: inherit; margin: 6px 0 10px; }
+    input[type=search] { width: 100%; box-sizing: border-box; height: 34px; padding: 0 10px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; font: inherit; margin: 6px 0 10px; }
     table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-    th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #f1f3f4; vertical-align: top; overflow-wrap: anywhere; }
-    th { position: sticky; top: 0; background: #f8f9fa; font-weight: 500; }
-    details { border: 1px solid #e8eaed; border-radius: 6px; margin: 6px 0; }
+    th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--pmb-bordo, #f1f3f4); vertical-align: top; overflow-wrap: anywhere; }
+    th { position: sticky; top: 0; background: var(--pmb-superficie-2, #f8f9fa); font-weight: 500; }
+    details { border: 1px solid var(--pmb-bordo, #e8eaed); border-radius: 6px; margin: 6px 0; }
     summary { padding: 8px 10px; cursor: pointer; font-weight: 500; }
-    pre { margin: 0; padding: 8px 10px 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 11.5px Consolas, "Courier New", monospace; max-height: 260px; overflow-y: auto; background: #f8f9fa; }
-    .nota { color: #5f6368; font-size: 12px; }
+    pre { margin: 0; padding: 8px 10px 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 11.5px Consolas, "Courier New", monospace; max-height: 260px; overflow-y: auto; background: var(--pmb-superficie-2, #f8f9fa); }
+    .nota { color: var(--pmb-testo-2, #5f6368); font-size: 12px; }
     .pulsanti { display: flex; justify-content: flex-end; margin-top: 12px; }
-    .pulsanti button { height: 36px; padding: 0 20px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid #dadce0; background: #ffffff; color: #0b57d0; }
+    .pulsanti button { height: 36px; padding: 0 20px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); }
   `;
 
   focalizza(): void { this.renderRoot.querySelector<HTMLElement>('button[aria-selected="true"]')?.focus(); }

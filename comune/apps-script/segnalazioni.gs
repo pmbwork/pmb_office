@@ -5,7 +5,8 @@
  * Riceve un POST con JSON (inviato come text/plain per evitare la richiesta di verifica CORS) e lo inoltra per email
  * a chi ha pubblicato il servizio. Nell'app non c'è nessuna password: solo l'indirizzo pubblico di questo servizio.
  * Difese contro gli abusi: campo trappola, lunghezze massime, elenco dei programmi ammessi, nessun doppione negli ultimi 10 minuti,
- * tetto globale di 30 messaggi all'ora.
+ * tetto globale di 15 messaggi all'ora e margine sulla quota giornaliera di Gmail (un abuso non deve consumare le email del giorno:
+ * gli account gratuiti ne hanno circa 100, e 30 all'ora ne avrebbero consumate 720).
  */
 /**
  * Prova manuale: si lancia dall'editor di Apps Script (menu «Esegui») dopo aver scelto questa funzione.
@@ -21,7 +22,9 @@ function provaInvio() {
 var PROGRAMMI = ['pmb_docs', 'pmb_sheets'];
 var MAX_TESTO = 4000;
 var MIN_TESTO = 10;
-var MAX_ORA = 30;
+var MAX_ORA = 15;
+/** invii giornalieri da tenere sempre liberi: sotto questa soglia il servizio risponde «riprova domani» */
+var MARGINE_GIORNO = 10;
 
 function rispondi_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
@@ -58,6 +61,7 @@ function doPost(e) {
       var cache = CacheService.getScriptCache();
       var ora = Number(cache.get('conteggio_ora') || 0);
       if (ora >= MAX_ORA) return rispondi_({ ok: false, errore: 'troppi messaggi, riprova più tardi' });
+      if (MailApp.getRemainingDailyQuota() <= MARGINE_GIORNO) return rispondi_({ ok: false, errore: 'troppi messaggi oggi, riprova domani' });
       var impronta = impronta_(app, testo);
       if (cache.get(impronta)) return rispondi_({ ok: true }); // doppione: già ricevuto
     } finally {

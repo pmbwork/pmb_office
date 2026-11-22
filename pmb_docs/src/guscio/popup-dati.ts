@@ -2,7 +2,7 @@
 // Tutto puro: il componente docs-popup li disegna, il guscio li collega all'editor.
 import {
   CARATTERE_NORMALE, CORPO_NORMALE, PASSI_CORPO, attributiParagrafo, formatoSelezione, ordina,
-  type AttributiParagrafo, type Formato, type Stato, type StileParagrafo,
+  type AttributiParagrafo, type Formato, type Stato, type StileParagrafo, type StilePersonale,
 } from '../modello/documento';
 import type { AzioneFormato } from '../editor/azioni-formato';
 import { elencoCaratteri } from './caratteri';
@@ -24,6 +24,8 @@ export interface StatoBarra {
   formato: Formato;
   paragrafo: AttributiParagrafo;
   zoom?: number;
+  /** gli stili personali del documento (per il menu degli stili) */
+  stili?: StilePersonale[];
 }
 
 export const LIVELLI_ZOOM = [50, 75, 90, 100, 125, 150, 200];
@@ -44,6 +46,7 @@ export function statoBarra(stato: Stato): StatoBarra {
   const formato: Formato = stato.pendenti ?? formatoSelezione(stato.doc, stato.sel);
   const paragrafo = attributiParagrafo(stato.doc, ordina(stato.doc, stato.sel)[0]);
   const stile: StileParagrafo = paragrafo.st ?? 'n';
+  const personale = paragrafo.su !== undefined ? stato.doc.stili?.find((s) => s.id === paragrafo.su) : undefined;
   const attivi: string[] = [];
   if (formato.g) attivi.push('grassetto');
   if (formato.c) attivi.push('corsivo');
@@ -56,11 +59,12 @@ export function statoBarra(stato: Stato): StatoBarra {
     valori: {
       'carattere': `${formato.f ?? CARATTERE_NORMALE} ▾`,
       'corpo': String(formato.z ?? CORPO_NORMALE),
-      'stile-paragrafo': stile === 'n' ? 'Testo nor… ▾' : `${NOMI_STILE[stile]} ▾`,
+      'stile-paragrafo': personale ? `${personale.nome.length > 12 ? personale.nome.slice(0, 11) + '…' : personale.nome} ▾` : stile === 'n' ? 'Testo nor… ▾' : `${NOMI_STILE[stile]} ▾`,
     },
     attivi,
     formato,
     paragrafo,
+    ...(stato.doc.stili && stato.doc.stili.length > 0 ? { stili: stato.doc.stili } : {}),
   };
 }
 
@@ -79,9 +83,19 @@ export function popupPerComando(id: string, s?: StatoBarra): Popup | null {
           { etichetta: p.sb ? t('Togli lo spazio prima del paragrafo') : t('Aggiungi spazio prima del paragrafo ({} pt)', SPAZIO_PROPOSTO), azione: { tipo: 'spazio', chiave: 'sb', valore: p.sb ? undefined : SPAZIO_PROPOSTO } as AzioneFormato, attiva: !!p.sb },
           { etichetta: p.sa ? t('Togli lo spazio dopo il paragrafo') : t('Aggiungi spazio dopo il paragrafo ({} pt)', SPAZIO_PROPOSTO), azione: { tipo: 'spazio', chiave: 'sa', valore: p.sa ? undefined : SPAZIO_PROPOSTO } as AzioneFormato, attiva: !!p.sa },
         ]) };
-    case 'stile-paragrafo':
-      return { tipo: 'lista', titolo: t('Stile paragrafo'), voci: ORDINE_STILI
-        .map((k) => ({ etichetta: t(NOMI_STILE[k]), azione: { tipo: 'stile', valore: k } as AzioneFormato, attiva: (p.st ?? 'n') === k })) };
+    case 'stile-paragrafo': {
+      const voci: VocePopup[] = ORDINE_STILI
+        .map((k) => ({ etichetta: t(NOMI_STILE[k]), azione: { tipo: 'stile', valore: k } as AzioneFormato, attiva: p.su === undefined && (p.st ?? 'n') === k }));
+      const personali = s?.stili ?? [];
+      if (personali.length > 0) {
+        voci.push({ etichetta: t('Stili personali'), azione: { tipo: 'apri-stili' } as unknown as AzioneFormato, attiva: false, intestazione: true });
+        for (const x of personali) voci.push({ etichetta: x.nome, azione: { tipo: 'stilePersonale', id: x.id }, attiva: p.su === x.id });
+      }
+      const corrente = p.su !== undefined ? personali.find((x) => x.id === p.su) : undefined;
+      if (corrente) voci.push({ etichetta: t('Aggiorna «{}» come questo paragrafo', corrente.nome), azione: { tipo: 'aggiorna-stile', id: corrente.id } as unknown as AzioneFormato, attiva: false });
+      voci.push({ etichetta: t('Crea o gestisci stili…'), azione: { tipo: 'apri-stili' } as unknown as AzioneFormato, attiva: false });
+      return { tipo: 'lista', titolo: t('Stile paragrafo'), voci };
+    }
     case 'carattere': {
       const voci: VocePopup[] = [];
       for (const sezione of elencoCaratteri()) {

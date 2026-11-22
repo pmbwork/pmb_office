@@ -15,6 +15,16 @@
           <RegistryValue Name=".xlsx" Type="string" Value="" />
           <RegistryValue Name=".ods" Type="string" Value="" />
           <RegistryValue Name=".csv" Type="string" Value="" />
+          <RegistryValue Name=".xlsm" Type="string" Value="" />
+          <RegistryValue Name=".xltx" Type="string" Value="" />
+          <RegistryValue Name=".xltm" Type="string" Value="" />
+          <RegistryValue Name=".xlsb" Type="string" Value="" />
+          <RegistryValue Name=".xls" Type="string" Value="" />
+          <RegistryValue Name=".xlt" Type="string" Value="" />
+          <RegistryValue Name=".ots" Type="string" Value="" />
+          <RegistryValue Name=".fods" Type="string" Value="" />
+          <RegistryValue Name=".dif" Type="string" Value="" />
+          <RegistryValue Name=".slk" Type="string" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="Software\Classes\.xlsx\OpenWithList\pmb-sheets-shell.exe">
           <RegistryValue Type="string" Value="" />
@@ -23,6 +33,36 @@
           <RegistryValue Type="string" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="Software\Classes\.csv\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xlsm\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xltx\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xltm\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xlsb\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xls\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.xlt\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.ots\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.fods\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.dif\OpenWithList\pmb-sheets-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.slk\OpenWithList\pmb-sheets-shell.exe">
           <RegistryValue Type="string" Value="" />
         </RegistryKey>
       </Component>

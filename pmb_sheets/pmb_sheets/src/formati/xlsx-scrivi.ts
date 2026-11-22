@@ -1,11 +1,14 @@
 // Scrittura di file .xlsx (Excel, Google Fogli) dal modello di scambio. Puro: restituisce i byte, non tocca il disco.
 // Le formule si scrivono col nome inglese e SENZA valore calcolato: Excel e Google Fogli le ricalcolano all'apertura (fullCalcOnLoad).
 // I testi delle celle si leggono come li legge il motore: "=..." formula, TRUE/FALSE booleano, numero con punto decimale, altrimenti testo.
+import { livelloMassimo } from '../sheet/gruppi';
+import type { Impronta } from '@comune/protezione/impronte';
 import { scriviZip, type VoceZip } from '@comune/formati/zip';
 import { elemento, escapaXml } from '@comune/formati/xml';
 import type { BorderDef, CellStyle } from '../sheet/styles';
 import { MAX_COLS, MAX_ROWS, parseCellAddress } from '../engine/address';
 import type { FoglioScambio, Scambio } from './scambio';
+import { nomiStampaXml, paginaXml, sheetPrPagina } from './xlsx-pagina';
 import { autoFiltroXml, collegamentiFoglio, collegamentiXml, commentiXml, condizionaliXml, convalideXml, dxfXml, nomiXml, relazioniCollegamenti, vmlCommentiXml } from './xlsx-extra';
 import { tokenize } from '../engine/tokenizer';
 import { Parser, type ASTNode } from '../engine/parser';
@@ -14,6 +17,18 @@ import { estensioneImmagine } from '../sheet/immagini';
 import { disegnoXml, immaginiPerExcel, immaginiWebp } from './xlsx-immagini';
 import { NOME_FOGLIO_PREDEFINITO, foglioVuoto, indirizzoCella } from './scambio';
 import { t } from '../i18n/lingua';
+
+/** Gli attributi della password come li scrive Excel: l'impronta SHA-512 (algorithmName, hashValue, saltValue, spinCount; per la
+ *  cartella con il prefisso «workbook») o, se c'è solo quella vecchia, l'attributo password (workbookPassword). Le impronte di
+ *  LibreOffice (SHA-256) Excel non le conosce: senza le altre la protezione resta, senza password. */
+function attributiImpronta(impronte: Impronta[] | undefined, prefisso: '' | 'workbook'): Record<string, string | number> {
+  const p = (k: string): string => (prefisso === '' ? k : prefisso + k.charAt(0).toUpperCase() + k.slice(1));
+  const moderna = impronte?.find((i) => i.alg === 'SHA-512' && i.sale !== undefined);
+  if (moderna) return { [p('algorithmName')]: 'SHA-512', [p('hashValue')]: moderna.hash, [p('saltValue')]: moderna.sale!, [p('spinCount')]: moderna.giri ?? 100000 };
+  const vecchia = impronte?.find((i) => i.alg === 'legacy');
+  if (vecchia) return { [prefisso === '' ? 'password' : 'workbookPassword']: vecchia.hash };
+  return {};
+}
 
 export type TipoLetterale = 'formula' | 'booleano' | 'numero' | 'testo';
 
@@ -74,14 +89,34 @@ export function avvisiScritturaXlsx(s: Scambio): string[] {
   return avvisi;
 }
 
-/** Funzioni che Excel ha aggiunto dopo il 2007: nel file vogliono un prefisso (_xlfn. o _xlfn._xlws.) sul nome. */
+/**
+ * Funzioni che Excel ha aggiunto dopo il 2007: nel file vogliono un prefisso (_xlfn. o _xlfn._xlws.) sul nome, altrimenti Excel le mostra come
+ * #NOME?. Elenco ricavato da Excel stesso (2026-11-20): un .xlsx salvato da Excel con una formula per ogni funzione di pmb_sheets
+ * (LAVORO/studio-microsoft-office/prefissi_xlsx.py).
+ */
 const PREFISSI_FUNZIONI: Record<string, string> = {
-  MAXIFS: '_xlfn.', MINIFS: '_xlfn.', IFS: '_xlfn.', SWITCH: '_xlfn.', TEXTJOIN: '_xlfn.', CONCAT: '_xlfn.', XLOOKUP: '_xlfn.', XMATCH: '_xlfn.',
-  LET: '_xlfn.', LAMBDA: '_xlfn.', MAP: '_xlfn.', REDUCE: '_xlfn.', SCAN: '_xlfn.', BYROW: '_xlfn.', BYCOL: '_xlfn.', MAKEARRAY: '_xlfn.', TEXTSPLIT: '_xlfn.', VSTACK: '_xlfn.', HSTACK: '_xlfn.', RANDARRAY: '_xlfn.', SEQUENCE: '_xlfn.', UNIQUE: '_xlfn.',
-  FILTER: '_xlfn._xlws.', SORT: '_xlfn._xlws.', SORTBY: '_xlfn._xlws.',
-  'NORM.DIST': '_xlfn.', 'NORM.S.DIST': '_xlfn.', 'NORM.INV': '_xlfn.', 'NORM.S.INV': '_xlfn.', COMBINA: '_xlfn.', ISFORMULA: '_xlfn.', FORMULATEXT: '_xlfn.',
-  SEC: '_xlfn.', CSC: '_xlfn.', COT: '_xlfn.', 'STDEV.S': '_xlfn.', 'STDEV.P': '_xlfn.', 'VAR.S': '_xlfn.', 'VAR.P': '_xlfn.',
-  'PERCENTILE.INC': '_xlfn.', 'PERCENTILE.EXC': '_xlfn.', 'QUARTILE.INC': '_xlfn.', 'QUARTILE.EXC': '_xlfn.', 'MODE.SNGL': '_xlfn.',
+  MAXIFS: '_xlfn.', MINIFS: '_xlfn.', ISFORMULA: '_xlfn.', FORMULATEXT: '_xlfn.',
+  IMTAN: '_xlfn.', IMSEC: '_xlfn.', IMCSC: '_xlfn.', IMCOT: '_xlfn.', IMSINH: '_xlfn.', IMCOSH: '_xlfn.', IMSECH: '_xlfn.', IMCSCH: '_xlfn.', ENCODEURL: '_xlfn.',
+  ACOT: '_xlfn.', ACOTH: '_xlfn.', AGGREGATE: '_xlfn.', ARABIC: '_xlfn.', ARRAYTOTEXT: '_xlfn.', BASE: '_xlfn.', 'BETA.DIST': '_xlfn.',
+  'BETA.INV': '_xlfn.', 'BINOM.DIST': '_xlfn.', 'BINOM.DIST.RANGE': '_xlfn.', 'BINOM.INV': '_xlfn.', BITAND: '_xlfn.', BITLSHIFT: '_xlfn.',
+  BITOR: '_xlfn.', BITRSHIFT: '_xlfn.', BITXOR: '_xlfn.', BYCOL: '_xlfn.', BYROW: '_xlfn.', 'CEILING.MATH': '_xlfn.', 'CEILING.PRECISE': '_xlfn.',
+  'CHISQ.DIST': '_xlfn.', 'CHISQ.DIST.RT': '_xlfn.', 'CHISQ.INV': '_xlfn.', 'CHISQ.INV.RT': '_xlfn.', 'CHISQ.TEST': '_xlfn.', CHOOSECOLS: '_xlfn.',
+  CHOOSEROWS: '_xlfn.', COMBINA: '_xlfn.', CONCAT: '_xlfn.', 'CONFIDENCE.NORM': '_xlfn.', 'CONFIDENCE.T': '_xlfn.', COT: '_xlfn.', COTH: '_xlfn.',
+  'COVARIANCE.P': '_xlfn.', 'COVARIANCE.S': '_xlfn.', CSC: '_xlfn.', CSCH: '_xlfn.', DAYS: '_xlfn.', DECIMAL: '_xlfn.', DROP: '_xlfn.',
+  'ERF.PRECISE': '_xlfn.', 'ERFC.PRECISE': '_xlfn.', EXPAND: '_xlfn.', 'EXPON.DIST': '_xlfn.', 'F.DIST': '_xlfn.', 'F.DIST.RT': '_xlfn.',
+  'F.INV': '_xlfn.', 'F.INV.RT': '_xlfn.', 'F.TEST': '_xlfn.', FILTER: '_xlfn._xlws.', 'FLOOR.MATH': '_xlfn.', 'FLOOR.PRECISE': '_xlfn.',
+  'FORECAST.LINEAR': '_xlfn.', GAMMA: '_xlfn.', 'GAMMA.DIST': '_xlfn.', 'GAMMA.INV': '_xlfn.', 'GAMMALN.PRECISE': '_xlfn.', GAUSS: '_xlfn.',
+  HSTACK: '_xlfn.', 'HYPGEOM.DIST': '_xlfn.', IFNA: '_xlfn.', IFS: '_xlfn.', ISOWEEKNUM: '_xlfn.', LAMBDA: '_xlfn.', LET: '_xlfn.',
+  'LOGNORM.DIST': '_xlfn.', 'LOGNORM.INV': '_xlfn.', MAKEARRAY: '_xlfn.', MAP: '_xlfn.', 'MODE.MULT': '_xlfn.', 'MODE.SNGL': '_xlfn.',
+  MUNIT: '_xlfn.', 'NEGBINOM.DIST': '_xlfn.', 'NORM.DIST': '_xlfn.', 'NORM.INV': '_xlfn.', 'NORM.S.DIST': '_xlfn.', 'NORM.S.INV': '_xlfn.',
+  NUMBERVALUE: '_xlfn.', PDURATION: '_xlfn.', 'PERCENTILE.EXC': '_xlfn.', 'PERCENTILE.INC': '_xlfn.', 'PERCENTRANK.EXC': '_xlfn.',
+  'PERCENTRANK.INC': '_xlfn.', PERMUTATIONA: '_xlfn.', PHI: '_xlfn.', 'POISSON.DIST': '_xlfn.', 'QUARTILE.EXC': '_xlfn.', 'QUARTILE.INC': '_xlfn.',
+  RANDARRAY: '_xlfn.', REDUCE: '_xlfn.', RRI: '_xlfn.', SCAN: '_xlfn.', SEC: '_xlfn.', SECH: '_xlfn.', SEQUENCE: '_xlfn.', SHEET: '_xlfn.',
+  SHEETS: '_xlfn.', 'SKEW.P': '_xlfn.', SORT: '_xlfn._xlws.', SORTBY: '_xlfn.', 'STDEV.P': '_xlfn.', 'STDEV.S': '_xlfn.', SWITCH: '_xlfn.',
+  'T.DIST': '_xlfn.', 'T.DIST.2T': '_xlfn.', 'T.DIST.RT': '_xlfn.', 'T.INV': '_xlfn.', 'T.INV.2T': '_xlfn.', 'T.TEST': '_xlfn.', TAKE: '_xlfn.',
+  TEXTAFTER: '_xlfn.', TEXTBEFORE: '_xlfn.', TEXTJOIN: '_xlfn.', TEXTSPLIT: '_xlfn.', TOCOL: '_xlfn.', TOROW: '_xlfn.', UNICHAR: '_xlfn.',
+  UNICODE: '_xlfn.', UNIQUE: '_xlfn.', VALUETOTEXT: '_xlfn.', 'VAR.P': '_xlfn.', 'VAR.S': '_xlfn.', VSTACK: '_xlfn.', 'WEIBULL.DIST': '_xlfn.',
+  WRAPCOLS: '_xlfn.', WRAPROWS: '_xlfn.', XLOOKUP: '_xlfn.', XMATCH: '_xlfn.', XOR: '_xlfn.', 'Z.TEST': '_xlfn.',
 };
 const RICONOSCI_NUOVE = new RegExp(`(?<![A-Za-z0-9_.])(${Object.keys(PREFISSI_FUNZIONI).sort((x, y) => y.length - x.length).map((n) => n.replace(/\./g, '\\.')).join('|')})\\(`, 'gi');
 
@@ -187,11 +222,13 @@ class TabellaStili {
     const verticale = st.vAlign === 'top' ? 'top' : st.vAlign === 'middle' ? 'center' : st.vAlign === 'bottom' ? 'bottom' : undefined;
     const a = st.wrap ? 1 : undefined;
     const allineamento = orizzontale || verticale || a ? [elemento('alignment', { horizontal: orizzontale, vertical: verticale, wrapText: a })] : [];
+    // protezione della cella come la scrive Excel: di serie bloccata, «locked=0» se si può scrivere col foglio protetto, «hidden=1» per la formula nascosta
+    const protezione = st.sbloccata || st.formulaNascosta ? [elemento('protection', { locked: st.sbloccata ? 0 : undefined, hidden: st.formulaNascosta ? 1 : undefined })] : [];
     return this.voce(this.combinazioni, elemento('xf', {
       numFmtId, fontId, fillId, borderId, xfId: 0,
       applyNumberFormat: numFmtId !== 0 ? 1 : undefined, applyFont: fontId !== 0 ? 1 : undefined, applyFill: fillId !== 0 ? 1 : undefined,
-      applyBorder: borderId !== 0 ? 1 : undefined, applyAlignment: allineamento.length > 0 ? 1 : undefined,
-    }, allineamento));
+      applyBorder: borderId !== 0 ? 1 : undefined, applyAlignment: allineamento.length > 0 ? 1 : undefined, applyProtection: protezione.length > 0 ? 1 : undefined,
+    }, [...allineamento, ...protezione]));
   }
 
   xml(): string {
@@ -247,6 +284,9 @@ function fogliXml(f: FoglioScambio, attivo: boolean, stili: TabellaStili, string
   for (const k of Object.keys(f.altezze)) if (intero(Number(k), 1, MAX_ROWS)) righe.add(Number(k));
   const nascoste = new Set((f.righeNascoste ?? []).filter((n) => intero(n, 1, MAX_ROWS)));
   for (const n of nascoste) righe.add(n);
+  // righe raggruppate (struttura): outlineLevel come Excel
+  const livelliRiga = f.gruppi?.righe ?? {};
+  for (const k of Object.keys(livelliRiga)) if (intero(Number(k), 1, MAX_ROWS)) righe.add(Number(k));
 
   // le colonne usate di ogni riga, raggruppate una volta sola (rileggere tutte le celle a ogni riga rendeva il salvataggio quadratico)
   const colonnePerRiga = new Map<number, number[]>();
@@ -292,6 +332,7 @@ function fogliXml(f: FoglioScambio, attivo: boolean, stili: TabellaStili, string
       r: n, s: xfRiga !== 0 ? xfRiga : undefined, customFormat: xfRiga !== 0 ? 1 : undefined,
       ht: typeof altezza === 'number' && altezza > 0 ? arrotonda(altezza * 0.75) : undefined, customHeight: typeof altezza === 'number' && altezza > 0 ? 1 : undefined,
       hidden: nascoste.has(n) ? 1 : undefined,
+      outlineLevel: livelliRiga[n] ? livelliRiga[n] : undefined,
     }, nelle.map((x) => x.xml));
   };
   const datiRighe = [...righe].sort((x, y) => x - y).map(riga);
@@ -301,11 +342,13 @@ function fogliXml(f: FoglioScambio, attivo: boolean, stili: TabellaStili, string
   for (const k of Object.keys(f.stiliColonna)) if (intero(Number(k), 1, MAX_COLS)) colonne.add(Number(k));
   const colonneNascoste = new Set((f.colonneNascoste ?? []).filter((n) => intero(n, 1, MAX_COLS)));
   for (const n of colonneNascoste) colonne.add(n);
+  const livelliColonna = f.gruppi?.colonne ?? {};
+  for (const k of Object.keys(livelliColonna)) if (intero(Number(k), 1, MAX_COLS)) colonne.add(Number(k));
   const elencoColonne = [...colonne].sort((x, y) => x - y).map((n) => {
     const larghezza = f.larghezze[n];
     const ha = typeof larghezza === 'number' && larghezza > 0;
     const xf = f.stiliColonna[n] ? stili.indice(f.stiliColonna[n]) : 0;
-    return elemento('col', { min: n, max: n, width: ha ? Math.max(0, arrotonda((larghezza - 5) / 7)) : 8.43, customWidth: ha ? 1 : undefined, style: xf !== 0 ? xf : undefined, hidden: colonneNascoste.has(n) ? 1 : undefined });
+    return elemento('col', { min: n, max: n, width: ha ? Math.max(0, arrotonda((larghezza - 5) / 7)) : 8.43, customWidth: ha ? 1 : undefined, style: xf !== 0 ? xf : undefined, hidden: colonneNascoste.has(n) ? 1 : undefined, outlineLevel: livelliColonna[n] ? livelliColonna[n] : undefined });
   });
 
   const rc = intero(f.righeCongelate, 0, MAX_ROWS) ? f.righeCongelate : 0;
@@ -324,20 +367,30 @@ function fogliXml(f: FoglioScambio, attivo: boolean, stili: TabellaStili, string
   const dimensione = maxR > 0 ? `${indirizzoCella(minR, minC)}:${indirizzoCella(maxR, maxC)}` : 'A1';
   const condizionali = condizionaliXml(f, (st) => stili.dxf(st));
   return INTESTAZIONE_XML + elemento('worksheet', { xmlns: NS_PRINCIPALE, 'xmlns:r': NS_RELAZIONI }, [
-    ...(typeof f.colore === 'string' && /^#[0-9a-fA-F]{6}$/.test(f.colore) ? [elemento('sheetPr', {}, [elemento('tabColor', { rgb: `FF${f.colore.slice(1).toUpperCase()}` })])] : []),
+    ...(sheetPrFigli(f).length > 0 ? [elemento('sheetPr', {}, sheetPrFigli(f))] : []),
     elemento('dimension', { ref: dimensione }),
     elemento('sheetViews', {}, [elemento('sheetView', { tabSelected: attivo ? 1 : undefined, workbookViewId: 0 }, pannello)]),
-    elemento('sheetFormatPr', { defaultRowHeight: 15 }),
+    elemento('sheetFormatPr', { defaultRowHeight: 15, outlineLevelRow: livelloMassimo(f.gruppi, 'righe') || undefined, outlineLevelCol: livelloMassimo(f.gruppi, 'colonne') || undefined }),
     ...(elencoColonne.length > 0 ? [elemento('cols', {}, elencoColonne)] : []),
     elemento('sheetData', {}, datiRighe),
+    ...(f.protezione ? [elemento('sheetProtection', { ...attributiImpronta(f.protezione.impronte, ''), sheet: 1, objects: 1, scenarios: 1 })] : []),
     ...autoFiltroXml(f),
     ...(unioni.length > 0 ? [elemento('mergeCells', { count: unioni.length }, unioni)] : []),
     ...condizionali,
     ...convalideXml(f),
     ...collegamentiXml(collegamentiFoglio(f)),
+    ...paginaXml(f),
     ...(haDisegno ? [elemento('drawing', { 'r:id': 'rIdD1' })] : []),
     ...(haCommenti ? [elemento('legacyDrawing', { 'r:id': 'rId1' })] : []),
   ]);
+}
+
+/** I figli di <sheetPr>, nell'ordine dello schema: colore della scheda, poi l'adatta a pagine. */
+function sheetPrFigli(f: FoglioScambio): string[] {
+  return [
+    ...(typeof f.colore === 'string' && /^#[0-9a-fA-F]{6}$/.test(f.colore) ? [elemento('tabColor', { rgb: `FF${f.colore.slice(1).toUpperCase()}` })] : []),
+    ...sheetPrPagina(f),
+  ];
 }
 
 /** Dal modello di scambio ai byte di un file .xlsx. Stesso contenuto, stessi byte. */
@@ -375,9 +428,10 @@ export async function scriviXlsx(s: Scambio): Promise<Uint8Array> {
     elemento('Relationship', { Id: 'rId1', Type: `${NS_RELAZIONI}/officeDocument`, Target: 'xl/workbook.xml' }),
   ]);
   const cartella = INTESTAZIONE_XML + elemento('workbook', { xmlns: NS_PRINCIPALE, 'xmlns:r': NS_RELAZIONI }, [
+    ...(s.protezioneCartella ? [elemento('workbookProtection', { ...attributiImpronta(s.protezioneCartella.impronte, 'workbook'), lockStructure: 1 })] : []),
     elemento('bookViews', {}, [elemento('workbookView', { activeTab: indiceAttivo })]),
     elemento('sheets', {}, nomi.map((nome, i) => elemento('sheet', { name: nome, sheetId: i + 1, state: origine[i].nascosto && i !== indiceAttivo ? 'hidden' : undefined, 'r:id': `rId${i + 1}` }))),
-    ...nomiXml(s.nomi ?? [], nomiNelFile, origine.flatMap((f, i) => (f.filtro ? [{ indice: i, foglio: nomi[i], area: f.filtro.area }] : []))),
+    ...nomiXml(s.nomi ?? [], nomiNelFile, origine.flatMap((f, i) => (f.filtro ? [{ indice: i, foglio: nomi[i], area: f.filtro.area }] : [])), nomiStampaXml(origine, nomi)),
     elemento('calcPr', { calcId: 191029, fullCalcOnLoad: 1 }),
   ]);
   const relazioniCartella = INTESTAZIONE_XML + elemento('Relationships', { xmlns: NS_PACCHETTO }, [

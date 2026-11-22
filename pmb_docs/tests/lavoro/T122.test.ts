@@ -71,12 +71,13 @@ describe('T122: leggere un file immagine', () => {
 });
 
 describe('T122: il menu dell\'immagine', () => {
+  // dal 0.4.14 tra le larghezze e «Elimina immagine» ci sono rotazioni, ritaglio e testo intorno (vedi T558)
   it('tre larghezze e "Elimina immagine", nessuna spuntata', () => {
     const p = popupImmagine();
-    expect(p.voci.map((v) => v.etichetta)).toEqual(['Piccola (150 px)', 'Media (300 px)', 'Larghezza del testo', 'Elimina immagine']);
+    expect([...p.voci.slice(0, 3), p.voci[p.voci.length - 1]].map((v) => v.etichetta)).toEqual(['Piccola (150 px)', 'Media (300 px)', 'Larghezza del testo', 'Elimina immagine']);
     expect(LARGHEZZE_IMMAGINE.map((x) => x[1])).toEqual([150, 300, 602]);
     expect(p.voci.slice(0, 3).map((v) => v.azione)).toEqual([150, 300, 602].map((larghezza) => ({ tipo: 'larghezzaImmagine', larghezza })));
-    expect(p.voci[3].azione).toEqual({ tipo: 'cancella', direzione: 'indietro', parola: false });
+    expect(p.voci[p.voci.length - 1].azione).toEqual({ tipo: 'cancella', direzione: 'indietro', parola: false });
     expect(p.voci.every((v) => !v.attiva)).toBe(true);
   });
 });
@@ -279,7 +280,7 @@ describe('T122: nel guscio', () => {
     ed.applicaAzione({ tipo: 'vai', pos: { p: 0, o: 2 }, estendi: false });
     ed.applicaAzione({ tipo: 'vai', pos: { p: 0, o: 3 }, estendi: true });
     const voci = await sottovociFormato(g, 'Immagine');
-    expect(voci.length).toBe(4);
+    expect(voci.length).toBe(13); // dal 0.4.16 c'è anche «Testo alternativo…»
     voci.find((v) => (v.textContent ?? '').includes('Piccola'))!.click();
     await attendi(40);
     expect(immagineDi(ed).getAttribute('width')).toBe('150');

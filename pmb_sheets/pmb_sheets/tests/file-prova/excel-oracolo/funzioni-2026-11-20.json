@@ -1,0 +1,1837 @@
+{
+ "fonte": "Microsoft Excel 16.0 (build 20711), installato su questo PC, letto con l'automazione COM il 2026-11-20",
+ "dati": {
+  "A1": 3,
+  "A2": 7,
+  "A3": 7,
+  "A4": 2,
+  "A5": 9,
+  "A6": 4,
+  "A7": 7,
+  "A8": 10,
+  "B1": 2.5,
+  "B2": 6.1,
+  "B3": 7.3,
+  "B4": 1.9,
+  "B5": 8.8,
+  "B6": 4.2,
+  "B7": 6.6,
+  "B8": 9.9,
+  "C1": 0.1,
+  "C2": 0.2,
+  "C3": 0.3,
+  "C4": 0.4,
+  "D1": 1,
+  "D2": 2,
+  "D3": 3,
+  "D4": 4,
+  "E1": 58,
+  "F1": 35,
+  "E2": 11,
+  "F2": 25,
+  "E3": 10,
+  "F3": 23,
+  "G1": 45.35,
+  "H1": 47.65,
+  "G2": 17.56,
+  "H2": 18.44,
+  "G3": 16.09,
+  "H3": 16.91,
+  "I1": 1,
+  "I2": 2,
+  "I3": 2,
+  "I4": 3,
+  "I5": 3,
+  "I6": 4,
+  "I7": 5,
+  "K1": 0.1,
+  "K2": 0.05,
+  "K3": -0.02,
+  "K4": 0.07,
+  "T1": "Mario Rossi, via Roma 1, Milano",
+  "T2": "a-b-c-d",
+  "T3": "senza separatori"
+ },
+ "casi": [
+  {
+   "formula": "=BINOM.DIST(3,10,0.3,TRUE)",
+   "numero": 0.6496107184
+  },
+  {
+   "formula": "=BINOM.DIST(3,10,0.3,FALSE)",
+   "numero": 0.26682793200000005
+  },
+  {
+   "formula": "=BINOMDIST(3,10,0.3,TRUE)",
+   "numero": 0.6496107184
+  },
+  {
+   "formula": "=BINOM.DIST(0,5,0.5,TRUE)",
+   "numero": 0.03125
+  },
+  {
+   "formula": "=BINOM.DIST(0,5,0.5,FALSE)",
+   "numero": 0.03125
+  },
+  {
+   "formula": "=BINOMDIST(0,5,0.5,TRUE)",
+   "numero": 0.03125
+  },
+  {
+   "formula": "=BINOM.DIST(7,12,0.85,TRUE)",
+   "numero": 0.0239219086522632
+  },
+  {
+   "formula": "=BINOM.DIST(7,12,0.85,FALSE)",
+   "numero": 0.01928030753195509
+  },
+  {
+   "formula": "=BINOMDIST(7,12,0.85,TRUE)",
+   "numero": 0.0239219086522632
+  },
+  {
+   "formula": "=BINOM.DIST(10,10,0.2,TRUE)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=BINOM.DIST(10,10,0.2,FALSE)",
+   "numero": 1.0240000000000004e-07
+  },
+  {
+   "formula": "=BINOMDIST(10,10,0.2,TRUE)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=BINOM.DIST(3.7,10.9,0.3,FALSE)",
+   "numero": 0.26682793200000005
+  },
+  {
+   "formula": "=BINOM.DIST(11,10,0.3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BINOM.DIST(-1,10,0.3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BINOM.DIST(3,10,1.2,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BINOM.DIST.RANGE(60,0.75,48)",
+   "numero": 0.0839749674290475
+  },
+  {
+   "formula": "=BINOM.DIST.RANGE(60,0.75,45,50)",
+   "numero": 0.5236297934718872
+  },
+  {
+   "formula": "=BINOM.DIST.RANGE(10,0.5,7,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BINOM.DIST.RANGE(10,0.5,11)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BINOM.INV(6,0.5,0.75)",
+   "numero": 4.0
+  },
+  {
+   "formula": "=CRITBINOM(6,0.5,0.75)",
+   "numero": 4.0
+  },
+  {
+   "formula": "=BINOM.INV(20,0.1,0.05)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CRITBINOM(20,0.1,0.05)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=BINOM.INV(20,0.1,0.999)",
+   "numero": 7.0
+  },
+  {
+   "formula": "=CRITBINOM(20,0.1,0.999)",
+   "numero": 7.0
+  },
+  {
+   "formula": "=BINOM.INV(10,0.3,0)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CRITBINOM(10,0.3,0)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BINOM.INV(10,0.3,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CRITBINOM(10,0.3,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=POISSON.DIST(2,5,TRUE)",
+   "numero": 0.12465201948308113
+  },
+  {
+   "formula": "=POISSON.DIST(2,5,FALSE)",
+   "numero": 0.08422433748856833
+  },
+  {
+   "formula": "=POISSON(2,5,TRUE)",
+   "numero": 0.12465201948308113
+  },
+  {
+   "formula": "=POISSON.DIST(0,0.5,TRUE)",
+   "numero": 0.6065306597126334
+  },
+  {
+   "formula": "=POISSON.DIST(0,0.5,FALSE)",
+   "numero": 0.6065306597126334
+  },
+  {
+   "formula": "=POISSON(0,0.5,TRUE)",
+   "numero": 0.6065306597126334
+  },
+  {
+   "formula": "=POISSON.DIST(12,4.2,TRUE)",
+   "numero": 0.9995693705825935
+  },
+  {
+   "formula": "=POISSON.DIST(12,4.2,FALSE)",
+   "numero": 0.000943230198494421
+  },
+  {
+   "formula": "=POISSON(12,4.2,TRUE)",
+   "numero": 0.9995693705825935
+  },
+  {
+   "formula": "=POISSON.DIST(2.9,3,TRUE)",
+   "numero": 0.4231900811268434
+  },
+  {
+   "formula": "=POISSON.DIST(2.9,3,FALSE)",
+   "numero": 0.22404180765538775
+  },
+  {
+   "formula": "=POISSON(2.9,3,TRUE)",
+   "numero": 0.4231900811268434
+  },
+  {
+   "formula": "=POISSON.DIST(-1,3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=POISSON.DIST(2,-3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=POISSON.DIST(3,0,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CHISQ.DIST(0.5,1,TRUE)",
+   "numero": 0.5204998778130465
+  },
+  {
+   "formula": "=CHISQ.DIST.RT(0.5,1)",
+   "numero": 0.4795001221869535
+  },
+  {
+   "formula": "=CHIDIST(0.5,1)",
+   "numero": 0.4795001221869535
+  },
+  {
+   "formula": "=CHISQ.DIST(3,4,TRUE)",
+   "numero": 0.44217459962892536
+  },
+  {
+   "formula": "=CHISQ.DIST.RT(3,4)",
+   "numero": 0.5578254003710746
+  },
+  {
+   "formula": "=CHIDIST(3,4)",
+   "numero": 0.5578254003710746
+  },
+  {
+   "formula": "=CHISQ.DIST(18.307,10,TRUE)",
+   "numero": 0.9499994109086018
+  },
+  {
+   "formula": "=CHISQ.DIST.RT(18.307,10)",
+   "numero": 0.05000058909139811
+  },
+  {
+   "formula": "=CHIDIST(18.307,10)",
+   "numero": 0.05000058909139811
+  },
+  {
+   "formula": "=CHISQ.DIST(0,2,TRUE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CHISQ.DIST.RT(0,2)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=CHIDIST(0,2)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=CHISQ.DIST(40,3,TRUE)",
+   "numero": 0.9999999893449096
+  },
+  {
+   "formula": "=CHISQ.DIST.RT(40,3)",
+   "numero": 1.0655090334255863e-08
+  },
+  {
+   "formula": "=CHIDIST(40,3)",
+   "numero": 1.0655090334255863e-08
+  },
+  {
+   "formula": "=CHISQ.DIST(2,3,FALSE)",
+   "numero": 0.20755374871029736
+  },
+  {
+   "formula": "=CHISQ.DIST(0,2,FALSE)",
+   "numero": 0.5
+  },
+  {
+   "formula": "=CHISQ.DIST(0,3,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CHISQ.DIST(-1,3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CHISQ.DIST(2,0.5,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CHISQ.DIST(2,3.9,TRUE)",
+   "numero": 0.4275932955291202
+  },
+  {
+   "formula": "=CHISQ.INV(0.05,10)",
+   "numero": 3.9402991361190596
+  },
+  {
+   "formula": "=CHISQ.INV.RT(0.05,10)",
+   "numero": 18.307038053275146
+  },
+  {
+   "formula": "=CHIINV(0.05,10)",
+   "numero": 18.307038053275146
+  },
+  {
+   "formula": "=CHISQ.INV(0.5,1)",
+   "numero": 0.4549364231195729
+  },
+  {
+   "formula": "=CHISQ.INV.RT(0.5,1)",
+   "numero": 0.4549364231195729
+  },
+  {
+   "formula": "=CHIINV(0.5,1)",
+   "numero": 0.4549364231195729
+  },
+  {
+   "formula": "=CHISQ.INV(0.999,3)",
+   "numero": 16.266236196237987
+  },
+  {
+   "formula": "=CHISQ.INV.RT(0.999,3)",
+   "numero": 0.024297585815692378
+  },
+  {
+   "formula": "=CHIINV(0.999,3)",
+   "numero": 0.024297585815692378
+  },
+  {
+   "formula": "=CHISQ.INV(0.0001,20)",
+   "numero": 4.395162716449104
+  },
+  {
+   "formula": "=CHISQ.INV.RT(0.0001,20)",
+   "numero": 52.385973273052166
+  },
+  {
+   "formula": "=CHIINV(0.0001,20)",
+   "numero": 52.385973273052166
+  },
+  {
+   "formula": "=CHISQ.INV(0,3)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CHISQ.INV(1,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CHISQ.INV.RT(1,3)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CHISQ.INV.RT(0,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CHISQ.INV(-0.1,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CHISQ.TEST(E1:F3,G1:H3)",
+   "numero": 0.00030819201700830936
+  },
+  {
+   "formula": "=CHITEST(E1:F3,G1:H3)",
+   "numero": 0.00030819201700830936
+  },
+  {
+   "formula": "=CHISQ.TEST(A1:A4,B1:B4)",
+   "numero": 0.9690737023006154
+  },
+  {
+   "formula": "=CHISQ.TEST(A1:A4,B1:B3)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=F.DIST(1.5,3,7,TRUE)",
+   "numero": 0.7041910807035623
+  },
+  {
+   "formula": "=F.DIST(1.5,3,7,FALSE)",
+   "numero": 0.2339761241306173
+  },
+  {
+   "formula": "=F.DIST.RT(1.5,3,7)",
+   "numero": 0.2958089192964377
+  },
+  {
+   "formula": "=FDIST(1.5,3,7)",
+   "numero": 0.2958089192964377
+  },
+  {
+   "formula": "=F.DIST(0.2,1,1,TRUE)",
+   "numero": 0.26772047280123
+  },
+  {
+   "formula": "=F.DIST(0.2,1,1,FALSE)",
+   "numero": 0.5931354528476479
+  },
+  {
+   "formula": "=F.DIST.RT(0.2,1,1)",
+   "numero": 0.73227952719877
+  },
+  {
+   "formula": "=FDIST(0.2,1,1)",
+   "numero": 0.73227952719877
+  },
+  {
+   "formula": "=F.DIST(4,10,2,TRUE)",
+   "numero": 0.783526166468459
+  },
+  {
+   "formula": "=F.DIST(4,10,2,FALSE)",
+   "numero": 0.046638462289789226
+  },
+  {
+   "formula": "=F.DIST.RT(4,10,2)",
+   "numero": 0.21647383353154098
+  },
+  {
+   "formula": "=FDIST(4,10,2)",
+   "numero": 0.21647383353154098
+  },
+  {
+   "formula": "=F.DIST(-1,3,7,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=F.DIST(1,0.5,7,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=F.DIST(0,3,7,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=F.DIST(0,1,7,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=F.DIST(0,2,7,FALSE)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=F.INV(0.05,6,4)",
+   "numero": 0.22057151644633372
+  },
+  {
+   "formula": "=F.INV.RT(0.05,6,4)",
+   "numero": 6.163132282688633
+  },
+  {
+   "formula": "=FINV(0.05,6,4)",
+   "numero": 6.163132282688633
+  },
+  {
+   "formula": "=F.INV(0.5,1,1)",
+   "numero": 0.9999999999999999
+  },
+  {
+   "formula": "=F.INV.RT(0.5,1,1)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=FINV(0.5,1,1)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=F.INV(0.99,10,20)",
+   "numero": 3.3681863891887405
+  },
+  {
+   "formula": "=F.INV.RT(0.99,10,20)",
+   "numero": 0.22699441321991295
+  },
+  {
+   "formula": "=FINV(0.99,10,20)",
+   "numero": 0.22699441321991295
+  },
+  {
+   "formula": "=F.TEST(A1:A8,B1:B8)",
+   "numero": 0.9915507787139543
+  },
+  {
+   "formula": "=FTEST(A1:A8,B1:B8)",
+   "numero": 0.9915507787139543
+  },
+  {
+   "formula": "=F.TEST(A1:A4,B1:B6)",
+   "numero": 0.9849296320501191
+  },
+  {
+   "formula": "=F.TEST(A1,B1:B6)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=EXPON.DIST(0.2,10,TRUE)",
+   "numero": 0.8646647167633873
+  },
+  {
+   "formula": "=EXPON.DIST(0.2,10,FALSE)",
+   "numero": 1.353352832366127
+  },
+  {
+   "formula": "=EXPONDIST(0.2,10,TRUE)",
+   "numero": 0.8646647167633873
+  },
+  {
+   "formula": "=EXPON.DIST(2,0.5,TRUE)",
+   "numero": 0.6321205588285577
+  },
+  {
+   "formula": "=EXPON.DIST(2,0.5,FALSE)",
+   "numero": 0.18393972058572117
+  },
+  {
+   "formula": "=EXPONDIST(2,0.5,TRUE)",
+   "numero": 0.6321205588285577
+  },
+  {
+   "formula": "=EXPON.DIST(0,3,TRUE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=EXPON.DIST(0,3,FALSE)",
+   "numero": 3.0
+  },
+  {
+   "formula": "=EXPONDIST(0,3,TRUE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=EXPON.DIST(-1,3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=EXPON.DIST(1,0,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA.DIST(10.00001131,9,2,TRUE)",
+   "numero": 0.06809400386978734
+  },
+  {
+   "formula": "=GAMMA.DIST(10.00001131,9,2,FALSE)",
+   "numero": 0.03263913041829401
+  },
+  {
+   "formula": "=GAMMADIST(10.00001131,9,2,FALSE)",
+   "numero": 0.03263913041829401
+  },
+  {
+   "formula": "=GAMMA.DIST(0.5,0.5,1,TRUE)",
+   "numero": 0.6826894921370861
+  },
+  {
+   "formula": "=GAMMA.DIST(0.5,0.5,1,FALSE)",
+   "numero": 0.4839414490382867
+  },
+  {
+   "formula": "=GAMMADIST(0.5,0.5,1,FALSE)",
+   "numero": 0.4839414490382867
+  },
+  {
+   "formula": "=GAMMA.DIST(3,1,2,TRUE)",
+   "numero": 0.7768698398515702
+  },
+  {
+   "formula": "=GAMMA.DIST(3,1,2,FALSE)",
+   "numero": 0.11156508007421491
+  },
+  {
+   "formula": "=GAMMADIST(3,1,2,FALSE)",
+   "numero": 0.11156508007421491
+  },
+  {
+   "formula": "=GAMMA.DIST(7,2.5,1.5,TRUE)",
+   "numero": 0.9035152405288015
+  },
+  {
+   "formula": "=GAMMA.DIST(7,2.5,1.5,FALSE)",
+   "numero": 0.047541746329498334
+  },
+  {
+   "formula": "=GAMMADIST(7,2.5,1.5,FALSE)",
+   "numero": 0.047541746329498334
+  },
+  {
+   "formula": "=GAMMA.DIST(0,2,1,TRUE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=GAMMA.DIST(0,2,1,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=GAMMADIST(0,2,1,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=GAMMA.DIST(0,0.5,1,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA.DIST(0,1,2,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA.DIST(-1,2,1,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA.DIST(1,0,1,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA.DIST(1,2,0,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA.INV(0.068094,9,2)",
+   "numero": 10.00001119143718
+  },
+  {
+   "formula": "=GAMMAINV(0.068094,9,2)",
+   "numero": 10.00001119143718
+  },
+  {
+   "formula": "=GAMMA.INV(0.5,1,1)",
+   "numero": 0.6931471805599453
+  },
+  {
+   "formula": "=GAMMAINV(0.5,1,1)",
+   "numero": 0.6931471805599453
+  },
+  {
+   "formula": "=GAMMA.INV(0.999,0.3,4)",
+   "numero": 18.475744171165122
+  },
+  {
+   "formula": "=GAMMAINV(0.999,0.3,4)",
+   "numero": 18.475744171165122
+  },
+  {
+   "formula": "=GAMMA.INV(0,2,1)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=GAMMA.INV(1,2,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=LOGNORM.DIST(4,3.5,1.2,TRUE)",
+   "numero": 0.03908355570680048
+  },
+  {
+   "formula": "=LOGNORM.DIST(4,3.5,1.2,FALSE)",
+   "numero": 0.01761759668181922
+  },
+  {
+   "formula": "=LOGNORMDIST(4,3.5,1.2)",
+   "numero": 0.03908355570680048
+  },
+  {
+   "formula": "=LOGNORM.DIST(0.5,0,1,TRUE)",
+   "numero": 0.2441085957855827
+  },
+  {
+   "formula": "=LOGNORM.DIST(0.5,0,1,FALSE)",
+   "numero": 0.6274960771159244
+  },
+  {
+   "formula": "=LOGNORMDIST(0.5,0,1)",
+   "numero": 0.2441085957855827
+  },
+  {
+   "formula": "=LOGNORM.DIST(100,2,0.8,TRUE)",
+   "numero": 0.9994359513076922
+  },
+  {
+   "formula": "=LOGNORM.DIST(100,2,0.8,FALSE)",
+   "numero": 2.4835414189022183e-05
+  },
+  {
+   "formula": "=LOGNORMDIST(100,2,0.8)",
+   "numero": 0.9994359513076922
+  },
+  {
+   "formula": "=LOGNORM.DIST(0,3,1,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=LOGNORM.DIST(1,3,0,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=LOGNORM.INV(0.039084,3.5,1.2)",
+   "numero": 4.000025218680638
+  },
+  {
+   "formula": "=LOGINV(0.039084,3.5,1.2)",
+   "numero": 4.000025218680638
+  },
+  {
+   "formula": "=LOGNORM.INV(0.5,0,1)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=LOGINV(0.5,0,1)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=LOGNORM.INV(0.95,1,0.25)",
+   "numero": 4.1009284805285455
+  },
+  {
+   "formula": "=LOGINV(0.95,1,0.25)",
+   "numero": 4.1009284805285455
+  },
+  {
+   "formula": "=LOGNORM.INV(0,0,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=LOGNORM.INV(1,0,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BETA.DIST(2,8,10,TRUE,1,3)",
+   "numero": 0.6854705810546873
+  },
+  {
+   "formula": "=BETA.DIST(2,8,10,FALSE,1,3)",
+   "numero": 1.4837646484375
+  },
+  {
+   "formula": "=BETADIST(2,8,10,1,3)",
+   "numero": 0.6854705810546873
+  },
+  {
+   "formula": "=BETA.DIST(0.3,2,5,TRUE,0,1)",
+   "numero": 0.579825
+  },
+  {
+   "formula": "=BETA.DIST(0.3,2,5,FALSE,0,1)",
+   "numero": 2.1609
+  },
+  {
+   "formula": "=BETADIST(0.3,2,5,0,1)",
+   "numero": 0.579825
+  },
+  {
+   "formula": "=BETA.DIST(0.9,0.5,0.5,TRUE,0,1)",
+   "numero": 0.7951672353008665
+  },
+  {
+   "formula": "=BETA.DIST(0.9,0.5,0.5,FALSE,0,1)",
+   "numero": 1.061032953945969
+  },
+  {
+   "formula": "=BETADIST(0.9,0.5,0.5,0,1)",
+   "numero": 0.7951672353008665
+  },
+  {
+   "formula": "=BETA.DIST(0.3,2,5,TRUE)",
+   "numero": 0.579825
+  },
+  {
+   "formula": "=BETA.DIST(4,8,10,TRUE,1,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BETA.DIST(0.3,0,5,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BETA.DIST(2,8,10,TRUE,3,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BETA.DIST(0,2,5,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=BETA.DIST(1,2,5,TRUE)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=BETA.INV(0.685470581,8,10,1,3)",
+   "numero": 1.9999999999631426
+  },
+  {
+   "formula": "=BETAINV(0.685470581,8,10,1,3)",
+   "numero": 1.9999999999631426
+  },
+  {
+   "formula": "=BETA.INV(0.5,2,5,0,1)",
+   "numero": 0.26444998329566
+  },
+  {
+   "formula": "=BETAINV(0.5,2,5,0,1)",
+   "numero": 0.26444998329566
+  },
+  {
+   "formula": "=BETA.INV(0.01,0.5,0.5,0,1)",
+   "numero": 0.0002467198171342215
+  },
+  {
+   "formula": "=BETAINV(0.01,0.5,0.5,0,1)",
+   "numero": 0.0002467198171342215
+  },
+  {
+   "formula": "=BETA.INV(0.5,2,5)",
+   "numero": 0.26444998329566
+  },
+  {
+   "formula": "=BETA.INV(0,2,5)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BETA.INV(1,2,5)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=WEIBULL.DIST(105,20,100,TRUE)",
+   "numero": 0.929581390069277
+  },
+  {
+   "formula": "=WEIBULL.DIST(105,20,100,FALSE)",
+   "numero": 0.035588864024503564
+  },
+  {
+   "formula": "=WEIBULL(105,20,100,TRUE)",
+   "numero": 0.929581390069277
+  },
+  {
+   "formula": "=WEIBULL.DIST(1,1,1,TRUE)",
+   "numero": 0.6321205588285577
+  },
+  {
+   "formula": "=WEIBULL.DIST(1,1,1,FALSE)",
+   "numero": 0.36787944117144233
+  },
+  {
+   "formula": "=WEIBULL(1,1,1,TRUE)",
+   "numero": 0.6321205588285577
+  },
+  {
+   "formula": "=WEIBULL.DIST(2.5,0.5,3,TRUE)",
+   "numero": 0.5986297372417501
+  },
+  {
+   "formula": "=WEIBULL.DIST(2.5,0.5,3,FALSE)",
+   "numero": 0.07327984894148973
+  },
+  {
+   "formula": "=WEIBULL(2.5,0.5,3,TRUE)",
+   "numero": 0.5986297372417501
+  },
+  {
+   "formula": "=WEIBULL.DIST(-1,2,3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=WEIBULL.DIST(1,0,3,TRUE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=WEIBULL.DIST(0,0.5,3,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=HYPGEOM.DIST(1,4,8,20,TRUE)",
+   "numero": 0.46542827657378727
+  },
+  {
+   "formula": "=HYPGEOM.DIST(1,4,8,20,FALSE)",
+   "numero": 0.3632610939112486
+  },
+  {
+   "formula": "=HYPGEOMDIST(1,4,8,20)",
+   "numero": 0.3632610939112486
+  },
+  {
+   "formula": "=HYPGEOM.DIST(0,3,5,10,TRUE)",
+   "numero": 0.08333333333333334
+  },
+  {
+   "formula": "=HYPGEOM.DIST(0,3,5,10,FALSE)",
+   "numero": 0.08333333333333334
+  },
+  {
+   "formula": "=HYPGEOMDIST(0,3,5,10)",
+   "numero": 0.08333333333333334
+  },
+  {
+   "formula": "=HYPGEOM.DIST(3,5,5,12,TRUE)",
+   "numero": 0.9545454545454546
+  },
+  {
+   "formula": "=HYPGEOM.DIST(3,5,5,12,FALSE)",
+   "numero": 0.2651515151515153
+  },
+  {
+   "formula": "=HYPGEOMDIST(3,5,5,12)",
+   "numero": 0.2651515151515153
+  },
+  {
+   "formula": "=HYPGEOM.DIST(5,4,8,20,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=HYPGEOM.DIST(1,4,25,20,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=HYPGEOM.DIST(4,4,3,20,FALSE)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=NEGBINOM.DIST(10,5,0.25,TRUE)",
+   "numero": 0.31351405847817665
+  },
+  {
+   "formula": "=NEGBINOM.DIST(10,5,0.25,FALSE)",
+   "numero": 0.05504866037517785
+  },
+  {
+   "formula": "=NEGBINOMDIST(10,5,0.25)",
+   "numero": 0.05504866037517785
+  },
+  {
+   "formula": "=NEGBINOM.DIST(0,3,0.5,TRUE)",
+   "numero": 0.12500000000000003
+  },
+  {
+   "formula": "=NEGBINOM.DIST(0,3,0.5,FALSE)",
+   "numero": 0.12500000000000003
+  },
+  {
+   "formula": "=NEGBINOMDIST(0,3,0.5)",
+   "numero": 0.12500000000000003
+  },
+  {
+   "formula": "=NEGBINOM.DIST(4.8,2.2,0.7,TRUE)",
+   "numero": 0.989065
+  },
+  {
+   "formula": "=NEGBINOM.DIST(4.8,2.2,0.7,FALSE)",
+   "numero": 0.019845000000000022
+  },
+  {
+   "formula": "=NEGBINOMDIST(4.8,2.2,0.7)",
+   "numero": 0.019845000000000022
+  },
+  {
+   "formula": "=NEGBINOM.DIST(-1,3,0.5,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=NEGBINOM.DIST(2,0,0.5,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=NEGBINOM.DIST(2,3,1,FALSE)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=Z.TEST(A1:A8,4)",
+   "numero": 0.017489972317721827
+  },
+  {
+   "formula": "=Z.TEST(A1:A8,6,2)",
+   "numero": 0.4298418975993331
+  },
+  {
+   "formula": "=ZTEST(A1:A8,8)",
+   "numero": 0.9685940762419507
+  },
+  {
+   "formula": "=Z.TEST(A1:A8,4,0)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=Z.TEST(A1,4)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=CONFIDENCE.NORM(0.05,2.5,50)",
+   "numero": 0.6929519121748386
+  },
+  {
+   "formula": "=CONFIDENCE(0.05,2.5,50)",
+   "numero": 0.6929519121748386
+  },
+  {
+   "formula": "=CONFIDENCE.T(0.05,1,50)",
+   "numero": 0.2841968554957298
+  },
+  {
+   "formula": "=CONFIDENCE.T(0.05,1,1)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=CONFIDENCE.NORM(0,2.5,50)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CONFIDENCE.NORM(0.05,2.5,0.5)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=CONFIDENCE.NORM(0.05,2.5,7.9)",
+   "numero": 1.8519918863343663
+  },
+  {
+   "formula": "=NORMDIST(42,40,1.5,TRUE)",
+   "numero": 0.9087887802741321
+  },
+  {
+   "formula": "=NORMDIST(42,40,1.5,FALSE)",
+   "numero": 0.10934004978399575
+  },
+  {
+   "formula": "=NORMINV(0.908789,40,1.5)",
+   "numero": 42.00000200956616
+  },
+  {
+   "formula": "=NORMSDIST(1.333333)",
+   "numero": 0.9087887256040951
+  },
+  {
+   "formula": "=NORMSINV(0.908789)",
+   "numero": 1.3333346730441071
+  },
+  {
+   "formula": "=TDIST(1.959999998,60,2)",
+   "numero": 0.05464492997592096
+  },
+  {
+   "formula": "=TDIST(1.959999998,60,1)",
+   "numero": 0.02732246498796048
+  },
+  {
+   "formula": "=TDIST(-1,60,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=TDIST(1,60,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=TINV(0.05464,60)",
+   "numero": 1.9600411871272456
+  },
+  {
+   "formula": "=TTEST(A1:A8,B1:B8,2,1)",
+   "numero": 0.1644128650696235
+  },
+  {
+   "formula": "=COVAR(A1:A8,B1:B8)",
+   "numero": 7.0734375
+  },
+  {
+   "formula": "=GAMMA(2.5)",
+   "numero": 1.329340388179137
+  },
+  {
+   "formula": "=GAMMA(-3.75)",
+   "numero": 0.26786612886141664
+  },
+  {
+   "formula": "=GAMMA(0)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA(-2)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMA(5)",
+   "numero": 24.0
+  },
+  {
+   "formula": "=GAMMA(0.5)",
+   "numero": 1.772453850905516
+  },
+  {
+   "formula": "=GAMMA(171)",
+   "numero": 7.257415615308e+306
+  },
+  {
+   "formula": "=GAMMA(172)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMALN(4)",
+   "numero": 1.791759469228055
+  },
+  {
+   "formula": "=GAMMALN(0.3)",
+   "numero": 1.0957979948180756
+  },
+  {
+   "formula": "=GAMMALN(1000)",
+   "numero": 5905.220423209181
+  },
+  {
+   "formula": "=GAMMALN(0)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=GAMMALN.PRECISE(4.5)",
+   "numero": 2.4537365708424423
+  },
+  {
+   "formula": "=GAMMALN.PRECISE(-1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=FISHER(0.75)",
+   "numero": 0.9729550745276566
+  },
+  {
+   "formula": "=FISHER(-0.3)",
+   "numero": -0.30951960420311175
+  },
+  {
+   "formula": "=FISHER(1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=FISHERINV(0.972955)",
+   "numero": 0.7499999673941484
+  },
+  {
+   "formula": "=FISHERINV(-2)",
+   "numero": -0.9640275800758168
+  },
+  {
+   "formula": "=PHI(0.75)",
+   "numero": 0.30113743215480443
+  },
+  {
+   "formula": "=PHI(-2)",
+   "numero": 0.05399096651318806
+  },
+  {
+   "formula": "=GAUSS(2)",
+   "numero": 0.4772498680518208
+  },
+  {
+   "formula": "=GAUSS(-0.5)",
+   "numero": -0.19146246127401312
+  },
+  {
+   "formula": "=STANDARDIZE(42,40,1.5)",
+   "numero": 1.3333333333333333
+  },
+  {
+   "formula": "=STANDARDIZE(42,40,0)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=DEVSQ(A1:A8)",
+   "numero": 56.875
+  },
+  {
+   "formula": "=DEVSQ(4,5,8,7,11,4,3)",
+   "numero": 48.0
+  },
+  {
+   "formula": "=DEVSQ(B1:B8,1)",
+   "numero": 78.8
+  },
+  {
+   "formula": "=STEYX(B1:B8,A1:A8)",
+   "numero": 0.41779115661948896
+  },
+  {
+   "formula": "=STEYX(B1:B2,A1:A2)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=STEYX(B1:B8,A1:A7)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=PERMUTATIONA(3,2)",
+   "numero": 9.0
+  },
+  {
+   "formula": "=PERMUTATIONA(2.9,2.9)",
+   "numero": 4.0
+  },
+  {
+   "formula": "=PERMUTATIONA(0,0)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=PERMUTATIONA(-1,2)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=SKEW.P(A1:A8)",
+   "numero": -0.17371626183786892
+  },
+  {
+   "formula": "=SKEW.P(3,10,5,24,2,3,1,4,12,13)",
+   "numero": 1.2199600048700279
+  },
+  {
+   "formula": "=SKEW.P(5,5,5)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=PROB(D1:D4,C1:C4,2)",
+   "numero": 0.2
+  },
+  {
+   "formula": "=PROB(D1:D4,C1:C4,1,3)",
+   "numero": 0.6000000000000001
+  },
+  {
+   "formula": "=PROB(D1:D4,C1:C4,5)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=PROB(D1:D4,C1:C3,2)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=PROB(D1:D3,C1:C3,2)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=PERCENTRANK.EXC(A1:A8,7)",
+   "numero": 0.444
+  },
+  {
+   "formula": "=PERCENTRANK.EXC(A1:A8,5)",
+   "numero": 0.37
+  },
+  {
+   "formula": "=PERCENTRANK.EXC(A1:A8,5,5)",
+   "numero": 0.37037
+  },
+  {
+   "formula": "=PERCENTRANK.EXC(A1:A8,2)",
+   "numero": 0.111
+  },
+  {
+   "formula": "=PERCENTRANK.EXC(A1:A8,11)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=PERCENTRANK.EXC(A1:A8,8.25,2)",
+   "numero": 0.73
+  },
+  {
+   "formula": "=ERF(0.745)",
+   "numero": 0.7079289200957377
+  },
+  {
+   "formula": "=ERF(1,2)",
+   "numero": 0.15262147206923782
+  },
+  {
+   "formula": "=ERF(-0.5)",
+   "numero": -0.5204998778130465
+  },
+  {
+   "formula": "=ERF(2,1)",
+   "numero": -0.15262147206923782
+  },
+  {
+   "formula": "=ERF.PRECISE(1.5)",
+   "numero": 0.9661051464753108
+  },
+  {
+   "formula": "=ERFC(1)",
+   "numero": 0.15729920705028513
+  },
+  {
+   "formula": "=ERFC(-1)",
+   "numero": 1.8427007929497148
+  },
+  {
+   "formula": "=ERFC.PRECISE(0.2)",
+   "numero": 0.7772974107895215
+  },
+  {
+   "formula": "=ERF(6)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=ERFC(6)",
+   "numero": 2.151973671249892e-17
+  },
+  {
+   "formula": "=FORECAST.LINEAR(30,B1:B8,A1:A8)",
+   "numero": 29.666813186813187
+  },
+  {
+   "formula": "=FORECAST.LINEAR(5,B1:B8,A1:A7)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=SUM(MODE.MULT(I1:I7))",
+   "numero": 5.0
+  },
+  {
+   "formula": "=ROWS(MODE.MULT(I1:I7))",
+   "numero": 2.0
+  },
+  {
+   "formula": "=INDEX(MODE.MULT(I1:I7),2)",
+   "numero": 3.0
+  },
+  {
+   "formula": "=MODE.MULT(1,2,3)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=MODE.MULT(A1:A8)",
+   "numero": 7.0
+  },
+  {
+   "formula": "=ACOT(2)",
+   "numero": 0.4636476090008061
+  },
+  {
+   "formula": "=ACOT(-2)",
+   "numero": 2.677945044588987
+  },
+  {
+   "formula": "=ACOT(0)",
+   "numero": 1.5707963267948966
+  },
+  {
+   "formula": "=ACOTH(6)",
+   "numero": 0.16823611831060645
+  },
+  {
+   "formula": "=ACOTH(-3)",
+   "numero": -0.34657359027997264
+  },
+  {
+   "formula": "=ACOTH(0.5)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=COTH(2)",
+   "numero": 1.037314720727548
+  },
+  {
+   "formula": "=COTH(0)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=CSCH(1.5)",
+   "numero": 0.46964244059522464
+  },
+  {
+   "formula": "=CSCH(0)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=SECH(1)",
+   "numero": 0.6480542736638855
+  },
+  {
+   "formula": "=SECH(800)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CEILING.PRECISE(4.3)",
+   "numero": 5.0
+  },
+  {
+   "formula": "=CEILING.PRECISE(-4.3)",
+   "numero": -4.0
+  },
+  {
+   "formula": "=CEILING.PRECISE(4.3,2)",
+   "numero": 6.0
+  },
+  {
+   "formula": "=CEILING.PRECISE(-4.3,-2)",
+   "numero": -4.0
+  },
+  {
+   "formula": "=CEILING.PRECISE(4.3,0)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=CEILING.PRECISE(0.234,0.01)",
+   "numero": 0.24
+  },
+  {
+   "formula": "=FLOOR.PRECISE(3.2)",
+   "numero": 3.0
+  },
+  {
+   "formula": "=FLOOR.PRECISE(-3.2)",
+   "numero": -4.0
+  },
+  {
+   "formula": "=FLOOR.PRECISE(3.2,-2)",
+   "numero": 2.0
+  },
+  {
+   "formula": "=FLOOR.PRECISE(-3.2,2)",
+   "numero": -4.0
+  },
+  {
+   "formula": "=FLOOR.PRECISE(3.2,0)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=ISO.CEILING(4.3)",
+   "numero": 5.0
+  },
+  {
+   "formula": "=ISO.CEILING(-4.3,2)",
+   "numero": -4.0
+  },
+  {
+   "formula": "=SUM(MUNIT(3))",
+   "numero": 3.0
+  },
+  {
+   "formula": "=INDEX(MUNIT(3),2,2)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=INDEX(MUNIT(3),1,2)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=MUNIT(0)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=ROWS(MUNIT(4))",
+   "numero": 4.0
+  },
+  {
+   "formula": "=VDB(2400,300,10*365,0,1)",
+   "numero": 1.3150684931506849
+  },
+  {
+   "formula": "=VDB(2400,300,10*12,0,1)",
+   "numero": 40.0
+  },
+  {
+   "formula": "=VDB(2400,300,10,0,1)",
+   "numero": 480.0
+  },
+  {
+   "formula": "=VDB(2400,300,10*12,6,18)",
+   "numero": 396.30605326475086
+  },
+  {
+   "formula": "=VDB(2400,300,10*12,6,18,1.5)",
+   "numero": 311.80893665823413
+  },
+  {
+   "formula": "=VDB(2400,300,10,0,0.875,1.5)",
+   "numero": 315.0
+  },
+  {
+   "formula": "=VDB(2400,300,10,0,10)",
+   "numero": 2100.0
+  },
+  {
+   "formula": "=VDB(2400,300,10,0,10,2,TRUE)",
+   "numero": 2100.000000000001
+  },
+  {
+   "formula": "=VDB(2400,300,10,3.5,7.25)",
+   "numero": 624.6236160000001
+  },
+  {
+   "formula": "=VDB(2400,300,10,5,3)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=VDB(2400,300,10,0,11)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=VDB(10000,1000,5,0,5,3)",
+   "numero": 9000.0
+  },
+  {
+   "formula": "=ISPMT(0.1/12,1,36,8000000)",
+   "numero": -64814.81481481482
+  },
+  {
+   "formula": "=ISPMT(0.1,1,3,8000000)",
+   "numero": -533333.3333333334
+  },
+  {
+   "formula": "=ISPMT(0.1,0,3,1000)",
+   "numero": -100.0
+  },
+  {
+   "formula": "=ISPMT(0.1,1,0,1000)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=FVSCHEDULE(1,{0.09,0.11,0.1})",
+   "numero": 1.3308900000000004
+  },
+  {
+   "formula": "=FVSCHEDULE(1000,K1:K4)",
+   "numero": 1211.1330000000003
+  },
+  {
+   "formula": "=FVSCHEDULE(1000,0.05)",
+   "numero": 1050.0
+  },
+  {
+   "formula": "=PDURATION(0.025,2000,2200)",
+   "numero": 3.859866162622655
+  },
+  {
+   "formula": "=PDURATION(0.025/12,1000,1200)",
+   "numero": 87.6054764193714
+  },
+  {
+   "formula": "=PDURATION(0,1000,1200)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=PDURATION(0.1,-1000,1200)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=RRI(96,10000,11000)",
+   "numero": 0.0009933073762913303
+  },
+  {
+   "formula": "=RRI(10,100,50)",
+   "numero": -0.06696700846319259
+  },
+  {
+   "formula": "=RRI(0,100,50)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=RRI(10,0,50)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=DOLLARDE(1.02,16)",
+   "numero": 1.125
+  },
+  {
+   "formula": "=DOLLARDE(1.1,32)",
+   "numero": 1.3125000000000002
+  },
+  {
+   "formula": "=DOLLARDE(-1.1,8)",
+   "numero": -1.125
+  },
+  {
+   "formula": "=DOLLARDE(1.1,0)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=DOLLARDE(1.1,-1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=DOLLARDE(1.125,100)",
+   "numero": 1.125
+  },
+  {
+   "formula": "=DOLLARDE(1.02,16.9)",
+   "numero": 1.125
+  },
+  {
+   "formula": "=DOLLARFR(1.125,16)",
+   "numero": 1.02
+  },
+  {
+   "formula": "=DOLLARFR(1.125,32)",
+   "numero": 1.04
+  },
+  {
+   "formula": "=DOLLARFR(-1.5,8)",
+   "numero": -1.4
+  },
+  {
+   "formula": "=DOLLARFR(1.125,0)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=DOLLARFR(1.25,100)",
+   "numero": 1.25
+  },
+  {
+   "formula": "=TEXTBEFORE(T1,\",\")",
+   "testo": "Mario Rossi"
+  },
+  {
+   "formula": "=TEXTBEFORE(T1,\",\",2)",
+   "testo": "Mario Rossi, via Roma 1"
+  },
+  {
+   "formula": "=TEXTBEFORE(T1,\",\",-1)",
+   "testo": "Mario Rossi, via Roma 1"
+  },
+  {
+   "formula": "=TEXTBEFORE(T1,\"ROSSI\")",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=TEXTBEFORE(T1,\"ROSSI\",,1)",
+   "testo": "Mario "
+  },
+  {
+   "formula": "=TEXTBEFORE(T3,\"-\")",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=TEXTBEFORE(T3,\"-\",,,1)",
+   "testo": "senza separatori"
+  },
+  {
+   "formula": "=TEXTBEFORE(T3,\"-\",,,,\"niente\")",
+   "testo": "niente"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"-\",4)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"-\",4,,1)",
+   "testo": "a-b-c-d"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"-\",0)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"\")",
+   "testo": ""
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"\",-1)",
+   "testo": "a-b-c-d"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,{\"b\",\"c\"})",
+   "testo": "a-"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"-\",-4,,1)",
+   "testo": ""
+  },
+  {
+   "formula": "=TEXTBEFORE(\"\",\"x\",,,1)",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=TEXTBEFORE(T2,\"-\",99)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=TEXTAFTER(T1,\",\")",
+   "testo": " via Roma 1, Milano"
+  },
+  {
+   "formula": "=TEXTAFTER(T1,\",\",2)",
+   "testo": " Milano"
+  },
+  {
+   "formula": "=TEXTAFTER(T1,\",\",-1)",
+   "testo": " Milano"
+  },
+  {
+   "formula": "=TEXTAFTER(T1,\"ROSSI\")",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=TEXTAFTER(T1,\"ROSSI\",,1)",
+   "testo": ", via Roma 1, Milano"
+  },
+  {
+   "formula": "=TEXTAFTER(T3,\"-\")",
+   "errore": "#N/D"
+  },
+  {
+   "formula": "=TEXTAFTER(T3,\"-\",,,1)",
+   "testo": ""
+  },
+  {
+   "formula": "=TEXTAFTER(T3,\"-\",-1,,1)",
+   "testo": "senza separatori"
+  },
+  {
+   "formula": "=TEXTAFTER(T3,\"-\",,,,\"niente\")",
+   "testo": "niente"
+  },
+  {
+   "formula": "=TEXTAFTER(T2,\"-\",4,,1)",
+   "testo": ""
+  },
+  {
+   "formula": "=TEXTAFTER(T2,\"\")",
+   "testo": "a-b-c-d"
+  },
+  {
+   "formula": "=TEXTAFTER(T2,\"\",-1)",
+   "testo": ""
+  },
+  {
+   "formula": "=TEXTAFTER(T2,{\"c\",\"b\"})",
+   "testo": "-c-d"
+  },
+  {
+   "formula": "=TEXTAFTER(T2,\"-\",0)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=TEXTAFTER(T2,\"-\",-3)",
+   "testo": "b-c-d"
+  },
+  {
+   "formula": "=VALUETOTEXT(\"abc\")",
+   "testo": "abc"
+  },
+  {
+   "formula": "=VALUETOTEXT(\"abc\",1)",
+   "testo": "\"abc\""
+  },
+  {
+   "formula": "=VALUETOTEXT(12.5)",
+   "testo": "12,5"
+  },
+  {
+   "formula": "=VALUETOTEXT(12.5,1)",
+   "testo": "12,5"
+  },
+  {
+   "formula": "=VALUETOTEXT(1/0)",
+   "testo": "#DIV/0!"
+  },
+  {
+   "formula": "=VALUETOTEXT(1/0,1)",
+   "testo": "#DIV/0!"
+  },
+  {
+   "formula": "=VALUETOTEXT(A1)",
+   "testo": "3"
+  },
+  {
+   "formula": "=VALUETOTEXT(T3,1)",
+   "testo": "\"senza separatori\""
+  },
+  {
+   "formula": "=VALUETOTEXT(Z99)",
+   "testo": ""
+  },
+  {
+   "formula": "=VALUETOTEXT(Z99,1)",
+   "testo": ""
+  },
+  {
+   "formula": "=VALUETOTEXT(5,2)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(A1:A3)",
+   "testo": "3; 7; 7"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(T2:T3)",
+   "testo": "a-b-c-d; senza separatori"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(T2:T3,1)",
+   "testo": "{\"a-b-c-d\".\"senza separatori\"}"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(A1:B2,1)",
+   "testo": "{3\\2,5.7\\6,1}"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(A1:B2)",
+   "testo": "3; 2,5; 7; 6,1"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(Z98:Z99,1)",
+   "testo": "{.}"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(1/0)",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=ARRAYTOTEXT(A1:A2,3)",
+   "errore": "#VALORE!"
+  }
+ ]
+}

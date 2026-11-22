@@ -21,11 +21,13 @@ async function apriFormato(el: any): Promise<void> { titolo(el, 'formato').click
 beforeEach(() => { document.body.innerHTML = ''; });
 
 describe('T321: i dati del sottomenu Testo', () => {
+  // dal 0.4.15 Testo ha anche le sei voci delle maiuscole e minuscole (come Formato › Testo di LibreOffice)
   it('Testo ha sei figli con le scorciatoie; le altre voci non hanno figli', () => {
     const formato = MENU.find((m) => m.id === 'formato')!.voci;
     const testo = formato.find((v) => v.etichetta === 'Testo')!;
     expect(testo.sottomenu).toBe(true);
-    expect(testo.figli?.map((f) => [f.etichetta, f.scorciatoia])).toEqual([['Grassetto', 'Ctrl+B'], ['Corsivo', 'Ctrl+I'], ['Sottolineato', 'Ctrl+U'], ['Barrato', 'Alt+Maiusc+5'], ['Apice', 'Ctrl+.'], ['Pedice', 'Ctrl+,']]);
+    expect(testo.figli?.slice(0, 6).map((f) => [f.etichetta, f.scorciatoia])).toEqual([['Grassetto', 'Ctrl+B'], ['Corsivo', 'Ctrl+I'], ['Sottolineato', 'Ctrl+U'], ['Barrato', 'Alt+Maiusc+5'], ['Apice', 'Ctrl+.'], ['Pedice', 'Ctrl+,']]);
+    expect(testo.figli?.slice(6).map((f) => f.etichetta)).toEqual(['Sottolineato doppio', 'Maiuscoletto', 'MAIUSCOLO', 'minuscolo', 'Iniziali Maiuscole', 'Frase', 'iNVERTI', 'Cambia (giro)']);
     expect(formato.filter((v) => v.figli).map((v) => v.etichetta)).toEqual(['Testo', 'Colonne', 'Bordi e linee']);
   });
 });
@@ -46,7 +48,7 @@ describe('T321: il sottomenu nella barra dei menu', () => {
     voceDi(el, 'Testo').click();
     await el.updateComplete;
     expect(sotto(el)).not.toBeNull();
-    expect(figli(el)).toEqual(['Grassetto', 'Corsivo', 'Sottolineato', 'Barrato', 'Apice', 'Pedice']);
+    expect(figli(el)).toEqual(['Grassetto', 'Corsivo', 'Sottolineato', 'Barrato', 'Apice', 'Pedice', 'Sottolineato doppio', 'Maiuscoletto', 'MAIUSCOLO', 'minuscolo', 'Iniziali Maiuscole', 'Frase', 'iNVERTI', 'Cambia (giro)']);
     expect(voceDi(el, 'Testo').getAttribute('aria-expanded')).toBe('true');
     expect(scelte).toBe(0);
     expect(el.shadowRoot.querySelectorAll('.pannello').length).toBe(1);

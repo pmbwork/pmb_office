@@ -2,6 +2,7 @@
 // Il file ha: mimetype (non compresso, primo), manifest, contenuto (celle, stili, formati numerici, colonne, righe, celle unite) e impostazioni di vista (foglio attivo, blocchi).
 // Le formule si scrivono in OpenFormula ("of:=SUM([.A1:.B3])") e SENZA valore in cache: chi apre il file le ricalcola.
 // I testi delle celle si leggono come li legge il motore: "=..." formula, TRUE/FALSE booleano, numero con punto decimale, altrimenti testo.
+import type { Impronta } from '@comune/protezione/impronte';
 import { scriviZip, type VoceZip } from '@comune/formati/zip';
 import { elemento, escapaXml } from '@comune/formati/xml';
 import type { BorderDef, CellStyle } from '../sheet/styles';
@@ -10,6 +11,8 @@ import type { DataValidationRule } from '../sheet/data-validation';
 import type { FoglioScambio, NomeScambio, Scambio } from './scambio';
 import { NOME_FOGLIO_PREDEFINITO, foglioVuoto, indirizzoCella } from './scambio';
 import { tipoLetterale } from './xlsx-scrivi';
+import { attributiTabella, perditeOds, stiliPaginaXml, stiliTabellaXml } from './ods-pagina';
+import { StiliCondizionali, condizionaliOds, condizionaliPerseOds } from './ods-condizionali';
 import { t } from '../i18n/lingua';
 
 const NS_UFFICIO = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
@@ -19,8 +22,20 @@ const NS_TABELLA = 'urn:oasis:names:tc:opendocument:xmlns:table:1.0';
 const NS_FO = 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0';
 const NS_NUMERO = 'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0';
 const NS_FORMULA = 'urn:oasis:names:tc:opendocument:xmlns:of:1.2';
+const NS_TABELLA_OOO = 'http://openoffice.org/2009/table';
+const NS_CALCEXT = 'urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0';
 const NS_CONFIG = 'urn:oasis:names:tc:opendocument:xmlns:config:1.0';
 const NS_MANIFEST = 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0';
+/** La protezione come la scrive LibreOffice: l'attributo che la accende e, se c'è l'impronta SHA-256 della password, la chiave. */
+function attributiProtezioneOds(p: { impronte?: Impronta[] } | undefined, attributo: string): Record<string, string> {
+  if (!p) return {};
+  const chiave = p.impronte?.find((i) => i.alg === 'SHA-256' || i.alg === 'SHA-1');
+  return {
+    [attributo]: 'true',
+    ...(chiave ? { 'table:protection-key': chiave.hash, 'table:protection-key-digest-algorithm': chiave.alg === 'SHA-256' ? 'http://www.w3.org/2000/09/xmldsig#sha256' : 'http://www.w3.org/2000/09/xmldsig#sha1' } : {}),
+  };
+}
+
 export const TIPO_ODS = 'application/vnd.oasis.opendocument.spreadsheet';
 const INTESTAZIONE_XML = '<?xml version="1.0" encoding="UTF-8"?>\n';
 
@@ -40,8 +55,45 @@ export function nomiFoglioOds(nomi: string[]): string[] {
 }
 
 // ---- formule: dal testo di Fogli a OpenFormula ----
-const FUNZIONI_NUOVE = ['MAXIFS', 'MINIFS', 'IFS', 'SWITCH', 'TEXTJOIN', 'CONCAT', 'XLOOKUP', 'XMATCH'];
-const RICONOSCI_NUOVE = new RegExp(`(?<![A-Za-z0-9_.])(${FUNZIONI_NUOVE.join('|')})\\(`, 'gi');
+/**
+ * Nomi delle funzioni che in OpenFormula si scrivono diversi da Fogli: quelle nate in Excel con COM.MICROSOFT. (senza, LibreOffice dà
+ * #NAME?), le vecchie di Excel con LEGACY. e alcune col nome dello standard (F.DIST è FDIST, BINOM.DIST.RANGE è B). Tabella ricavata
+ * da LibreOffice installato, usato da fuori: un .xlsx con tutte le funzioni convertito in .ods (2026-11-20).
+ */
+export const NOMI_ODS: Record<string, string> = {
+  'ENCODEURL': 'COM.MICROSOFT.ENCODEURL',
+  'AGGREGATE': 'COM.MICROSOFT.AGGREGATE', 'ARRAYTOTEXT': 'COM.MICROSOFT.ARRAYTOTEXT', 'BETA.DIST': 'COM.MICROSOFT.BETA.DIST',
+  'BETA.INV': 'COM.MICROSOFT.BETA.INV', 'BINOM.DIST': 'COM.MICROSOFT.BINOM.DIST', 'BINOM.DIST.RANGE': 'B', 'BINOM.INV': 'COM.MICROSOFT.BINOM.INV',
+  'CEILING': 'COM.MICROSOFT.CEILING', 'CEILING.MATH': 'COM.MICROSOFT.CEILING.MATH', 'CEILING.PRECISE': 'COM.MICROSOFT.CEILING.PRECISE',
+  'CHIDIST': 'LEGACY.CHIDIST', 'CHIINV': 'LEGACY.CHIINV', 'CHISQ.DIST': 'COM.MICROSOFT.CHISQ.DIST', 'CHISQ.DIST.RT': 'COM.MICROSOFT.CHISQ.DIST.RT',
+  'CHISQ.INV': 'COM.MICROSOFT.CHISQ.INV', 'CHISQ.INV.RT': 'COM.MICROSOFT.CHISQ.INV.RT', 'CHISQ.TEST': 'COM.MICROSOFT.CHISQ.TEST',
+  'CHITEST': 'LEGACY.CHITEST', 'CHOOSECOLS': 'COM.MICROSOFT.CHOOSECOLS', 'CHOOSEROWS': 'COM.MICROSOFT.CHOOSEROWS', 'CONCAT': 'COM.MICROSOFT.CONCAT',
+  'CONFIDENCE.NORM': 'COM.MICROSOFT.CONFIDENCE.NORM', 'CONFIDENCE.T': 'COM.MICROSOFT.CONFIDENCE.T', 'COVARIANCE.P': 'COM.MICROSOFT.COVARIANCE.P',
+  'COVARIANCE.S': 'COM.MICROSOFT.COVARIANCE.S', 'DROP': 'COM.MICROSOFT.DROP', 'ERF.PRECISE': 'COM.MICROSOFT.ERF.PRECISE',
+  'ERFC.PRECISE': 'COM.MICROSOFT.ERFC.PRECISE', 'EXPAND': 'COM.MICROSOFT.EXPAND', 'EXPON.DIST': 'COM.MICROSOFT.EXPON.DIST', 'F.DIST': 'FDIST',
+  'F.DIST.RT': 'COM.MICROSOFT.F.DIST.RT', 'F.INV': 'FINV', 'F.INV.RT': 'COM.MICROSOFT.F.INV.RT', 'F.TEST': 'COM.MICROSOFT.F.TEST',
+  'FDIST': 'LEGACY.FDIST', 'FILTER': 'COM.MICROSOFT.FILTER', 'FINV': 'LEGACY.FINV', 'FLOOR': 'COM.MICROSOFT.FLOOR',
+  'FLOOR.MATH': 'COM.MICROSOFT.FLOOR.MATH', 'FLOOR.PRECISE': 'COM.MICROSOFT.FLOOR.PRECISE', 'FORECAST.LINEAR': 'COM.MICROSOFT.FORECAST.LINEAR',
+  'GAMMA.DIST': 'COM.MICROSOFT.GAMMA.DIST', 'GAMMA.INV': 'COM.MICROSOFT.GAMMA.INV', 'GAMMALN.PRECISE': 'COM.MICROSOFT.GAMMALN.PRECISE',
+  'HSTACK': 'COM.MICROSOFT.HSTACK', 'HYPGEOM.DIST': 'COM.MICROSOFT.HYPGEOM.DIST', 'IFS': 'COM.MICROSOFT.IFS',
+  'ISO.CEILING': 'COM.MICROSOFT.ISO.CEILING', 'LOGNORM.DIST': 'COM.MICROSOFT.LOGNORM.DIST', 'LOGNORM.INV': 'COM.MICROSOFT.LOGNORM.INV',
+  'MAXIFS': 'COM.MICROSOFT.MAXIFS', 'MINIFS': 'COM.MICROSOFT.MINIFS', 'MODE.MULT': 'COM.MICROSOFT.MODE.MULT', 'MODE.SNGL': 'COM.MICROSOFT.MODE.SNGL',
+  'NEGBINOM.DIST': 'COM.MICROSOFT.NEGBINOM.DIST', 'NETWORKDAYS.INTL': 'COM.MICROSOFT.NETWORKDAYS.INTL', 'NORM.DIST': 'COM.MICROSOFT.NORM.DIST',
+  'NORM.INV': 'COM.MICROSOFT.NORM.INV', 'NORM.S.DIST': 'COM.MICROSOFT.NORM.S.DIST', 'NORM.S.INV': 'COM.MICROSOFT.NORM.S.INV',
+  'NORMSDIST': 'LEGACY.NORMSDIST', 'NORMSINV': 'LEGACY.NORMSINV', 'PERCENTILE.EXC': 'COM.MICROSOFT.PERCENTILE.EXC',
+  'PERCENTILE.INC': 'COM.MICROSOFT.PERCENTILE.INC', 'PERCENTRANK.EXC': 'COM.MICROSOFT.PERCENTRANK.EXC',
+  'PERCENTRANK.INC': 'COM.MICROSOFT.PERCENTRANK.INC', 'POISSON.DIST': 'COM.MICROSOFT.POISSON.DIST', 'QUARTILE.EXC': 'COM.MICROSOFT.QUARTILE.EXC',
+  'QUARTILE.INC': 'COM.MICROSOFT.QUARTILE.INC', 'RANDARRAY': 'COM.MICROSOFT.RANDARRAY', 'SEQUENCE': 'COM.MICROSOFT.SEQUENCE', 'SKEW.P': 'SKEWP',
+  'SORT': 'COM.MICROSOFT.SORT', 'SORTBY': 'COM.MICROSOFT.SORTBY', 'STDEV.P': 'COM.MICROSOFT.STDEV.P', 'STDEV.S': 'COM.MICROSOFT.STDEV.S',
+  'SWITCH': 'COM.MICROSOFT.SWITCH', 'T.DIST': 'COM.MICROSOFT.T.DIST', 'T.DIST.2T': 'COM.MICROSOFT.T.DIST.2T', 'T.DIST.RT': 'COM.MICROSOFT.T.DIST.RT',
+  'T.INV': 'COM.MICROSOFT.T.INV', 'T.INV.2T': 'COM.MICROSOFT.T.INV.2T', 'T.TEST': 'COM.MICROSOFT.T.TEST', 'TAKE': 'COM.MICROSOFT.TAKE',
+  'TDIST': 'LEGACY.TDIST', 'TEXTAFTER': 'COM.MICROSOFT.TEXTAFTER', 'TEXTBEFORE': 'COM.MICROSOFT.TEXTBEFORE', 'TEXTJOIN': 'COM.MICROSOFT.TEXTJOIN',
+  'TEXTSPLIT': 'COM.MICROSOFT.TEXTSPLIT', 'TOCOL': 'COM.MICROSOFT.TOCOL', 'TOROW': 'COM.MICROSOFT.TOROW', 'UNIQUE': 'COM.MICROSOFT.UNIQUE',
+  'VALUETOTEXT': 'COM.MICROSOFT.VALUETOTEXT', 'VAR.P': 'COM.MICROSOFT.VAR.P', 'VAR.S': 'COM.MICROSOFT.VAR.S', 'VSTACK': 'COM.MICROSOFT.VSTACK',
+  'WEIBULL.DIST': 'COM.MICROSOFT.WEIBULL.DIST', 'WORKDAY.INTL': 'COM.MICROSOFT.WORKDAY.INTL', 'WRAPCOLS': 'COM.MICROSOFT.WRAPCOLS',
+  'WRAPROWS': 'COM.MICROSOFT.WRAPROWS', 'XLOOKUP': 'COM.MICROSOFT.XLOOKUP', 'XMATCH': 'COM.MICROSOFT.XMATCH', 'Z.TEST': 'COM.MICROSOFT.Z.TEST',
+};
+const RICONOSCI_NUOVE = new RegExp(`(?<![A-Za-z0-9_.])(${Object.keys(NOMI_ODS).sort((x, y) => y.length - x.length).map((n) => n.replace(/\./g, '\\.')).join('|')})\\(`, 'gi');
 const FUORI = '(?<![A-Za-z0-9_.$\'"!])';
 const NOME_FOGLIO_RIF = `(?:'((?:[^']|'')+)'|([A-Za-z_][A-Za-z0-9_]*))!`;
 const CELLA = '\\$?[A-Za-z]{1,3}\\$?\\d+';
@@ -62,7 +114,7 @@ function codiceOds(c: string): string {
   s = s.replace(RIF_RIGHE, (_t, a: string, b: string) => `[.${a}:.${b}]`);
   s = s.replace(RIF_SEMPLICE, (_t, a: string, b: string | undefined) => `[.${a}${b ? `:.${b}` : ''}]`);
   s = s.replace(LOGICI, (_t, v: string) => `${v.toUpperCase()}()`);
-  s = s.replace(RICONOSCI_NUOVE, (_t, nome: string) => `COM.MICROSOFT.${nome.toUpperCase()}(`);
+  s = s.replace(RICONOSCI_NUOVE, (_t, nome: string) => `${NOMI_ODS[nome.toUpperCase()]}(`);
   let uscita = '';
   let graffe = 0;
   let dentroRif = false;
@@ -240,8 +292,9 @@ class TabellaStili {
     return typeof st.numFmt === 'string' && st.numFmt !== '' ? this.formato(st.numFmt)?.tipo ?? null : null;
   }
 
-  /** Nome dello stile di cella per questo stile (lo crea se serve), o undefined se lo stile non cambia niente. */
-  nome(st: Readonly<CellStyle>): string | undefined {
+  /** Nome dello stile di cella per questo stile (lo crea se serve), o undefined se lo stile non cambia niente.
+   *  `mappe`: i `style:map` delle formattazioni condizionali che valgono nella cella (vanno dopo le proprietà). */
+  nome(st: Readonly<CellStyle>, mappe: readonly string[] = []): string | undefined {
     const f = typeof st.numFmt === 'string' && st.numFmt !== '' ? this.formato(st.numFmt) : null;
     const sfondo = colore(st.fill);
     const b = st.borders;
@@ -250,6 +303,8 @@ class TabellaStili {
       'fo:border-top': lato(b?.top), 'fo:border-bottom': lato(b?.bottom), 'fo:border-left': lato(b?.left), 'fo:border-right': lato(b?.right),
       'style:vertical-align': st.vAlign === 'top' ? 'top' : st.vAlign === 'middle' ? 'middle' : st.vAlign === 'bottom' ? 'bottom' : undefined,
       'fo:wrap-option': st.wrap ? 'wrap' : undefined,
+      // protezione della cella (di serie «protected»): sbloccata = «none», formula nascosta = «formula-hidden»
+      'style:cell-protect': st.sbloccata ? (st.formulaNascosta ? 'formula-hidden' : 'none') : st.formulaNascosta ? 'protected formula-hidden' : undefined,
     });
     const allineamento = st.hAlign === 'left' ? 'start' : st.hAlign === 'right' ? 'end' : st.hAlign === 'center' ? 'center' : undefined;
     const dimensione = typeof st.fontSize === 'number' && Number.isFinite(st.fontSize) && st.fontSize > 0 && st.fontSize <= 409 ? `${st.fontSize}pt` : undefined;
@@ -261,8 +316,8 @@ class TabellaStili {
       'fo:font-size': dimensione, 'fo:color': colore(st.color),
     });
     const figli = [cella, ...(allineamento ? [elemento('style:paragraph-properties', { 'fo:text-align': allineamento })] : []), testo].filter((x) => x !== '<style:table-cell-properties/>' && x !== '<style:text-properties/>');
-    if (figli.length === 0 && !f) return undefined;
-    const xml = (n: string): string => elemento('style:style', { 'style:name': n, 'style:family': 'table-cell', 'style:data-style-name': f?.nome }, figli);
+    if (figli.length === 0 && !f && mappe.length === 0) return undefined;
+    const xml = (n: string): string => elemento('style:style', { 'style:name': n, 'style:family': 'table-cell', 'style:data-style-name': f?.nome }, [...figli, ...mappe]);
     const chiave = xml('');
     let nome = this.nomiCelle.get(chiave);
     if (!nome) { nome = `ce${this.celle.length + 1}`; this.celle.push(xml(nome)); this.nomiCelle.set(chiave, nome); }
@@ -398,7 +453,10 @@ function conCommento(xml: string, commento: string): string {
 
 interface CellaOds { riga: number; colonna: number; testo?: string; stile?: string }
 
-function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convalide: Convalide): string {
+/** Una formula del foglio (senza "=") in OpenFormula senza prefisso: [.A1], argomenti separati da ;. */
+const espressioneOds = (formula: string): string => formulaPerOds(`=${formula}`).replace(/^of:=/, '');
+
+function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convalide: Convalide, condizionali: StiliCondizionali, attributi: Record<string, string | undefined> = {}): string {
   const celle = new Map<string, CellaOds>();
   const prendi = (r: number, c: number): CellaOds => {
     const k = `${r},${c}`;
@@ -421,6 +479,8 @@ function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convali
     if (nomeVal === null || !(intero(startRow, 1, MAX_ROWS) && intero(endRow, startRow, MAX_ROWS) && intero(startCol, 1, MAX_COLS) && intero(endCol, startCol, MAX_COLS))) continue;
     for (let r = startRow; r <= endRow && convalidaDi.size < 100000; r++) for (let c = startCol; c <= endCol; c++) { convalidaDi.set(`${r},${c}`, nomeVal); prendi(r, c); }
   }
+  const cond = condizionaliOds(f, nome, condizionali, espressioneOds);
+  for (const k of cond.mappe.keys()) { const [r, c] = k.split(',').map(Number); prendi(r, c); }
   const commentoDi = new Map<string, { testo: string; autore?: string }>();
   for (const cm of f.commenti ?? []) {
     if (intero(cm.riga, 1, MAX_ROWS) && intero(cm.colonna, 1, MAX_COLS) && typeof cm.testo === 'string') { commentoDi.set(`${cm.riga},${cm.colonna}`, cm); prendi(cm.riga, cm.colonna); }
@@ -446,10 +506,15 @@ function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convali
   for (const x of celle.values()) colonneTot = Math.max(colonneTot, x.colonna);
   for (const k of [...Object.keys(f.larghezze), ...Object.keys(f.stiliColonna)]) if (intero(Number(k), 1, MAX_COLS)) colonneTot = Math.max(colonneTot, Number(k));
   for (const c of colonneNascoste) colonneTot = Math.max(colonneTot, c);
+  // Raggruppa e struttura: le righe e colonne raggruppate si scrivono sempre, poi si annidano nei table:table-row-group / -column-group
+  const livelloRiga = (r: number): number => { const l = f.gruppi?.righe[r]; return Number.isInteger(l) && (l as number) >= 1 ? Math.min(7, l as number) : 0; };
+  const livelloColonna = (c: number): number => { const l = f.gruppi?.colonne[c]; return Number.isInteger(l) && (l as number) >= 1 ? Math.min(7, l as number) : 0; };
+  for (const k of Object.keys(f.gruppi?.righe ?? {})) if (intero(Number(k), 1, MAX_ROWS) && livelloRiga(Number(k))) righeUsate.add(Number(k));
+  for (const k of Object.keys(f.gruppi?.colonne ?? {})) if (intero(Number(k), 1, MAX_COLS) && livelloColonna(Number(k))) colonneTot = Math.max(colonneTot, Number(k));
 
   const cellaXml = (x: CellaOds): string => {
     const st = stileRisolto(f, x.riga, x.colonna);
-    const stile = stili.nome(st);
+    const stile = stili.nome(st, cond.mappe.get(`${x.riga},${x.colonna}`));
     const k = `${x.riga},${x.colonna}`;
     if (coperte.has(k)) return elemento('table:covered-table-cell', { 'table:style-name': stile });
     const u = testaUnione.get(k);
@@ -491,7 +556,7 @@ function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convali
     return elemento('table:table-cell', { ...base, 'office:value-type': 'string' }, paragrafi(x.testo));
   };
 
-  const colonneXml: string[] = [];
+  const colonneXml: Array<{ xml: string; livello: number; nascosta: boolean }> = [];
   let c = 1;
   while (c <= colonneTot) {
     const larghezza = positivo(f.larghezze[c]) ? f.larghezze[c] : undefined;
@@ -501,13 +566,13 @@ function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convali
     while (fine + 1 <= colonneTot) {
       const l2 = positivo(f.larghezze[fine + 1]) ? f.larghezze[fine + 1] : undefined;
       const s2 = f.stiliColonna[fine + 1] ? stili.nome(f.stiliColonna[fine + 1]) : undefined;
-      if (l2 !== larghezza || s2 !== stileCol || colonneNascoste.has(fine + 1) !== nascosta) break;
+      if (l2 !== larghezza || s2 !== stileCol || colonneNascoste.has(fine + 1) !== nascosta || livelloColonna(fine + 1) !== livelloColonna(c)) break;
       fine++;
     }
-    colonneXml.push(elemento('table:table-column', {
+    colonneXml.push({ xml: elemento('table:table-column', {
       'table:style-name': stili.colonna(larghezza), 'table:number-columns-repeated': fine > c ? fine - c + 1 : undefined, 'table:default-cell-style-name': stileCol,
       'table:visibility': nascosta ? 'collapse' : undefined,
-    }));
+    }), livello: livelloColonna(c), nascosta });
     c = fine + 1;
   }
 
@@ -515,10 +580,10 @@ function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convali
   const celleTipo = [...celle.values()];
   const cellePerRiga = new Map<number, typeof celleTipo>();
   for (const x of celleTipo) { const l = cellePerRiga.get(x.riga); if (l) l.push(x); else cellePerRiga.set(x.riga, [x]); }
-  const righeXml: string[] = [];
+  const righeXml: Array<{ xml: string; livello: number; nascosta: boolean }> = [];
   let precedente = 0;
   for (const r of [...righeUsate].sort((a, b) => a - b)) {
-    if (r - precedente > 1) righeXml.push(elemento('table:table-row', { 'table:number-rows-repeated': r - precedente - 1 > 1 ? r - precedente - 1 : undefined }, [elemento('table:table-cell')]));
+    if (r - precedente > 1) righeXml.push({ xml: elemento('table:table-row', { 'table:number-rows-repeated': r - precedente - 1 > 1 ? r - precedente - 1 : undefined }, [elemento('table:table-cell')]), livello: 0, nascosta: false });
     const delle = (cellePerRiga.get(r) ?? []).slice().sort((a, b) => a.colonna - b.colonna);
     const parti: string[] = [];
     let ultima = 0;
@@ -528,11 +593,26 @@ function tabellaXml(nome: string, f: FoglioScambio, stili: TabellaStili, convali
       ultima = x.colonna;
     }
     const stileRiga = f.stiliRiga[r] ? stili.nome(f.stiliRiga[r]) : undefined;
-    righeXml.push(elemento('table:table-row', { 'table:style-name': stili.riga(positivo(f.altezze[r]) ? f.altezze[r] : undefined), 'table:default-cell-style-name': stileRiga, 'table:visibility': righeNascoste.has(r) ? 'collapse' : undefined }, parti.length > 0 ? parti : [elemento('table:table-cell')]));
+    righeXml.push({ xml: elemento('table:table-row', { 'table:style-name': stili.riga(positivo(f.altezze[r]) ? f.altezze[r] : undefined), 'table:default-cell-style-name': stileRiga, 'table:visibility': righeNascoste.has(r) ? 'collapse' : undefined }, parti.length > 0 ? parti : [elemento('table:table-cell')]), livello: livelloRiga(r), nascosta: righeNascoste.has(r) });
     precedente = r;
   }
-  if (righeXml.length === 0) righeXml.push(elemento('table:table-row', {}, [elemento('table:table-cell')]));
-  return elemento('table:table', { 'table:name': nome }, [...colonneXml, ...righeXml]);
+  if (righeXml.length === 0) righeXml.push({ xml: elemento('table:table-row', {}, [elemento('table:table-cell')]), livello: 0, nascosta: false });
+  return elemento('table:table', { 'table:name': nome, ...attributi }, [...annida(colonneXml, 'table:table-column-group'), ...annida(righeXml, 'table:table-row-group'), ...(cond.xml ? [cond.xml] : [])]);
+}
+
+/** Annida righe (o colonne) consecutive dello stesso livello nei gruppi .ods; un gruppo compresso (prima riga nascosta) ha table:display="false". */
+function annida(voci: Array<{ xml: string; livello: number; nascosta: boolean }>, gruppo: string): string[] {
+  let i = 0;
+  const livello = (l: number): string[] => {
+    const out: string[] = [];
+    while (i < voci.length && voci[i].livello >= l) {
+      if (voci[i].livello === l) { out.push(voci[i].xml); i++; continue; }
+      const compresso = voci[i].nascosta;
+      out.push(elemento(gruppo, { 'table:display': compresso ? 'false' : undefined }, livello(l + 1)));
+    }
+    return out;
+  };
+  return livello(0);
 }
 
 function impostazioniXml(origine: FoglioScambio[], nomi: string[], attivo: string): string {
@@ -564,6 +644,8 @@ export function avvisiScritturaOds(s: Scambio): string[] {
   s.fogli.forEach((f, i) => {
     if (nuovi[i] !== f.nome) avvisi.push(t("Il foglio «{}» è stato chiamato «{}» nel file perché OpenDocument non ammette quel nome: le formule che lo citano non sono state corrette.", f.nome, nuovi[i]));
   });
+  for (const f of s.fogli) if (condizionaliPerseOds(f)) avvisi.push(t("Foglio «{}»: le regole sulle date della formattazione condizionale non si salvano in OpenDocument (restano in .psheet).", f.nome));
+  for (const f of s.fogli) if (perditeOds(f)) avvisi.push(t("Foglio «{}»: le righe e colonne da ripetere in stampa e le interruzioni di pagina a mano non si salvano in OpenDocument (restano in .psheet e .xlsx).", f.nome));
   const visti = new Set<string>();
   for (const f of s.fogli) {
     for (const st of [...Object.values(f.stili), ...Object.values(f.stiliRiga), ...Object.values(f.stiliColonna)]) {
@@ -584,21 +666,25 @@ export async function scriviOds(s: Scambio): Promise<Uint8Array> {
   const indiceAttivo = Math.max(0, origine.findIndex((f) => f.nome === s.foglioAttivo));
   const stili = new TabellaStili();
   const convalide = new Convalide();
-  const tabelle = origine.map((f, i) => tabellaXml(nomi[i], f, stili, convalide));
+  const condizionali = new StiliCondizionali();
+  const tabelle = origine.map((f, i) => tabellaXml(nomi[i], f, stili, convalide, condizionali, { ...attributiTabella(f, i, nomi[i]), ...attributiProtezioneOds(f.protezione, 'table:protected') }));
   const contenuto = INTESTAZIONE_XML + elemento('office:document-content', {
-    'xmlns:office': NS_UFFICIO, 'xmlns:style': NS_STILE, 'xmlns:text': NS_TESTO, 'xmlns:table': NS_TABELLA, 'xmlns:fo': NS_FO, 'xmlns:number': NS_NUMERO, 'xmlns:of': NS_FORMULA, 'xmlns:dc': 'http://purl.org/dc/elements/1.1/', 'office:version': '1.3',
+    'xmlns:office': NS_UFFICIO, 'xmlns:style': NS_STILE, 'xmlns:text': NS_TESTO, 'xmlns:table': NS_TABELLA, 'xmlns:fo': NS_FO, 'xmlns:number': NS_NUMERO, 'xmlns:of': NS_FORMULA, 'xmlns:dc': 'http://purl.org/dc/elements/1.1/', 'xmlns:tableooo': NS_TABELLA_OOO, 'xmlns:calcext': NS_CALCEXT, 'office:version': '1.3',
   }, [
-    elemento('office:automatic-styles', {}, [...stili.dati, ...stili.colonne, ...stili.righe, ...stili.celle]),
-    elemento('office:body', {}, [elemento('office:spreadsheet', {}, [
+    elemento('office:automatic-styles', {}, [...stili.dati, ...stiliTabellaXml(origine), ...stili.colonne, ...stili.righe, ...stili.celle]),
+    elemento('office:body', {}, [elemento('office:spreadsheet', attributiProtezioneOds(s.protezioneCartella, 'table:structure-protected'), [
       ...(convalide.voci.length > 0 ? [elemento('table:content-validations', {}, convalide.voci)] : []),
       ...tabelle,
       ...nomiDefinitiXml(s.nomi, origine, nomi),
     ])]),
   ]);
+  // styles.xml solo se almeno un foglio ha un'impostazione di pagina sua o ci sono stili delle formattazioni condizionali
+  const stiliPagina = stiliPaginaXml(origine, { 'xmlns:office': NS_UFFICIO, 'xmlns:style': NS_STILE, 'xmlns:text': NS_TESTO, 'xmlns:table': NS_TABELLA, 'xmlns:fo': NS_FO }, INTESTAZIONE_XML, condizionali.voci);
   const manifest = INTESTAZIONE_XML + elemento('manifest:manifest', { 'xmlns:manifest': NS_MANIFEST, 'manifest:version': '1.3' }, [
     elemento('manifest:file-entry', { 'manifest:full-path': '/', 'manifest:version': '1.3', 'manifest:media-type': TIPO_ODS }),
     elemento('manifest:file-entry', { 'manifest:full-path': 'content.xml', 'manifest:media-type': 'text/xml' }),
     elemento('manifest:file-entry', { 'manifest:full-path': 'settings.xml', 'manifest:media-type': 'text/xml' }),
+    ...(stiliPagina ? [elemento('manifest:file-entry', { 'manifest:full-path': 'styles.xml', 'manifest:media-type': 'text/xml' })] : []),
   ]);
   const codifica = new TextEncoder();
   const voce = (nome: string, testo: string): VoceZip => ({ nome, dati: codifica.encode(testo) });
@@ -607,5 +693,6 @@ export async function scriviOds(s: Scambio): Promise<Uint8Array> {
     voce('META-INF/manifest.xml', manifest),
     voce('content.xml', contenuto),
     voce('settings.xml', impostazioniXml(origine, nomi, nomi[indiceAttivo])),
+    ...(stiliPagina ? [voce('styles.xml', stiliPagina)] : []),
   ]);
 }

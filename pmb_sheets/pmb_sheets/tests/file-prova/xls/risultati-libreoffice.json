@@ -1,0 +1,485 @@
+{
+ "F1": {
+  "formula": "=SUM(A1:A5)",
+  "valore": 150.0,
+  "testo": "150",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F2": {
+  "formula": "=AVERAGE(A1:A5)",
+  "valore": 30.0,
+  "testo": "30",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F3": {
+  "formula": "=(A1+A2)*A3",
+  "valore": 900.0,
+  "testo": "900",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F4": {
+  "formula": "=A1+A2*A3",
+  "valore": 610.0,
+  "testo": "610",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F5": {
+  "formula": "=-A1^2",
+  "valore": 100.0,
+  "testo": "100",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F6": {
+  "formula": "=A1%",
+  "valore": 0.1,
+  "testo": "10,00%",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F7": {
+  "formula": "=A1&\" e \"&B1",
+  "valore": 0.0,
+  "testo": "10 e 20",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F8": {
+  "formula": "=\"con \"\"virgolette\"\"\"",
+  "valore": 0.0,
+  "testo": "con \"virgolette\"",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F9": {
+  "formula": "=IF(A1>5;\"alto\";\"basso\")",
+  "valore": 0.0,
+  "testo": "alto",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F10": {
+  "formula": "=IF(A1<>10;1;IF(A2>=20;2;3))",
+  "valore": 2.0,
+  "testo": "2",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F11": {
+  "formula": "=VLOOKUP(20;A1:B5;2;0)",
+  "valore": 40.0,
+  "testo": "40",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F12": {
+  "formula": "=INDEX(A1:B5;MATCH(30;A1:A5;0);2)",
+  "valore": 60.0,
+  "testo": "60",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F13": {
+  "formula": "=CONCATENATE(\"a\";\"b\";\"c\")",
+  "valore": 0.0,
+  "testo": "abc",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F14": {
+  "formula": "=TEXT(A1;\"0.00\")",
+  "valore": 0.0,
+  "testo": "10,00",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F15": {
+  "formula": "=DATE(2026;11;19)",
+  "valore": 46345.0,
+  "testo": "19/11/2026",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F16": {
+  "formula": "=ROUND(PI();4)",
+  "valore": 3.1416,
+  "testo": "3,1416",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F17": {
+  "formula": "=AND(TRUE();NOT(FALSE()))",
+  "valore": 1.0,
+  "testo": "VERO",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F18": {
+  "formula": "=OR(A1=1;A2=20)",
+  "valore": 1.0,
+  "testo": "VERO",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F19": {
+  "formula": "=COUNTIF(A1:A5;\">20\")",
+  "valore": 3.0,
+  "testo": "3",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F20": {
+  "formula": "=SUMIF(A1:A5;\">20\";B1:B5)",
+  "valore": 240.0,
+  "testo": "240",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F21": {
+  "formula": "=IFERROR(1/0;\"errore\")",
+  "valore": 0.0,
+  "testo": "errore",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F22": {
+  "formula": "=EOMONTH(DATE(2026;1;15);1)",
+  "valore": 46081.0,
+  "testo": "46081",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F23": {
+  "formula": "=NETWORKDAYS(DATE(2026;1;1);DATE(2026;1;31))",
+  "valore": 22.0,
+  "testo": "22",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F24": {
+  "formula": "=SUMIFS(B1:B5;A1:A5;\">10\";A1:A5;\"<50\")",
+  "valore": 180.0,
+  "testo": "180",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F25": {
+  "formula": "=SUM({1;2;3})",
+  "valore": 6.0,
+  "testo": "6",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F26": {
+  "formula": "=SUM({1.5\\2\\3})",
+  "valore": 0.0,
+  "testo": "Err:539",
+  "errore": 539,
+  "tipo": 4
+ },
+ "F27": {
+  "formula": "=Dati.A3*2",
+  "valore": 84.0,
+  "testo": "84",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F28": {
+  "formula": "=SUM($Dati.A3:A5)",
+  "valore": 1234606.641,
+  "testo": "1234606,641",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F29": {
+  "formula": "=SUM(A:A)",
+  "valore": 150.0,
+  "testo": "150",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F30": {
+  "formula": "=$A$1+A$2+$A3",
+  "valore": 60.0,
+  "testo": "60",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F31": {
+  "formula": "=1/0",
+  "valore": 0.0,
+  "testo": "#DIV/0!",
+  "errore": 532,
+  "tipo": 4
+ },
+ "F32": {
+  "formula": "=NA()",
+  "valore": 0.0,
+  "testo": "#N/A",
+  "errore": 32767,
+  "tipo": 4
+ },
+ "F33": {
+  "formula": "=ISERROR(A1)",
+  "valore": 0.0,
+  "testo": "FALSO",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F34": {
+  "formula": "=LEN(D1)",
+  "valore": 4.0,
+  "testo": "4",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F35": {
+  "formula": "=UPPER(D2)&LOWER(\"X\")",
+  "valore": 0.0,
+  "testo": "PERAx",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F36": {
+  "formula": "=MAX(A1:A5;B1:B5;100)",
+  "valore": 100.0,
+  "testo": "100",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F37": {
+  "formula": "=MIN(A1:A5)",
+  "valore": 10.0,
+  "testo": "10",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F38": {
+  "formula": "=COUNT(A1:D5)",
+  "valore": 15.0,
+  "testo": "15",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F39": {
+  "formula": "=COUNTA(A1:D5)",
+  "valore": 18.0,
+  "testo": "18",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F40": {
+  "formula": "=SUMPRODUCT(A1:A5;B1:B5)",
+  "valore": 11000.0,
+  "testo": "11000",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F41": {
+  "formula": "=NOW()-NOW()",
+  "valore": -1.1574074074074074e-11,
+  "testo": "00:00:00",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F42": {
+  "formula": "=TODAY()-TODAY()",
+  "valore": 0.0,
+  "testo": "0",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F43": {
+  "formula": "=ABS(-5)",
+  "valore": 5.0,
+  "testo": "5",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F44": {
+  "formula": "=MOD(10;3)",
+  "valore": 1.0,
+  "testo": "1",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F45": {
+  "formula": "=POWER(2;10)",
+  "valore": 1024.0,
+  "testo": "1024",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F46": {
+  "formula": "=SQRT(16)",
+  "valore": 4.0,
+  "testo": "4",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F47": {
+  "formula": "=INT(7.8)",
+  "valore": 7.0,
+  "testo": "7",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F48": {
+  "formula": "=TRUNC(7.8)",
+  "valore": 7.0,
+  "testo": "7",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F49": {
+  "formula": "=LEFT(D1;2)&RIGHT(D1;2)&MID(D1;2;2)",
+  "valore": 0.0,
+  "testo": "melael",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F50": {
+  "formula": "=SUBSTITUTE(D1;\"m\";\"M\")",
+  "valore": 0.0,
+  "testo": "Mela",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F51": {
+  "formula": "=TRIM(\"  a  \")",
+  "valore": 0.0,
+  "testo": "a",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F52": {
+  "formula": "=VALUE(\"12\")",
+  "valore": 12.0,
+  "testo": "12",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F53": {
+  "formula": "=CHOOSE(2;\"a\";\"b\";\"c\")",
+  "valore": 0.0,
+  "testo": "b",
+  "errore": 0,
+  "tipo": 2
+ },
+ "F54": {
+  "formula": "=Prezzo*2",
+  "valore": 20.0,
+  "testo": "20",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F55": {
+  "formula": "=SUM(Totali)",
+  "valore": 300.0,
+  "testo": "300",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F56": {
+  "formula": "=HLOOKUP(10;A1:B5;1;0)",
+  "valore": 10.0,
+  "testo": "10",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F57": {
+  "formula": "=NORMDIST(1;0;1;1)",
+  "valore": 0.841344746068543,
+  "testo": "0,841344746068543",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F58": {
+  "formula": "=STDEV(A1:A5)",
+  "valore": 15.811388300841896,
+  "testo": "15,8113883008419",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F59": {
+  "formula": "=MEDIAN(A1:A5)",
+  "valore": 30.0,
+  "testo": "30",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F60": {
+  "formula": "=RANK(30;A1:A5)",
+  "valore": 3.0,
+  "testo": "3",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F61": {
+  "formula": "=PMT(0.05/12;60;10000)",
+  "valore": -188.71233644010937,
+  "testo": "-€ 188,71",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F62": {
+  "formula": "=A1:A3 A2:A4",
+  "valore": 0.0,
+  "testo": "Err:509",
+  "errore": 509,
+  "tipo": 4
+ },
+ "F63": {
+  "formula": "=SUM((A1:A2;A4:A5))",
+  "valore": 120.0,
+  "testo": "120",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F64": {
+  "formula": "=WEEKDAY(DATE(2026;11;19))",
+  "valore": 5.0,
+  "testo": "5",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F65": {
+  "formula": "=YEAR(DATE(2026;11;19))",
+  "valore": 2026.0,
+  "testo": "2026",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F66": {
+  "formula": "=ROUNDUP(2.1;0)",
+  "valore": 3.0,
+  "testo": "3",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F67": {
+  "formula": "=ROWS(A1:B5)",
+  "valore": 5.0,
+  "testo": "5",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F68": {
+  "formula": "=OFFSET(A1;1;1)",
+  "valore": 40.0,
+  "testo": "40",
+  "errore": 0,
+  "tipo": 1
+ },
+ "F69": {
+  "formula": "=INDIRECT(\"A1\")",
+  "valore": 10.0,
+  "testo": "10",
+  "errore": 0,
+  "tipo": 1
+ }
+}

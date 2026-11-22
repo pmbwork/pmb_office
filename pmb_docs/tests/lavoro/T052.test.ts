@@ -230,7 +230,9 @@ describe('T052: documenti fatti da Word', () => {
     expect(cp(3)).toEqual({ st: '3', runs: [plain('Livello cinque')] });
     expect(cp(4)).toEqual({
       ls: 1.5, al: 'gi',
-      runs: [plain('Grassetto ', { g: true, z: 14, k: '#ff0000' }), plain('collegamento', { s: true }), plain('giallo', { f: 'Verdana', h: '#ffff00' }), plain('\tazzurro', { h: '#cceeff' }), plain('inserito')],
+      runs: [plain('Grassetto ', { g: true, z: 14, k: '#ff0000' }), plain('collegamento', { s: true }), plain('giallo', { f: 'Verdana', h: '#ffff00' }), plain('\tazzurro', { h: '#cceeff' }),
+        // dal 2026-11-20 le modifiche registrate restano: l'inserito e il cancellato sono segnati (T553)
+        { ...plain('inserito'), rv: { t: 'i', a: 'x', d: '' } }, { ...plain('cancellato'), rv: { t: 'd', a: 'x', d: '' } }],
     });
     expect(cp(5)).toEqual({ ri: 2, runs: [plain('Prima')] });
     expect(cp(6)).toEqual({ ri: 2, runs: [plain('Dopo')] });

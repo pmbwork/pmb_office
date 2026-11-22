@@ -1,4 +1,5 @@
 mod portatile_file;
+mod file_nativi;
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -31,7 +32,7 @@ impl Default for AppSettings {
     }
 }
 
-/// La cartella dei dati del programma (impostazioni, file recenti):
+/// La cartella dei dati del programma (impostazioni, dimensione della finestra):
 /// - sul Mac la cartella standard ~/Library/Application Support/com.pmb.sheets (il pacchetto .app non si può modificare,
 ///   e un'app scaricata parte da una copia di sola lettura);
 /// - su Windows "data" accanto all'eseguibile, se lì si può scrivere (copia portatile, chiavetta, C:\AI_system...);
@@ -180,66 +181,40 @@ pub mod commands {
             .map_err(|e| format!("Impossibile scrivere impostazioni.json: {}", e))
     }
 
-    #[tauri::command]
-    pub fn get_recent_files() -> Result<Vec<String>, String> {
-        let data_dir = get_portable_data_dir();
-        let recent_path = data_dir.join("recenti.json");
+    /// I formati che pmb_sheets apre quando il sistema gli passa un file: quelli dell'«Apri con» dell'installatore (nsis/hooks.nsh,
+    /// wix/apri-con.wxs, tauri.macos.conf.json), quelli della finestra Apri e i formati propri.
+    const ESTENSIONI_APRIBILI: [&str; 20] = ["xlsx", "xlsm", "xltx", "xltm", "xlsb", "xls", "xlt", "ods", "ots", "fods", "csv", "tsv", "txt", "html", "htm", "dif", "slk", "xml", "psheet", "fsheet"];
 
-        if !recent_path.exists() {
-            return Ok(Vec::new());
-        }
-
-        let content = fs::read_to_string(&recent_path)
-            .map_err(|e| format!("Impossibile leggere recenti.json: {}", e))?;
-
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Formato JSON non valido in recenti.json: {}", e))
-    }
-
-    #[tauri::command]
-    pub fn save_recent_files(files: Vec<String>) -> Result<(), String> {
-        let data_dir = get_portable_data_dir();
-        if !data_dir.exists() {
-            fs::create_dir_all(&data_dir)
-                .map_err(|e| format!("Impossibile creare la cartella data: {}", e))?;
-        }
-
-        let recent_path = data_dir.join("recenti.json");
-        let json = serde_json::to_string_pretty(&files)
-            .map_err(|e| format!("Impossibile serializzare i file recenti: {}", e))?;
-
-        fs::write(&recent_path, json)
-            .map_err(|e| format!("Impossibile scrivere recenti.json: {}", e))
-    }
-
-    /// Il file passato come argomento all'avvio (doppio clic in Esplora risorse, "Apri con"): nome e contenuto, se è un foglio di calcolo che sappiamo aprire.
+    /// Il file che il sistema ha passato al programma («Apri con», doppio clic; sul Mac il Finder): nome e percorso. La pagina lo legge con
+    /// file_leggi (byte grezzi: un elenco JSON di numeri era 4 volte più lento) e «Salva» lo riscrive sul posto con file_scrivi.
+    /// Se il file c'è ma non si apre, `problema` dice perché (FORMATO_NON_SUPPORTATO, NON_TROVATO, TROPPO_GRANDE oltre i 100 MB delle
+    /// finestre Apri): la pagina lo dice, invece di aprirsi vuota senza spiegazioni. Uguale in pmb_docs e pmb_sheets (cambia solo l'elenco).
     #[derive(Serialize)]
     pub struct FileAvvio {
         pub nome: String,
-        pub bytes: Vec<u8>,
+        pub percorso: String,
+        pub problema: Option<String>,
     }
 
-    const ESTENSIONI_APRIBILI: [&str; 5] = ["xlsx", "ods", "csv", "tsv", "psheet"];
-    const DIMENSIONE_MASSIMA: u64 = 64 * 1024 * 1024;
-
     #[tauri::command]
-    pub fn file_di_avvio() -> Result<Option<FileAvvio>, String> {
-        // su Mac il file arriva dal Finder (e si toglie, così non si riapre); su Windows è il primo argomento
-        let percorso = match crate::file_dal_finder(true).or_else(|| std::env::args().skip(1).find(|a| !a.starts_with('-')).map(PathBuf::from)) {
-            Some(p) => p,
-            None => return Ok(None),
+    pub fn file_di_avvio() -> Option<FileAvvio> {
+        // sul Mac il file arriva dal Finder (e si toglie, così non si riapre); su Windows è il primo argomento che non è un'opzione.
+        // args_os e non args: args si ferma con un errore se il nome del file non è Unicode valido
+        let percorso = crate::file_dal_finder(true)
+            .or_else(|| std::env::args_os().skip(1).find(|a| !a.to_string_lossy().starts_with('-')).map(PathBuf::from))?;
+        let nome = percorso.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let estensione = percorso.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+        let problema = if !ESTENSIONI_APRIBILI.contains(&estensione.as_str()) {
+            Some("FORMATO_NON_SUPPORTATO")
+        } else {
+            match fs::metadata(&percorso) {
+                Ok(m) if m.is_file() && m.len() <= crate::portatile_file::DIMENSIONE_MASSIMA => None,
+                Ok(m) if m.is_file() => Some("TROPPO_GRANDE"),
+                _ => Some("NON_TROVATO"),
+            }
         };
-        let estensione = percorso.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default();
-        if !ESTENSIONI_APRIBILI.contains(&estensione.as_str()) || !percorso.is_file() {
-            return Ok(None);
-        }
-        let dimensione = fs::metadata(&percorso).map_err(|e| e.to_string())?.len();
-        if dimensione > DIMENSIONE_MASSIMA {
-            return Err("Il file è troppo grande per essere aperto all'avvio (oltre 64 MB).".to_string());
-        }
-        let bytes = fs::read(&percorso).map_err(|e| format!("Impossibile leggere il file: {}", e))?;
-        let nome = percorso.file_name().and_then(|n| n.to_str()).unwrap_or("foglio").to_string();
-        Ok(Some(FileAvvio { nome, bytes }))
+        if problema.is_none() { crate::file_nativi::concedi(&percorso); }
+        Some(FileAvvio { nome, percorso: percorso.to_string_lossy().into_owned(), problema: problema.map(str::to_string) })
     }
 
     #[tauri::command]
@@ -256,11 +231,11 @@ pub mod commands {
         }
     }
 
-    /// Entra e esce dallo schermo intero (F11, Visualizza > Schermo intero).
+    /// Mette o toglie lo schermo intero della finestra (Visualizza › Schermo intero, F11; Esc ne esce). Lo stato lo dice la pagina, così non si
+    /// perde il passo. Uguale in pmb_docs (prima qui c'era un comando che invertiva lo stato della finestra).
     #[tauri::command]
-    pub fn toggle_fullscreen(window: Window) -> Result<(), String> {
-        let attivo = window.is_fullscreen().unwrap_or(false);
-        window.set_fullscreen(!attivo).map_err(|e| e.to_string())
+    pub fn imposta_schermo_intero(window: Window, attivo: bool) -> Result<(), String> {
+        window.set_fullscreen(attivo).map_err(|e| e.to_string())
     }
 
     #[tauri::command]
@@ -274,10 +249,13 @@ pub mod commands {
         window.destroy().map_err(|e| e.to_string())
     }
 
-    /// La pagina dice se vuole decidere lei la chiusura (finché è caricata e può chiedere di salvare).
+    /// La pagina dice se vuole decidere lei la chiusura (finché è caricata e può chiedere di salvare). La pagina la richiama anche
+    /// quando ha risposto a una richiesta di chiusura (per esempio con «Annulla»): la pagina è viva, quindi una nuova X entro 10 secondi
+    /// deve chiedere di nuovo, non chiudere senza domande.
     #[tauri::command]
     pub fn proteggi_chiusura(attiva: bool) {
         super::PROTEGGI_CHIUSURA.store(attiva, std::sync::atomic::Ordering::SeqCst);
+        super::ULTIMA_RICHIESTA.store(0, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Apre un link nel programma predefinito di Windows. Accetta solo http, https e mailto, senza spazi né caratteri di controllo.
@@ -346,8 +324,49 @@ fn salva_dimensione_finestra(finestra: &tauri::Window) {
 }
 
 static PROTEGGI_CHIUSURA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-/// Quando (ms dall'epoca) è stata bloccata l'ultima chiusura: se l'utente ci riprova entro 10 secondi la pagina non ha risposto e si chiude comunque.
+/// Quando (ms dall'epoca) è stata bloccata la richiesta di chiusura da ricordare (0 = nessuna): vedi decidi_chiusura.
 static ULTIMA_RICHIESTA: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Decide una richiesta di chiusura della finestra (X, Alt+F4, barra delle applicazioni). Restituisce (si chiude?, nuovo valore di ULTIMA_RICHIESTA).
+/// - Se la pagina non protegge la chiusura, si chiude.
+/// - La pagina azzera ULTIMA_RICHIESTA (proteggi_chiusura) quando mostra la sua domanda e quando l'utente risponde: finché la pagina è viva,
+///   una nuova richiesta è una richiesta nuova e trova la domanda, non chiude senza salvare.
+/// - Se la pagina non risponde (bloccata), chi insiste chiude: una seconda richiesta fra 1,5 e 10 secondi dopo la prima chiude comunque.
+/// - Due richieste a meno di 1,5 secondi (doppio clic sulla X, due Alt+F4 di fila) non chiudono: la seconda vale come la prima.
+pub(crate) fn decidi_chiusura(protetta: bool, ultima: u64, adesso: u64) -> (bool, u64) {
+    if !protetta { return (true, ultima); }
+    let trascorso = adesso.saturating_sub(ultima);
+    if ultima != 0 && (1_500..10_000).contains(&trascorso) { return (true, ultima); }
+    let nuova = if ultima == 0 || trascorso >= 10_000 { adesso } else { ultima };
+    (false, nuova)
+}
+
+#[cfg(test)]
+mod prove_chiusura {
+    use super::decidi_chiusura;
+    #[test]
+    fn senza_protezione_si_chiude() { assert_eq!(decidi_chiusura(false, 0, 50_000), (true, 0)); }
+    #[test]
+    fn la_prima_richiesta_passa_alla_pagina() { assert_eq!(decidi_chiusura(true, 0, 50_000), (false, 50_000)); }
+    #[test]
+    fn il_doppio_clic_non_chiude() {
+        let (chiudi, ultima) = decidi_chiusura(true, 0, 50_000);
+        assert!(!chiudi);
+        assert_eq!(decidi_chiusura(true, ultima, 50_300), (false, 50_000), "la seconda richiesta subito dopo vale come la prima");
+    }
+    #[test]
+    fn con_la_pagina_bloccata_chi_insiste_chiude() {
+        assert_eq!(decidi_chiusura(true, 50_000, 52_000), (true, 50_000));
+        assert_eq!(decidi_chiusura(true, 50_000, 59_999), (true, 50_000));
+    }
+    #[test]
+    fn dopo_10_secondi_e_una_richiesta_nuova() { assert_eq!(decidi_chiusura(true, 50_000, 61_000), (false, 61_000)); }
+    #[test]
+    fn la_pagina_viva_azzera_e_la_x_trova_la_domanda() {
+        // la pagina ha mostrato la domanda e ha chiamato proteggi_chiusura: ULTIMA_RICHIESTA torna 0
+        assert_eq!(decidi_chiusura(true, 0, 53_000), (false, 53_000));
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -357,13 +376,15 @@ pub fn run() {
         .on_window_event(|finestra, evento| {
             // Chiusura chiesta dalla finestra (X, Alt+F4, barra delle applicazioni): se la pagina la gestisce, decide lei dopo aver controllato i fogli non salvati
             if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
+                // con la finestra «Apri» o «Salva con nome» aperta la finestra principale non si chiude (file_nativi.rs, dialogo_aperto)
+                if crate::file_nativi::dialogo_aperto() { api.prevent_close(); return; }
                 use std::sync::atomic::Ordering::SeqCst;
                 salva_dimensione_finestra(finestra);
                 let adesso = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
-                let ripetuta = adesso.saturating_sub(ULTIMA_RICHIESTA.load(SeqCst)) < 10_000;
-                if PROTEGGI_CHIUSURA.load(SeqCst) && !ripetuta {
+                let (chiudi, ultima) = decidi_chiusura(PROTEGGI_CHIUSURA.load(SeqCst), ULTIMA_RICHIESTA.load(SeqCst), adesso);
+                if !chiudi {
                     use tauri::Manager;
-                    ULTIMA_RICHIESTA.store(adesso, SeqCst);
+                    ULTIMA_RICHIESTA.store(ultima, SeqCst);
                     // la pagina ascolta un evento del documento (non serve l'API eventi di Tauri, che richiede permessi)
                     if let Some(web) = finestra.app_handle().get_webview_window(finestra.label()) {
                         if web.eval("window.dispatchEvent(new CustomEvent('chiusura-richiesta'))").is_ok() {
@@ -396,16 +417,18 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
             commands::save_settings,
-            commands::get_recent_files,
-            commands::save_recent_files,
             commands::minimize_window,
             commands::maximize_window,
-            commands::toggle_fullscreen,
+            commands::imposta_schermo_intero,
             commands::close_window,
             commands::destroy_window,
             commands::proteggi_chiusura,
             commands::file_di_avvio,
             commands::open_url,
+            file_nativi::file_apri_finestra,
+            file_nativi::file_salva_finestra,
+            file_nativi::file_leggi,
+            file_nativi::file_scrivi,
             portatile_file::portatile_unita,
             portatile_file::portatile_elenca,
             portatile_file::portatile_leggi,

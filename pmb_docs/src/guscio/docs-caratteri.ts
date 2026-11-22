@@ -26,21 +26,21 @@ export class DocsCaratteri extends LinguaElement {
   static styles = css`
     :host-context([alto-contrasto]) button { color: #000000; }
     :host-context([alto-contrasto]) button:focus-visible { outline: 3px solid #000000; outline-offset: 1px; }
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: 520px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: 520px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
     h2 { margin: 0 0 8px; font-size: 18px; font-weight: 500; }
     p { margin: 0 0 10px; line-height: 1.45; }
-    .nota { color: #5f6368; font-size: 12.5px; }
-    ul { list-style: none; margin: 0 0 12px; padding: 0; max-height: 220px; overflow-y: auto; border-top: 1px solid #e8eaed; }
-    li { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid #e8eaed; }
+    .nota { color: var(--pmb-testo-2, #5f6368); font-size: 12.5px; }
+    ul { list-style: none; margin: 0 0 12px; padding: 0; max-height: 220px; overflow-y: auto; border-top: 1px solid var(--pmb-bordo, #e8eaed); }
+    li { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--pmb-bordo, #e8eaed); }
     li .testo { flex: 1; min-width: 0; }
     li .nome { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    li .dettaglio { font-size: 12px; color: #5f6368; }
-    .vuoto { color: #5f6368; }
+    li .dettaglio { font-size: 12px; color: var(--pmb-testo-2, #5f6368); }
+    .vuoto { color: var(--pmb-testo-2, #5f6368); }
     .stato { min-height: 20px; margin: 0 0 8px; }
     .stato.errore { color: #b3261e; }
-    button { height: 36px; padding: 0 16px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid #dadce0; background: #ffffff; color: #0b57d0; }
+    button { height: 36px; padding: 0 16px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); }
     button.primario { border: 0; background: #0b57d0; color: #ffffff; }
     button.piccolo { height: 28px; padding: 0 12px; }
     button:disabled { opacity: 0.5; cursor: default; }

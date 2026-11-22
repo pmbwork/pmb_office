@@ -654,13 +654,14 @@ describe('T205 lettura di file .ods', () => {
     expect((await leggiOds(await ods({ tabelle: [riga(num(1))] }))).avvisi).toEqual([]);
     const tutto = await leggiOds(await ods({
       corpo: '<table:calculation-settings><table:null-date table:date-value="1904-01-01"/></table:calculation-settings>',
-      tabelle: ['<table:table-row><table:table-cell/></table:table-row><calcext:conditional-formats/><table:content-validations/><table:data-pilot-tables/><table:named-expressions><table:named-range table:name="x"/></table:named-expressions><draw:frame/>'],
+      tabelle: ['<table:table-row><table:table-cell/></table:table-row><calcext:conditional-formats><calcext:conditional-format calcext:target-range-address="Foglio1.A1:Foglio1.A2"><calcext:condition calcext:apply-style-name="X" calcext:value="duplicate"/></calcext:conditional-format></calcext:conditional-formats><table:content-validations/><table:data-pilot-tables/><table:named-expressions><table:named-range table:name="x"/></table:named-expressions><draw:frame/>'],
     }));
     expect(tutto.avvisi).toEqual([
       'Il file usa una data di partenza del calendario diversa dal 30/12/1899: le date scritte come numeri possono risultare sfalsate.',
       'Grafici, immagini e disegni del file non sono stati importati.',
       'Le tabelle pivot del file non sono state importate.',
-      'Le formattazioni condizionali del file non sono state importate.',
+      // una condizione che il foglio non conosce (valori doppi) non si importa e si conta (T548)
+      'Una formattazione condizionale del file non è stata importata (il suo tipo non è tra quelli supportati).',
       // le convalide si importano (un elenco vuoto di convalide non dà avvisi); un nome senza indirizzo non è un intervallo semplice
       'Un nome definito del file non è stato importato (non è un intervallo semplice di un foglio).',
     ]);
@@ -725,7 +726,7 @@ describe('T205 OpenDocument tra i formati di file e nella finestra', () => {
     const o = FORMATI.find((f) => f.id === 'ods');
     expect([o?.estensione, o?.mime, o?.etichetta]).toEqual(['ods', TIPO_ODS, 'OpenDocument (.ods)']);
     expect(FORMATI.map((f) => f.id)).toEqual(['xlsx', 'ods', 'csv', 'fsheet']);
-    expect(ESTENSIONI_APRI).toBe('.xlsx,.ods,.csv,.tsv,.txt,.psheet,.fsheet');
+    expect(ESTENSIONI_APRI).toBe('.xlsx,.xlsm,.xltx,.xltm,.xlsb,.xls,.xlt,.ods,.ots,.fods,.csv,.tsv,.txt,.html,.htm,.dif,.slk,.xml,.psheet,.fsheet');
     expect(formatoDaNome('a.ods')).toBe('ods');
     expect(formatoDaNome('A.ODS')).toBe('ods');
     expect(formatoDaNome('a.odt')).toBeNull();

@@ -11,13 +11,13 @@ export class DocsVersioni extends LinguaElement {
   @state() private nomeNuovaVersione = '';
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
     .dialogo {
       width: 520px;
       max-width: calc(100vw - 32px);
       box-sizing: border-box;
       padding: 24px;
-      background: #ffffff;
+      background: var(--pmb-superficie, #ffffff);
       border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
     }
@@ -31,18 +31,18 @@ export class DocsVersioni extends LinguaElement {
       margin: 0;
       font-size: 18px;
       font-weight: 500;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     .chiudi-x {
       background: none;
       border: 0;
       font-size: 18px;
-      color: #5f6368;
+      color: var(--pmb-testo-2, #5f6368);
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
     }
-    .chiudi-x:hover { background: #f1f3f4; }
+    .chiudi-x:hover { background: var(--pmb-superficie-2, #f1f3f4); }
     .crea-versione {
       display: flex;
       gap: 8px;
@@ -53,7 +53,7 @@ export class DocsVersioni extends LinguaElement {
       height: 36px;
       box-sizing: border-box;
       padding: 0 12px;
-      border: 1px solid #dadce0;
+      border: 1px solid var(--pmb-bordo, #dadce0);
       border-radius: 4px;
       font: inherit;
       outline: none;
@@ -75,7 +75,7 @@ export class DocsVersioni extends LinguaElement {
     .lista-versioni {
       max-height: 280px;
       overflow-y: auto;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--pmb-bordo, #e0e0e0);
       border-radius: 4px;
       margin-bottom: 20px;
     }
@@ -84,10 +84,10 @@ export class DocsVersioni extends LinguaElement {
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      border-bottom: 1px solid #f1f3f4;
+      border-bottom: 1px solid var(--pmb-bordo, #f1f3f4);
     }
     .elemento-versione:last-child { border-bottom: 0; }
-    .elemento-versione:hover { background: #f8f9fa; }
+    .elemento-versione:hover { background: var(--pmb-superficie-2, #f8f9fa); }
     .info {
       display: flex;
       flex-direction: column;
@@ -95,11 +95,11 @@ export class DocsVersioni extends LinguaElement {
     }
     .titolo-v {
       font-weight: 500;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     .dettagli-v {
       font-size: 12px;
-      color: #5f6368;
+      color: var(--pmb-testo-2, #5f6368);
     }
     .azioni {
       display: flex;
@@ -108,20 +108,20 @@ export class DocsVersioni extends LinguaElement {
     .btn-azione {
       height: 30px;
       padding: 0 10px;
-      border: 1px solid #dadce0;
+      border: 1px solid var(--pmb-bordo, #dadce0);
       border-radius: 4px;
-      background: #ffffff;
-      color: #0b57d0;
+      background: var(--pmb-superficie, #ffffff);
+      color: var(--pmb-accento, #0b57d0);
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
     }
-    .btn-azione:hover { background: #f1f3f4; }
+    .btn-azione:hover { background: var(--pmb-superficie-2, #f1f3f4); }
     .btn-azione.elimina { color: #d93025; }
     .vuoto {
       padding: 32px 16px;
       text-align: center;
-      color: #70757a;
+      color: var(--pmb-testo-2, #70757a);
       font-size: 13px;
     }
     .piede {

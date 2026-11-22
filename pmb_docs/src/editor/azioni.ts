@@ -1,11 +1,12 @@
 // Azioni dell'editor di pmb_docs: dalla tastiera e dai pulsanti della barra a modifiche del documento.
 // Tutto puro: nessun accesso al browser. Il componente docs-editor traduce gli eventi e chiama eseguiAzione.
 import {
-  alternaSegno, cancellaSelezione, cancella, collassata, estendi, estraiTesto, inserisciLineaOrizzontale, inserisciSaltoPagina, inserisciTesto, muovi, ordina,
+  alternaSegno, cancellaSelezione, cancella, collassata, estendi, estraiTesto, inserisciLineaOrizzontale, inserisciSaltoColonna, inserisciSaltoPagina, inserisciTesto, muovi, ordina,
   selezionaTutto, sposta, statoIniziale,
   type Mossa, type NomeSegno, type Posizione, type Stato,
 } from '../modello/documento';
 import { annulla, nuovaStoria, registra, ripeti, type Storia } from '../modello/storia';
+import { cancellaConRevisione, inserisciConRevisione } from '../modello/revisioni';
 
 export type Azione =
   | { tipo: 'testo'; testo: string }
@@ -22,10 +23,12 @@ export type Azione =
   | { tipo: 'taglia' }
   | { tipo: 'incolla'; testo: string }
   | { tipo: 'saltoPagina' }
+  | { tipo: 'saltoColonna' }
   | { tipo: 'lineaOrizzontale' };
 
 export interface EventoTasto { key: string; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }
-export interface StatoEditor { storia: Storia; ultima: string | null }
+/** autore: il nome con cui si registrano le modifiche quando la registrazione è accesa (dalle preferenze). */
+export interface StatoEditor { storia: Storia; ultima: string | null; autore?: string }
 
 export function nuovoEditor(stato: Stato = statoIniziale()): StatoEditor {
   return { storia: nuovaStoria(stato), ultima: null };
@@ -85,9 +88,17 @@ export interface Esito { ed: StatoEditor; copiato: string | null }
 export function eseguiAzione(ed: StatoEditor, a: Azione): Esito {
   const st = ed.storia.presente;
   const fatto = (nuovo: Stato, unisci = false, copiato: string | null = null): Esito => ({
-    ed: { storia: registra(ed.storia, nuovo, unisci), ultima: a.tipo },
+    ed: { ...ed, storia: registra(ed.storia, nuovo, unisci), ultima: a.tipo },
     copiato,
   });
+  // registrazione delle modifiche accesa: il testo scritto si segna come inserito, quello cancellato come cancellato
+  if (st.doc.revisioni) {
+    const autore = ed.autore ?? '';
+    if (a.tipo === 'testo') return fatto(inserisciConRevisione(st, a.testo, autore), ed.ultima === 'testo');
+    if (a.tipo === 'incolla' || a.tipo === 'invio') return fatto(inserisciConRevisione(st, a.tipo === 'invio' ? '\n' : a.testo, autore));
+    if (a.tipo === 'cancella') return fatto(cancellaConRevisione(st, a.direzione, a.parola, autore));
+    if (a.tipo === 'taglia') return collassata(st.sel) ? fatto(st) : fatto(cancellaConRevisione(st, 'indietro', false, autore), false, estraiTesto(st.doc, st.sel));
+  }
   switch (a.tipo) {
     case 'testo': return fatto(inserisciTesto(st, a.testo), ed.ultima === 'testo');
     case 'invio': return fatto(inserisciTesto(st, '\n'));
@@ -112,10 +123,11 @@ export function eseguiAzione(ed: StatoEditor, a: Azione): Esito {
       if (collassata(st.sel)) return fatto(st);
       return fatto(cancellaSelezione(st), false, estraiTesto(st.doc, st.sel));
     }
-    case 'annulla': return { ed: { storia: annulla(ed.storia), ultima: 'annulla' }, copiato: null };
-    case 'ripeti': return { ed: { storia: ripeti(ed.storia), ultima: 'ripeti' }, copiato: null };
+    case 'annulla': return { ed: { ...ed, storia: annulla(ed.storia), ultima: 'annulla' }, copiato: null };
+    case 'ripeti': return { ed: { ...ed, storia: ripeti(ed.storia), ultima: 'ripeti' }, copiato: null };
     case 'verticale': return fatto(st);
     case 'saltoPagina': return fatto(inserisciSaltoPagina(st));
+    case 'saltoColonna': return fatto(inserisciSaltoColonna(st));
     case 'lineaOrizzontale': return fatto(inserisciLineaOrizzontale(st));
   }
 }

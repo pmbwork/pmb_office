@@ -17,7 +17,8 @@ const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
 const NON_DA_TRADURRE = (k: string): boolean =>
   k.startsWith('\\') || /^(\[Content_Types\]|_rels\/|word\/|META-INF\/|mimetype$|content\.xml$|styles\.xml$|meta\.xml$|image\{\})/.test(k)
   || /^[\\\w{}^_()=\[\]|+\-*/,.<>:; ]*\\[A-Za-z]/.test(k) // formule LaTeX
-  || /^\w+:\w+$/.test(k);
+  || /^\w+:\w+$/.test(k)
+  || /^var\(--[\w-]+, #[0-9a-fA-F]{3,6}\)$/.test(k); // colori del tema (misure.ts: COLORI.testo è un colore, non un testo)
 
 function file(dir: string, acc: string[] = []): string[] {
   for (const f of fs.readdirSync(dir)) {

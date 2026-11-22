@@ -89,12 +89,17 @@ function scriviVersioni(deposito: Deposito | null | undefined, titolo: string, v
   }
 }
 
+/**
+ * Salva una versione. `titolo` è il nome mostrato; `chiave` dice di quale documento è la cronologia (il percorso del file quando si conosce,
+ * vedi docs-guscio idVersioni); senza chiave si usa il titolo, come prima.
+ */
 export function salvaNuovaVersione(
   deposito: Deposito | null | undefined,
   titolo: string,
   doc: Documento,
   nome?: string,
-  adesso: number = Date.now()
+  adesso: number = Date.now(),
+  chiave: string = titolo
 ): VersioneSalvata | null {
   if (!deposito) return null;
   const { parole, caratteri } = calcolaStatistiche(doc);
@@ -108,10 +113,27 @@ export function salvaNuovaVersione(
     caratteri,
   };
 
-  const attuali = leggiVersioni(deposito, titolo);
+  const attuali = leggiVersioni(deposito, chiave);
   attuali.unshift(nuova);
-  const ok = scriviVersioni(deposito, titolo, attuali);
+  const ok = scriviVersioni(deposito, chiave, attuali);
   return ok ? nuova : null;
+}
+
+/**
+ * Le versioni salvate con il solo titolo passano al file (una volta, se il file non ne ha ancora): prima la cronologia era legata al titolo,
+ * e due documenti con lo stesso nome mescolavano le loro versioni.
+ */
+export function migraVersioni(deposito: Deposito | null | undefined, daTitolo: string, aChiave: string): void {
+  if (!deposito || daTitolo === aChiave) return;
+  try {
+    if (deposito.getItem(chiaveVersioni(aChiave))) return;
+    const vecchie = deposito.getItem(chiaveVersioni(daTitolo));
+    if (!vecchie) return;
+    deposito.setItem(chiaveVersioni(aChiave), vecchie);
+    deposito.removeItem(chiaveVersioni(daTitolo));
+  } catch {
+    // deposito pieno o non disponibile: le versioni restano dove sono
+  }
 }
 
 export function rinominaVersione(

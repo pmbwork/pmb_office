@@ -1,8 +1,10 @@
 // Lettura di file .ods (OpenDocument, LibreOffice) nel modello di scambio. Puro: riceve i byte, non tocca il disco.
 // Valori: numeri, percentuali e valute restano numeri; date e ore diventano numeri seriali col loro formato; i testi che sembrano numeri o
 // booleani ricevono il formato Testo per restare testi; le formule si importano col nome inglese e senza valore in cache.
-// Si importano anche righe e colonne nascoste, commenti, convalide dei dati e nomi definiti semplici.
-// Non si importano: grafici, immagini, tabelle pivot, formattazioni condizionali, nomi complessi (avvisi).
+// Si importano anche righe e colonne nascoste, commenti, convalide dei dati, nomi definiti semplici e formattazioni condizionali (forma di LibreOffice).
+// Non si importano: grafici, immagini, tabelle pivot, nomi complessi, formattazioni condizionali di tipi che il foglio non ha (avvisi).
+import { impronteValide } from '@comune/protezione/impronte';
+import type { ProtezioneFoglio } from '../sheet/protezione';
 import { leggiZip } from '@comune/formati/zip';
 import { analizzaXml, figliElemento, testoXml, trova, type NodoXml } from '@comune/formati/xml';
 import type { BorderSet, CellStyle } from '../sheet/styles';
@@ -13,7 +15,22 @@ import { leggiArea } from './xlsx-extra';
 import { NOME_FOGLIO_PREDEFINITO, foglioVuoto, indirizzoCella } from './scambio';
 import { tipoLetterale } from './xlsx-scrivi';
 import { TIPO_ODS } from './ods-scrivi';
+import { coloriDegliStiliTabella, leggiMastri, mastriDegliStiliTabella, paginaDellaTabella, stiliTabellaNascosti } from './ods-pagina';
+import { leggiCondizionaliOds } from './ods-condizionali';
+import type { ConditionalFormatRule } from '../sheet/conditional-format';
+
+const TIPO_ODS_MODELLO = 'application/vnd.oasis.opendocument.spreadsheet-template';
 import { t } from '../i18n/lingua';
+
+/** La chiave della protezione ODF: base64 dell'impronta della password (SHA-1 di serie, SHA-256 se lo dice l'attributo). */
+function protezioneDaOds(a: Record<string, string>): ProtezioneFoglio {
+  const chiave = a['table:protection-key'];
+  if (!chiave) return {};
+  const metodo = a['table:protection-key-digest-algorithm'] ?? 'http://www.w3.org/2000/09/xmldsig#sha1';
+  const alg = /sha256$/.test(metodo) ? 'SHA-256' : /sha1$/.test(metodo) ? 'SHA-1' : null;
+  const impronte = alg ? impronteValide([{ alg, hash: chiave }]) : undefined;
+  return impronte ? { impronte } : {};
+}
 
 export interface RisultatoOds { scambio: Scambio; avvisi: string[] }
 
@@ -33,6 +50,17 @@ function raccogli(nodo: NodoXml | undefined, nomi: string[], gruppi: string[]): 
     if (typeof f === 'string') continue;
     if (nomi.includes(f.nome)) fuori.push(f);
     else if (gruppi.includes(f.nome)) fuori.push(...raccogli(f, nomi, gruppi));
+  }
+  return fuori;
+}
+
+/** Raggruppa e struttura: per ogni riga (o colonna) il numero di table:table-row-group (o -column-group) che la contengono. */
+function livelliDeiGruppi(nodo: NodoXml | undefined, gruppo: string, altri: string[], livello = 0, fuori = new Map<NodoXml, number>()): Map<NodoXml, number> {
+  for (const f of nodo?.figli ?? []) {
+    if (typeof f === 'string') continue;
+    if (f.nome === gruppo) livelliDeiGruppi(f, gruppo, altri, livello + 1, fuori);
+    else if (altri.includes(f.nome)) livelliDeiGruppi(f, gruppo, altri, livello, fuori);
+    else if (livello > 0) fuori.set(f, Math.min(7, livello));
   }
   return fuori;
 }
@@ -63,6 +91,9 @@ const PARTE_RIF = "(?:\\$?(?:'((?:[^']|'')+)'|([^.'\\]\\s]+)))?\\.(\\$?[A-Za-z]{
 const RIF_ODS = new RegExp(`^${PARTE_RIF}(?::${PARTE_RIF})?$`);
 const nomeFoglioCitato = (nome: string): string => (/^[A-Za-z_][A-Za-z0-9_]*$/.test(nome) ? nome : `'${nome.replace(/'/g, "''")}'`);
 
+/** OpenFormula → Excel per le funzioni con un nome diverso (provate su LibreOffice installato, 2026-11-20). */
+const NOMI_STANDARD_ODS: Record<string, string> = { FDIST: 'F.DIST', FINV: 'F.INV', SKEWP: 'SKEW.P', B: 'BINOM.DIST.RANGE' };
+
 function codiceFogli(c: string): string {
   let s = c.replace(/\[([^\]]*)\]/g, (tutto, dentro: string) => {
     const m = RIF_ODS.exec(dentro);
@@ -80,6 +111,9 @@ function codiceFogli(c: string): string {
     else uscita += ch;
   }
   s = uscita.replace(/(?<![A-Za-z0-9_.])(?:COM\.MICROSOFT|ORG\.OPENOFFICE|ORG\.LIBREOFFICE)\./gi, '');
+  // nomi dello standard diversi da quelli di Excel (prima di togliere LEGACY.: LEGACY.FDIST è la vecchia FDIST di Excel, FDIST è F.DIST)
+  s = s.replace(/(?<![A-Za-z0-9_.])(FDIST|FINV|SKEWP|B)\(/gi, (_t, n: string) => `${NOMI_STANDARD_ODS[n.toUpperCase()]}(`);
+  s = s.replace(/(?<![A-Za-z0-9_.])LEGACY\.(?=[A-Za-z])/gi, '');
   return s.replace(/(?<![A-Za-z0-9_.])(TRUE|FALSE)\(\)/gi, (_t, v: string) => v.toUpperCase());
 }
 
@@ -129,6 +163,12 @@ function proprieta(stile: NodoXml): CellStyle {
     const v = cella.attributi['style:vertical-align'];
     if (v === 'top' || v === 'middle' || v === 'bottom') s.vAlign = v;
     if (cella.attributi['fo:wrap-option'] === 'wrap') s.wrap = true;
+    const protezione = cella.attributi['style:cell-protect'];
+    if (protezione !== undefined) {
+      const parti = protezione.split(/\s+/);
+      if (parti.includes('none') || (parti.includes('formula-hidden') && !parti.includes('protected'))) s.sbloccata = true;
+      if (parti.includes('formula-hidden') || parti.includes('hidden-and-protected')) s.formulaNascosta = true;
+    }
   }
   const paragrafo = trova(stile, 'style:paragraph-properties');
   const allineamento = paragrafo?.attributi['fo:text-align'];
@@ -383,6 +423,8 @@ function leggiNomiOds(foglio: NodoXml, nomiFoglio: string[]): { nomi: NomeScambi
 interface Contesto {
   convalide: Map<string, DataValidationRule>;
   stili: Map<string, StileOds>;
+  /** nome visibile (style:display-name) → nome dello stile: le condizioni di LibreOffice citano il nome visibile */
+  nomiVisibili: Map<string, string>;
   dati: Map<string, string>;
   colonne: Map<string, number>;
   righe: Map<string, number>;
@@ -415,6 +457,28 @@ function risolvi(nome: string | undefined, c: Contesto): CellStyle {
   return risultato;
 }
 
+/** Lo stile che applica una condizione (per nome o per nome visibile), con quello che una formattazione condizionale sa fare. */
+function stileCondizionale(nome: string, c: Contesto): NonNullable<ConditionalFormatRule['style']> | undefined {
+  let st: CellStyle = {};
+  const visti = new Set<string>();
+  for (let n: string | undefined = c.stili.has(nome) ? nome : c.nomiVisibili.get(nome); n !== undefined && !visti.has(n) && visti.size < 20; ) {
+    visti.add(n);
+    const s = c.stili.get(n);
+    // lo stile Default (carattere e colore di tutto il foglio) non fa parte della condizione
+    if (!s || n === 'Default') break;
+    st = unisci(s.proprieta, st);
+    n = s.genitore;
+  }
+  if (visti.size === 0) return undefined;
+  const out: NonNullable<ConditionalFormatRule['style']> = {};
+  if (st.fill) out.backgroundColor = st.fill;
+  if (st.color) out.textColor = st.color;
+  if (st.bold) out.bold = true;
+  if (st.italic) out.italic = true;
+  if (st.underline) out.underline = true;
+  return out;
+}
+
 const NASCOSTO = ['collapse', 'filter'];
 
 function leggiTabella(t: NodoXml, c: Contesto, blocchi: Impostazioni['blocchi']): FoglioScambio {
@@ -426,9 +490,14 @@ function leggiTabella(t: NodoXml, c: Contesto, blocchi: Impostazioni['blocchi'])
   const commenti: CommentoScambio[] = [];
   const celleConvalida = new Map<string, Array<{ r: number; c: number }>>();
 
+  const livelliColonne = livelliDeiGruppi(t, 'table:table-column-group', ['table:table-header-columns', 'table:table-columns']);
+  const livelliRighe = livelliDeiGruppi(t, 'table:table-row-group', ['table:table-header-rows', 'table:table-rows']);
+  const gruppi = { righe: {} as Record<number, number>, colonne: {} as Record<number, number> };
   let colonna = 1;
   for (const col of raccogli(t, ['table:table-column'], ['table:table-column-group', 'table:table-header-columns', 'table:table-columns'])) {
     const n = ripetizioni(col, 'table:number-columns-repeated');
+    const livelloCol = livelliColonne.get(col);
+    if (livelloCol) for (let k = 0; k < n && k < MAX_RIPETIZIONI_VUOTE && colonna + k <= MAX_COLS; k++) gruppi.colonne[colonna + k] = livelloCol;
     if (n <= MAX_RIPETIZIONI_VUOTE && colonna <= MAX_COLS) {
       const larghezza = c.colonne.get(col.attributi['table:style-name'] ?? '');
       const predefinito = col.attributi['table:default-cell-style-name'];
@@ -448,6 +517,8 @@ function leggiTabella(t: NodoXml, c: Contesto, blocchi: Impostazioni['blocchi'])
   let riga = 1;
   for (const r of raccogli(t, ['table:table-row'], ['table:table-row-group', 'table:table-header-rows', 'table:table-rows'])) {
     const nRighe = ripetizioni(r, 'table:number-rows-repeated');
+    const livelloRiga = livelliRighe.get(r);
+    if (livelloRiga) for (let k = 0; k < nRighe && k < MAX_RIPETIZIONI_VUOTE && riga + k <= MAX_ROWS; k++) gruppi.righe[riga + k] = livelloRiga;
     const celle: Array<{ colonna: number; x: NodoXml; n: number }> = [];
     let col = 1;
     for (const x of r.figli) {
@@ -528,6 +599,7 @@ function leggiTabella(t: NodoXml, c: Contesto, blocchi: Impostazioni['blocchi'])
   const blocco = blocchi.get(nome);
   if (blocco) { f.righeCongelate = blocco.righe; f.colonneCongelate = blocco.colonne; }
   if (righeNascoste.length > 0) f.righeNascoste = righeNascoste;
+  if (Object.keys(gruppi.righe).length + Object.keys(gruppi.colonne).length > 0) f.gruppi = gruppi;
   if (colonneNascoste.length > 0) f.colonneNascoste = colonneNascoste;
   if (commenti.length > 0) f.commenti = commenti;
   const convalide: ConvalidaScambio[] = [];
@@ -546,7 +618,24 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoOds> {
     return d ? analizzaXml(DECODIFICA.decode(d)) : undefined;
   };
   const tipo = voci.get('mimetype');
-  if (tipo !== undefined && DECODIFICA.decode(tipo).trim() !== TIPO_ODS) throw new Error(t("non è un foglio di calcolo OpenDocument"));
+  // i modelli (.ots) hanno un altro tipo, ma stessa struttura
+  if (tipo !== undefined && ![TIPO_ODS, TIPO_ODS_MODELLO].includes(DECODIFICA.decode(tipo).trim())) throw new Error(t("non è un foglio di calcolo OpenDocument"));
+  return daParti(parte, [...voci.keys()]);
+}
+
+/** OpenDocument "piatto" (.fods): un solo file XML con stili, contenuto e impostazioni insieme. */
+export function leggiFods(bytes: Uint8Array): RisultatoOds {
+  try {
+    const radice = analizzaXml(DECODIFICA.decode(bytes));
+    if (radice.nome !== 'office:document') throw new Error(t("non è un foglio di calcolo OpenDocument"));
+    return daParti((nome) => (nome === 'META-INF/manifest.xml' ? undefined : radice), []);
+  } catch (e) {
+    const messaggio = e instanceof Error ? e.message : String(e);
+    throw new Error(messaggio.startsWith(t("File .ods non valido")) ? messaggio : t("File .ods non valido: {}", messaggio));
+  }
+}
+
+function daParti(parte: (nome: string) => NodoXml | undefined, nomiVoci: string[]): RisultatoOds {
   const manifest = parte('META-INF/manifest.xml');
   if (manifest && esiste(manifest, (n) => n.nome === 'manifest:encryption-data')) throw new Error(t("il file è protetto da password: non si può aprire"));
   const contenuto = parte('content.xml');
@@ -555,11 +644,12 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoOds> {
   if (!foglio) throw new Error(t("non è un foglio di calcolo OpenDocument"));
 
   const convalideFile = leggiConvalideOds(foglio);
-  const c: Contesto = { convalide: convalideFile.regole, stili: new Map(), dati: new Map(), colonne: new Map(), righe: new Map(), base: {} };
+  const c: Contesto = { convalide: convalideFile.regole, stili: new Map(), nomiVisibili: new Map(), dati: new Map(), colonne: new Map(), righe: new Map(), base: {} };
   const gruppiStili = [
     ...elenco(parte('styles.xml'), 'office:styles'), ...elenco(parte('styles.xml'), 'office:automatic-styles'),
     ...elenco(contenuto, 'office:styles'), ...elenco(contenuto, 'office:automatic-styles'),
   ];
+  let mappeOds = false;
   const DATI = ['number:number-style', 'number:percentage-style', 'number:currency-style', 'number:date-style', 'number:time-style', 'number:text-style', 'number:boolean-style'];
   for (const g of gruppiStili) {
     for (const s of g.figli) {
@@ -569,7 +659,12 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoOds> {
       if (DATI.includes(s.nome)) c.dati.set(nome, codiceDati(s));
       else if (s.nome === 'style:style') {
         const famiglia = s.attributi['style:family'];
-        if (famiglia === 'table-cell') c.stili.set(nome, { genitore: s.attributi['style:parent-style-name'], dati: s.attributi['style:data-style-name'], proprieta: proprieta(s) });
+        if (famiglia === 'table-cell') {
+          c.stili.set(nome, { genitore: s.attributi['style:parent-style-name'], dati: s.attributi['style:data-style-name'], proprieta: proprieta(s) });
+          const visibile = s.attributi['style:display-name'];
+          if (visibile !== undefined && !c.stili.has(visibile)) c.nomiVisibili.set(visibile, nome);
+          if (figliElemento(s, 'style:map').length > 0) mappeOds = true;
+        }
         else if (famiglia === 'table-column') { const l = lunghezzaPx(trova(s, 'style:table-column-properties')?.attributi['style:column-width']); if (l !== undefined) c.colonne.set(nome, l); }
         else if (famiglia === 'table-row') {
           const p = trova(s, 'style:table-row-properties');
@@ -583,21 +678,43 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoOds> {
   if (predefinito) c.base = { fontFamily: predefinito.proprieta.fontFamily, fontSize: predefinito.proprieta.fontSize, color: predefinito.proprieta.color };
 
   const impostazioni = leggiImpostazioni(parte('settings.xml'));
-  const fogli = elenco(foglio, 'table:table').map((t) => leggiTabella(t, c, impostazioni.blocchi));
+  const mastri = leggiMastri(parte('styles.xml'));
+  const stiliTabella = mastriDegliStiliTabella(gruppiStili);
+  const coloriTabella = coloriDegliStiliTabella(gruppiStili);
+  const tabelleNascoste = stiliTabellaNascosti(gruppiStili);
+  let condizionaliNonImportate = 0;
+  let condizionaliLibreOffice = false;
+  const formulaCondizione = (e: string): string => formulaDaOds(`of:=${e}`);
+  const fogli = elenco(foglio, 'table:table').map((t) => {
+    const f = leggiTabella(t, c, impostazioni.blocchi);
+    if (t.attributi['table:protected'] === 'true') f.protezione = protezioneDaOds(t.attributi);
+    const pagina = paginaDellaTabella(t, stiliTabella, mastri);
+    if (pagina) f.pagina = pagina;
+    const colore = coloriTabella.get(t.attributi['table:style-name'] ?? '');
+    if (colore) f.colore = colore;
+    if (tabelleNascoste.has(t.attributi['table:style-name'] ?? '')) f.nascosto = true;
+    if (trova(t, 'calcext:conditional-formats')) condizionaliLibreOffice = true;
+    const cond = leggiCondizionaliOds(t, (nome) => stileCondizionale(nome, c), formulaCondizione);
+    if (cond.regole.length > 0) f.condizionali = cond.regole;
+    condizionaliNonImportate += cond.nonImportate;
+    return f;
+  });
   if (fogli.length === 0) throw new Error(t("nessun foglio"));
   const foglioAttivo = fogli.some((x) => x.nome === impostazioni.attivo) ? (impostazioni.attivo as string) : fogli[0].nome;
 
   const avvisi: string[] = [];
   const zero = trova(foglio, 'table:calculation-settings/table:null-date')?.attributi['table:date-value'];
   if (zero !== undefined && zero.trim() !== '1899-12-30') avvisi.push(t("Il file usa una data di partenza del calendario diversa dal 30/12/1899: le date scritte come numeri possono risultare sfalsate."));
-  const nomiVoci = [...voci.keys()];
   if (nomiVoci.some((n) => n.startsWith('Object ') || n.startsWith('Pictures/')) || esiste(foglio, (n) => n.nome.startsWith('draw:'))) avvisi.push(t("Grafici, immagini e disegni del file non sono stati importati."));
   if (esiste(foglio, (n) => n.nome === 'table:data-pilot-tables')) avvisi.push(t("Le tabelle pivot del file non sono state importate."));
-  if (esiste(foglio, (n) => n.nome === 'calcext:conditional-formats')) avvisi.push(t("Le formattazioni condizionali del file non sono state importate."));
+  // senza la forma di LibreOffice restano solo le condizioni nella forma base (style:map), che non si importano
+  if (mappeOds && !condizionaliLibreOffice) avvisi.push(t("Le formattazioni condizionali del file non sono state importate."));
+  if (condizionaliNonImportate > 0) avvisi.push(condizionaliNonImportate === 1 ? t("Una formattazione condizionale del file non è stata importata (il suo tipo non è tra quelli supportati).") : t("{} formattazioni condizionali del file non sono state importate (il loro tipo non è tra quelli supportati).", condizionaliNonImportate));
   if (convalideFile.nonImportate > 0) avvisi.push(convalideFile.nonImportate === 1 ? t("Una convalida dei dati del file non è stata importata (la sua condizione non è tra quelle supportate).") : t("{} convalide dei dati del file non sono state importate (la loro condizione non è tra quelle supportate).", convalideFile.nonImportate));
   const nomiFile = leggiNomiOds(foglio, fogli.map((x) => x.nome));
   if (nomiFile.nonImportati > 0) avvisi.push(nomiFile.nonImportati === 1 ? t("Un nome definito del file non è stato importato (non è un intervallo semplice di un foglio).") : t("{} nomi definiti del file non sono stati importati (non sono intervalli semplici di un foglio).", nomiFile.nonImportati));
-  return { scambio: { fogli, foglioAttivo, ...(nomiFile.nomi.length > 0 ? { nomi: nomiFile.nomi } : {}) }, avvisi };
+  const protezioneCartella = foglio.attributi['table:structure-protected'] === 'true' ? protezioneDaOds(foglio.attributi) : undefined;
+  return { scambio: { fogli, foglioAttivo, ...(nomiFile.nomi.length > 0 ? { nomi: nomiFile.nomi } : {}), ...(protezioneCartella ? { protezioneCartella } : {}) }, avvisi };
 }
 
 /** Dai byte di un file .ods al modello di scambio, con gli avvisi su ciò che non si importa. Un file non valido dà un errore chiaro ("File .ods non valido: ..."). */

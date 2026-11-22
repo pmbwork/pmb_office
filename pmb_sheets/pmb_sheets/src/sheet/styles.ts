@@ -36,6 +36,10 @@ export interface CellStyle {
   borders?: BorderSet;
   /** indirizzo del link della cella (vedi link.ts) */
   link?: string;
+  /** la cella si può scrivere anche con il foglio protetto (di serie le celle sono bloccate, come in Excel; vedi protezione.ts) */
+  sbloccata?: boolean;
+  /** con il foglio protetto la formula non si mostra */
+  formulaNascosta?: boolean;
 }
 
 function stableStringify(obj: unknown): string {
@@ -72,6 +76,9 @@ export function canonicalStyleKey(style: Readonly<CellStyle>): string {
   if (style.wrap !== undefined) clean.wrap = Boolean(style.wrap);
   if (style.numFmt !== undefined && style.numFmt.length > 0) clean.numFmt = style.numFmt;
   if (typeof style.link === 'string' && style.link.length > 0) clean.link = style.link;
+  // protezione: si tengono solo i valori diversi da quello di serie (bloccata, formula visibile)
+  if (style.sbloccata === true) clean.sbloccata = true;
+  if (style.formulaNascosta === true) clean.formulaNascosta = true;
   if (style.borders) {
     const borders: Record<string, BorderDef> = {};
     for (const side of ['top', 'right', 'bottom', 'left'] as const) {
@@ -256,7 +263,10 @@ export function resolveCellStyle(row: number, col: number, sheetStyles: Readonly
     };
   }
 
-  return sheetStyles.registry.getStyle(sheetStyles.registry.register(merged));
+  // lo stile composto serve solo a leggere e a disegnare: non si aggiunge all'elenco degli stili del documento (2026-11-19). Prima si
+  // registrava, e il solo disegno di una cella con lo stile della riga e quello della colonna cambiava il documento, che risultava
+  // «modificato» appena aperto (lo si è visto aprendo un .xls di Excel 4.0)
+  return Object.freeze(merged);
 }
 
 /**

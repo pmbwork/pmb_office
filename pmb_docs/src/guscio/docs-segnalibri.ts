@@ -18,21 +18,21 @@ export class DocsSegnalibri extends LinguaElement {
     :host-context([alto-contrasto]) button.attivo, :host-context([alto-contrasto]) button[aria-checked="true"], :host-context([alto-contrasto]) button[aria-pressed="true"] { background: #000000; color: #ffffff; }
     :host-context([riduci-animazioni]) * { transition: none !important; animation: none !important; }
 
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: 440px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: 440px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
     h2 { margin: 0 0 16px; font-size: 18px; font-weight: 500; }
     .riga-nuovo { display: flex; gap: 8px; margin-bottom: 16px; }
-    input { flex: 1; min-width: 0; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #dadce0; border-radius: 4px; font: inherit; outline: none; }
+    input { flex: 1; min-width: 0; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; font: inherit; outline: none; }
     input:focus { border-color: #0b57d0; }
-    ul { list-style: none; margin: 0 0 16px; padding: 0; max-height: 220px; overflow-y: auto; border-top: 1px solid #e8eaed; }
-    li { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid #e8eaed; }
+    ul { list-style: none; margin: 0 0 16px; padding: 0; max-height: 220px; overflow-y: auto; border-top: 1px solid var(--pmb-bordo, #e8eaed); }
+    li { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--pmb-bordo, #e8eaed); }
     li .testo { flex: 1; min-width: 0; }
     li .nome { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    li .anteprima { font-size: 12px; color: #5f6368; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .vuoto { color: #5f6368; margin: 0 0 16px; }
-    button { height: 36px; padding: 0 16px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid #dadce0; background: #ffffff; color: #0b57d0; }
-    button:hover { background: #f8f9fa; }
+    li .anteprima { font-size: 12px; color: var(--pmb-testo-2, #5f6368); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vuoto { color: var(--pmb-testo-2, #5f6368); margin: 0 0 16px; }
+    button { height: 36px; padding: 0 16px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); }
+    button:hover { background: var(--pmb-superficie-2, #f8f9fa); }
     button.primario { border: 0; background: #0b57d0; color: #ffffff; }
     button.primario:hover { background: #0842a0; }
     button.piccolo { height: 28px; padding: 0 12px; }

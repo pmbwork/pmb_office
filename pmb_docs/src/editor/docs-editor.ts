@@ -13,13 +13,29 @@ import {
   type Frammento, type GeometriaPagine, type ImpostazioniPagina, type Riga,
 } from './pagine';
 import { nuovoEditor, statoCorrente, type StatoEditor } from './azioni';
+import {
+  aggiungiCommento as aggiungiCommentoA, alternaRegistrazione as alternaRegistrazioneA, commentoNelPunto, elencoCommenti, elencoRevisioni,
+  eliminaCommento as eliminaCommentoA, eliminaTuttiICommenti as eliminaTuttiICommentiA, intervalloCommento, modificaTestoCommento, prossimaRevisione,
+  rispondiCommento as rispondiCommentoA, risolviCommento as risolviCommentoA, risolviRevisioni as risolviRevisioniA,
+  type VoceCommento, type VoceRevisione,
+} from '../modello/revisioni';
+import { aggiornaSommario as aggiornaSommarioA, blocchiSommario, destinazioneVoce, inserisciSommario as inserisciSommarioA, strutturaDocumento, titoloCorrente, type VoceStruttura } from '../modello/sommario';
 import { azioneDaComandoFormato, azioneDaTastoFormato, eseguiAzioneFormato, type AzioneFormato } from './azioni-formato';
-import { alternaFatto, collassata, elencoSegnalibri, impostaSegnalibro, togliSegnalibro, type VoceSegnalibro, formatoDaCopiare, immagineSelezionata as immagineSelezionataDi, incollaFormato, ordina, type FormatoCopiato, testoParagrafo, urlValido, type Posizione, type Stato, type Run, type Paragrafo } from '../modello/documento';
+import { impostaTestoAlternativo as impostaTestoAlternativoA, inserisciCampoUnione as inserisciCampoUnioneA, inserisciDidascalia as inserisciDidascaliaA, inserisciRiferimento as inserisciRiferimentoA, type ModoRiferimento } from '../modello/documento';
+import { alternaFatto, collassata, elencoSegnalibri, impostaSegnalibro, togliSegnalibro, type VoceSegnalibro, formatoDaCopiare, filigranaValida, immagineSelezionata as immagineSelezionataDi, incollaFormato, sostituisciImmagine, type Immagine, ordina, type FormatoCopiato, testoParagrafo, urlValido, type Posizione, type Stato, type Run, type Paragrafo } from '../modello/documento';
 import { statoLink as statoLinkDi, type StatoLink } from './link';
 import { controllaNativo, type ErroreNativo } from './ortografia-nativa';
 import { inserisciBlocco, prossimoIdTabella } from './blocchi';
-import { inTabella as inTabellaStato } from './tabelle';
-import { registra } from '../modello/storia';
+import { inIntestazione, inTabella as inTabellaStato, motivoTabella, type OperazioneTabella } from './tabelle';
+import { nuovaStoria, registra } from '../modello/storia';
+import { impronteNuoveWord, verificaPassword } from '@comune/protezione/impronte';
+
+/** Le azioni che non cambiano il documento (con la sola lettura non si avvisa). */
+const SOLO_LETTURA = new Set(['vai', 'muovi', 'verticale', 'selezionaTutto', 'copia', 'annulla', 'ripeti']);
+import { aggiornaStile as aggiornaStileA, creaStile as creaStileA, cssStili, elencoStili, eliminaStile as eliminaStileA, rinominaStile as rinominaStileA, type VoceStile } from '../modello/stili';
+import { famigliaCss } from '../guscio/caratteri';
+import { maiuscolaAutomatica } from './maiuscola';
+import { correggiDopoCarattere, correggiPrimaDiInvio, OPZIONI_PREDEFINITE as CORREZIONE_PREDEFINITA, type OpzioniCorrezione } from './correzione';
 import {
   cerca as cercaTesto, indiceDopo, sostituisciTutte, sostituisciUna, vicina, OPZIONI_PREDEFINITE,
   type Corrispondenza, type OpzioniRicerca,
@@ -91,7 +107,9 @@ export class DocsEditor extends LinguaElement {
     :host { display: block; position: relative; box-sizing: border-box; padding: var(--margine-alto, 96px) var(--margine-destro, 96px) var(--margine-basso, 96px) var(--margine-sinistro, 96px); cursor: text; color: #000000;
       font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.15; }
     .fogli { position: absolute; left: 0; top: 0; width: 100%; z-index: 0; pointer-events: none; }
-    .foglio { position: absolute; left: 0; width: 100%; box-sizing: border-box; background: #ffffff; border: 1px solid #dadce0; }
+    .foglio { position: absolute; left: 0; width: 100%; box-sizing: border-box; background: #ffffff; border: 1px solid #dadce0; overflow: hidden; }
+    .foglio .filigrana { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-45deg); white-space: nowrap; font: 700 96px Arial, sans-serif;
+      color: rgba(0, 0, 0, 0.1); pointer-events: none; user-select: none; }
     .testo { position: relative; z-index: 1; }
     .testo .salto { display: block; }
     .testo p { position: relative; margin: 0; min-height: 1.15em; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -108,6 +126,14 @@ export class DocsEditor extends LinguaElement {
     .testo p.st-2 { font-size: 16pt; margin-top: 18pt; margin-bottom: 6pt; }
     .testo p.st-3 { font-size: 14pt; color: #434343; margin-top: 16pt; margin-bottom: 4pt; }
     .testo p.salto-pagina { page-break-before: always; }
+    .testo p.salto-colonna { break-before: column; }
+    .testo .campo-unione::before { content: "«" attr(data-campo) "»"; background: #e8f0fe; color: #174ea6; border-radius: 3px; padding: 0 2px; }
+    .testo .campo-unione .cu-car { font-size: 0; }
+    .testo .sequenza::before { content: attr(data-n); }
+    .testo .sequenza .cu-car { font-size: 0; }
+    .testo .riferimento::before { content: attr(data-x); }
+    .testo .riferimento .cu-car { font-size: 0; }
+    .testo .riferimento.rif-errore::before { color: #b3261e; font-weight: 700; }
     .testo p.linea-orizzontale { border-bottom: 1px solid #c7c7c7; margin-top: 6px; margin-bottom: 12px; }
     :host([mostra-non-stampabili]) .testo p::after {
       content: " ¶";
@@ -143,23 +169,49 @@ export class DocsEditor extends LinguaElement {
     ${unsafeCSS(regoleRientro())}
     .testo table.tabella { border-collapse: collapse; width: 100%; table-layout: fixed; }
     .testo table.tabella td { border: 1px solid #000000; padding: 5px 7px; vertical-align: top; overflow-wrap: anywhere; }
+    .testo table.tabella td.coperta { display: none; }
     .testo tr.salto-riga td { border: 0; padding: 0; }
+    .testo tr.salto-riga.intestazione-ripetuta td { border: 1px solid #000000; padding: 5px 7px; pointer-events: none; user-select: none; }
+    .testo tr.salto-riga.intestazione-ripetuta td.coperta { display: none; }
     .testo .g { font-weight: 700; }
     .testo .c { font-style: italic; }
     .testo .s { text-decoration: underline; }
     .testo .link { color: #1155cc; text-decoration: underline; }
     .testo .x { text-decoration: line-through; }
     .testo .s.x, .testo .link.x { text-decoration: underline line-through; }
+    .testo .sd { text-decoration-line: underline; text-decoration-style: double; }
+    .testo .sd.x { text-decoration-line: underline line-through; }
+    .testo .mc { font-variant: small-caps; }
     .testo .ap { vertical-align: super; font-size: 0.58em; }
     .testo .pe { vertical-align: sub; font-size: 0.58em; }
+    /* commenti: il testo commentato è evidenziato in giallo chiaro; quello del commento scelto nel pannello un po' di più */
+    .testo .cm { background-color: rgba(251, 188, 4, 0.28); border-bottom: 2px solid rgba(251, 188, 4, 0.9); }
+    .testo .cm.cm-attivo { background-color: rgba(251, 188, 4, 0.55); }
+    /* modifiche registrate: inserito sottolineato, cancellato barrato, nel colore dell'autore */
+    .testo .rv-i { text-decoration: underline; text-decoration-thickness: 1.5px; }
+    .testo .rv-d { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+    .testo .au-0 { color: #b3261e; } .testo .au-1 { color: #0b57d0; } .testo .au-2 { color: #146c2e; }
+    .testo .au-3 { color: #8e24aa; } .testo .au-4 { color: #b06000; } .testo .au-5 { color: #00796b; }
+    :host-context(docs-guscio[tema="scuro"]) .testo .au-0 { color: #f2b8b5; } :host-context(docs-guscio[tema="scuro"]) .testo .au-1 { color: #a8c7fa; }
+    :host-context(docs-guscio[tema="scuro"]) .testo .au-2 { color: #6dd58c; } :host-context(docs-guscio[tema="scuro"]) .testo .au-3 { color: #e1a6f0; }
+    :host-context(docs-guscio[tema="scuro"]) .testo .au-4 { color: #ffb951; } :host-context(docs-guscio[tema="scuro"]) .testo .au-5 { color: #6ff7e0; }
+    @media print { .testo .cm { background-color: transparent; border-bottom: 0; } }
     .testo .immagine { display: inline-block; font-size: 0; line-height: 0; vertical-align: bottom; text-decoration: none; }
     .testo .immagine img { display: block; max-width: 100%; height: auto; }
+    /* testo intorno: l'immagine galleggia a sinistra o a destra del paragrafo e il testo le scorre accanto */
+    .testo .immagine.intorno-sx { float: left; margin: 2px 12px 6px 0; }
+    .testo .immagine.intorno-dx { float: right; margin: 2px 0 6px 12px; }
     .margini { position: absolute; left: 0; top: 0; width: 100%; z-index: 1; pointer-events: none; }
     .errore-ort { position: absolute; height: 2px; background: repeating-linear-gradient(135deg, #d93025 0 2px, transparent 2px 4px); pointer-events: none; }
     .numeri-riga { position: absolute; left: 0; top: 0; width: 100%; z-index: 1; pointer-events: none; }
     .numeri-riga .nr { position: absolute; left: 0; width: calc(var(--margine-sinistro, 96px) - 14px); display: flex; align-items: center; justify-content: flex-end; font: 10px Roboto, Arial, sans-serif; color: #80868b; user-select: none; }
     :host([senza-pagine]) .numeri-riga .nr { width: 40px; }
     .testo p.segnalibro { box-shadow: inset 3px 0 0 #8ab4f8; }
+    /* sommario: voci rientrate per livello, numero di pagina a destra (lo calcola l'impaginazione); Ctrl+clic porta al titolo */
+    .testo p.sommario { position: relative; padding-right: 3em; color: var(--pmb-accento, #0b57d0); }
+    .testo p.sommario.sm-l2 { padding-left: 1.5em; } .testo p.sommario.sm-l3 { padding-left: 3em; }
+    .testo p.sommario[data-pg]::after { content: attr(data-pg); position: absolute; right: 0; color: var(--pmb-testo, #1f1f1f); }
+    @media print { .testo p.sommario { color: inherit; } }
     .margine-pagina { position: absolute; left: var(--margine-sinistro, 96px); right: var(--margine-destro, 96px); }
     .margine-pagina .intestazione, .margine-pagina .piede { position: absolute; left: 0; right: 0; height: 48px; overflow: hidden; }
     .margine-pagina .intestazione { top: 48px; }
@@ -216,8 +268,15 @@ export class DocsEditor extends LinguaElement {
   @property({ type: Number, reflect: true, attribute: 'colonne' })
   colonne = 1;
 
-  impostaColonne(n: number): void {
-    this.colonne = Math.max(1, Math.min(3, n));
+  /** Il testo su 1, 2 o 3 colonne: si salva con il documento ed è un passo di annulla. */
+  impostaColonne(n: number): boolean {
+    const c = Math.max(1, Math.min(3, Math.round(n)));
+    return this.cambiaDocumento((d) => {
+      if ((d.colonne ?? 1) === c) return d;
+      const nuovo = { ...d };
+      if (c === 1) delete nuovo.colonne; else nuovo.colonne = c as 2 | 3;
+      return nuovo;
+    }, 'colonne');
   }
 
   impostaMostraNonStampabili(v: boolean): void {
@@ -225,6 +284,10 @@ export class DocsEditor extends LinguaElement {
   }
 
   private ed: StatoEditor = nuovoEditor();
+  private nomeAutore = '';
+  /** Il nome con cui si firmano commenti e modifiche registrate (dalle preferenze). */
+  set autore(v: string) { this.nomeAutore = v; this.ed = { ...this.ed, autore: v }; }
+  get autore(): string { return this.nomeAutore; }
   private numeroPagine = 1;
   private geometria: GeometriaPagine = GEOMETRIA_A4;
   private stampando = false;
@@ -307,10 +370,180 @@ export class DocsEditor extends LinguaElement {
     const st = this.stato;
     const nuovo = inserisciBlocco(st, costruisci(prossimoIdTabella(st)));
     if (nuovo === st) return false;
-    this.ed = { storia: registra(this.ed.storia, nuovo), ultima: 'componente' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'componente' };
     this.ridisegna();
     this.avvisa();
     return true;
+  }
+
+  // ---- stili personali ----
+  /** Gli stili personali del documento, con quanti paragrafi li usano. */
+  stili(): VoceStile[] { return elencoStili(this.stato.doc); }
+  /** Lo stile personale del paragrafo del cursore, se c'è. */
+  stileAlCursore(): string | undefined { const st = this.stato; return st.doc.paragrafi[ordina(st.doc, st.sel)[0].p]?.su; }
+  /** Crea uno stile dal paragrafo del cursore e lo applica alla selezione: null se fatto, altrimenti il motivo (da tradurre). */
+  creaStile(nome: string): string | null {
+    const r = creaStileA(this.stato, nome);
+    if (typeof r === 'string') return r;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, r), ultima: 'stile' };
+    this.ridisegna();
+    this.avvisa();
+    return null;
+  }
+  /** Ridefinisce lo stile dal paragrafo del cursore e lo riapplica ovunque. */
+  aggiornaStile(id: string): boolean {
+    const st = this.stato;
+    const r = aggiornaStileA(st, id);
+    if (r === st) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, r), ultima: 'stile' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Rinomina uno stile: null se fatto, altrimenti il motivo (da tradurre). */
+  rinominaStile(id: string, nome: string): string | null {
+    const r = rinominaStileA(this.stato.doc, id, nome);
+    if (typeof r === 'string') return r;
+    this.cambiaDocumento(() => r, 'stile');
+    return null;
+  }
+  eliminaStile(id: string): boolean { return this.cambiaDocumento((d) => eliminaStileA(d, id), 'stile'); }
+  /** Il foglio con le regole degli stili personali, rifatto solo quando cambiano. */
+  private foglioStili: CSSStyleSheet | null = null;
+  private stiliDisegnati: Stato['doc']['stili'] | null = null;
+  private aggiornaFoglioStili(): void {
+    const stili = this.stato.doc.stili;
+    if (stili === this.stiliDisegnati) return;
+    this.stiliDisegnati = stili;
+    const radice = this.renderRoot as ShadowRoot;
+    if (typeof CSSStyleSheet === 'undefined' || !('adoptedStyleSheets' in radice)) return;
+    try {
+      if (!this.foglioStili) {
+        this.foglioStili = new CSSStyleSheet();
+        radice.adoptedStyleSheets = [...radice.adoptedStyleSheets, this.foglioStili];
+      }
+      this.foglioStili.replaceSync(cssStili(stili, famigliaCss));
+    } catch { /* senza fogli costruibili (prove automatiche) gli stili non si disegnano */ }
+  }
+
+  // ---- commenti e modifiche registrate ----
+  /** Applica al documento una modifica che non tocca la selezione (un passo di annulla). False se non cambia niente. */
+  private cambiaDocumento(f: (doc: Stato['doc']) => Stato['doc'], ultima: string, sel?: Stato['sel']): boolean {
+    const st = this.stato;
+    const doc = f(st.doc);
+    if (doc === st.doc) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, { ...st, doc, ...(sel ? { sel } : {}) }), ultima };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** I commenti del documento nell'ordine del testo. */
+  commenti(): VoceCommento[] { return elencoCommenti(this.stato.doc); }
+  /** Il commento del testo dove sta il cursore, se c'è. */
+  commentoAlCursore(): string | undefined { const st = this.stato; return commentoNelPunto(st.doc, ordina(st.doc, st.sel)[0]); }
+  /** Commenta la selezione (o la parola del cursore): l'identificativo del commento, o null se non si può. */
+  aggiungiCommento(testo: string): string | null {
+    const r = aggiungiCommentoA(this.stato, testo, this.nomeAutore);
+    if (!r) return null;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, r.stato), ultima: 'commento' };
+    this.ridisegna();
+    this.avvisa();
+    return r.id;
+  }
+  rispondiCommento(id: string, testo: string): boolean { return this.cambiaDocumento((d) => rispondiCommentoA(d, id, testo, this.nomeAutore), 'commento'); }
+  modificaCommento(id: string, testo: string): boolean { return this.cambiaDocumento((d) => modificaTestoCommento(d, id, testo), 'commento'); }
+  risolviCommento(id: string, risolto: boolean): boolean { return this.cambiaDocumento((d) => risolviCommentoA(d, id, risolto), 'commento'); }
+  eliminaCommento(id: string): boolean { return this.cambiaDocumento((d) => eliminaCommentoA(d, id), 'commento'); }
+  eliminaTuttiICommenti(): boolean { return this.cambiaDocumento((d) => eliminaTuttiICommentiA(d), 'commento'); }
+  /** Seleziona il testo del commento e lo porta in vista. */
+  vaiACommento(id: string): void {
+    const sel = intervalloCommento(this.stato.doc, id);
+    if (!sel) return;
+    this.ed = eseguiAzioneFormato(eseguiAzioneFormato(this.ed, { tipo: 'vai', pos: sel.ancora, estendi: false }).ed, { tipo: 'vai', pos: sel.fuoco, estendi: true }).ed;
+    this.aggiornaSovrapposizione();
+    this.portaInVista({ p: sel.ancora.p, da: sel.ancora.o, a: sel.ancora.p === sel.fuoco.p ? sel.fuoco.o : sel.ancora.o + 1 });
+    this.dispatchEvent(new CustomEvent('cambio', { detail: { stato: this.stato }, bubbles: true, composed: true }));
+  }
+  /** La registrazione delle modifiche è accesa? */
+  get registraModifiche(): boolean { return this.stato.doc.revisioni === true; }
+  /** Accende o spegne la registrazione delle modifiche (un passo di annulla). */
+  alternaRegistrazione(): void { this.cambiaDocumento((d) => alternaRegistrazioneA(d), 'revisioni'); }
+  /** Le modifiche registrate, blocco per blocco. */
+  revisioni(): VoceRevisione[] { return elencoRevisioni(this.stato.doc); }
+  /** Accetta o rifiuta la modifica del cursore (o quelle nella selezione); tutte = tutte quelle del documento. False se non ce n'erano. */
+  risolviRevisioni(accetta: boolean, tutte: boolean): boolean {
+    const st = this.stato;
+    return this.cambiaDocumento((d) => risolviRevisioniA(d, accetta, tutte ? undefined : st.sel), 'revisioni');
+  }
+  /** Seleziona la modifica registrata dopo (o prima) del cursore. False se non ce ne sono. */
+  vaiARevisione(verso: 1 | -1): boolean {
+    const st = this.stato;
+    const [i, f] = ordina(st.doc, st.sel);
+    const sel = prossimaRevisione(st.doc, verso === 1 ? f : i, verso);
+    if (!sel) return false;
+    this.ed = eseguiAzioneFormato(eseguiAzioneFormato(this.ed, { tipo: 'vai', pos: sel.ancora, estendi: false }).ed, { tipo: 'vai', pos: sel.fuoco, estendi: true }).ed;
+    this.aggiornaSovrapposizione();
+    this.portaInVista({ p: sel.ancora.p, da: sel.ancora.o, a: sel.fuoco.o });
+    this.dispatchEvent(new CustomEvent('cambio', { detail: { stato: this.stato }, bubbles: true, composed: true }));
+    return true;
+  }
+
+  /** Mette in evidenza il testo di un commento (quello scelto nel pannello o dove sta il cursore); undefined toglie l'evidenza. */
+  evidenziaCommento(id: string | undefined): void {
+    const zona = this.zonaTesto();
+    if (!zona) return;
+    zona.querySelectorAll('.cm.cm-attivo').forEach((s) => s.classList.remove('cm-attivo'));
+    if (id !== undefined) zona.querySelectorAll(`.cm[data-cm="${CSS.escape(id)}"]`).forEach((s) => s.classList.add('cm-attivo'));
+  }
+  /** Il cursore è dentro o accanto a una parola (Inserisci › Commento senza selezione commenta quella parola)? */
+  parolaAlCursore(): boolean {
+    const st = this.stato;
+    const c = ordina(st.doc, st.sel)[0];
+    const t = testoParagrafo(st.doc.paragrafi[c.p]);
+    const parola = /[\p{L}\p{N}_]/u;
+    return (c.o > 0 && parola.test(t[c.o - 1])) || (c.o < t.length && parola.test(t[c.o]));
+  }
+  /** Seleziona il testo da a a b (per esempio una modifica scelta nel pannello) e lo porta in vista. */
+  selezionaIntervallo(a: Posizione, b: Posizione): void {
+    this.ed = eseguiAzioneFormato(eseguiAzioneFormato(this.ed, { tipo: 'vai', pos: a, estendi: false }).ed, { tipo: 'vai', pos: b, estendi: true }).ed;
+    this.aggiornaSovrapposizione();
+    this.portaInVista({ p: a.p, da: a.o, a: a.p === b.p ? b.o : a.o + 1 });
+  }
+
+  // ---- sommario e struttura ----
+  /** Inserisce il sommario dove sta il cursore. False se non ci sono titoli (Titolo 1-3) o il cursore è in una tabella o nel sommario. */
+  inserisciSommario(): boolean {
+    const nuovo = inserisciSommarioA(this.stato);
+    if (!nuovo) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'sommario' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Rifà i sommari del documento con i titoli di adesso. False se non ce ne sono. */
+  aggiornaSommario(): boolean {
+    const st = this.stato;
+    const doc = aggiornaSommarioA(st.doc);
+    if (doc === st.doc) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, { ...st, doc }), ultima: 'sommario' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Il documento ha un sommario? */
+  get haSommario(): boolean { return blocchiSommario(this.stato.doc).length > 0; }
+  /** I titoli del documento (struttura). */
+  struttura(): VoceStruttura[] { return strutturaDocumento(this.stato.doc); }
+  /** Il titolo della sezione in cui sta il cursore. */
+  titoloAlCursore(): number | null { const st = this.stato; return titoloCorrente(st.doc, ordina(st.doc, st.sel)[0].p); }
+  /** Porta il cursore all'inizio del titolo e lo mostra in alto. */
+  vaiATitolo(p: number): void {
+    if (p < 0 || p >= this.stato.doc.paragrafi.length) return;
+    this.ed = eseguiAzioneFormato(this.ed, { tipo: 'vai', pos: { p, o: 0 }, estendi: false }).ed;
+    this.aggiornaSovrapposizione();
+    this.portaInVista({ p, da: 0, a: Math.min(1, testoParagrafo(this.stato.doc.paragrafi[p]).length) });
+    this.focalizza();
+    this.dispatchEvent(new CustomEvent('cambio', { detail: { stato: this.stato }, bubbles: true, composed: true }));
   }
 
   // ---- segnalibri ----
@@ -321,7 +554,7 @@ export class DocsEditor extends LinguaElement {
     const st = this.stato;
     const doc = impostaSegnalibro(st.doc, ordina(st.doc, st.sel)[0].p, nome);
     if (doc === st.doc) return false;
-    this.ed = { storia: registra(this.ed.storia, { ...st, doc }), ultima: 'segnalibro' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, { ...st, doc }), ultima: 'segnalibro' };
     this.ridisegna();
     this.avvisa();
     return true;
@@ -331,7 +564,7 @@ export class DocsEditor extends LinguaElement {
     const st = this.stato;
     const doc = togliSegnalibro(st.doc, nome);
     if (doc === st.doc) return;
-    this.ed = { storia: registra(this.ed.storia, { ...st, doc }), ultima: 'segnalibro' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, { ...st, doc }), ultima: 'segnalibro' };
     this.ridisegna();
     this.avvisa();
   }
@@ -419,7 +652,7 @@ export class DocsEditor extends LinguaElement {
     this.ridisegna();
   }
   /** Sostituisce il documento (per esempio quando se ne apre uno) e azzera annulla e ripeti. */
-  impostaStato(stato: Stato): void { this.ed = nuovoEditor(stato); this.ridisegna(); this.ricostruisciErroriOrtografia(); this.avvisa(); }
+  impostaStato(stato: Stato): void { this.ed = { ...nuovoEditor(stato), autore: this.nomeAutore }; this.ridisegna(); this.ricostruisciErroriOrtografia(); this.avvisa(); }
   /** Lo stato completo dell'editor (documento, cursore e storia di annulla): serve per passare da una scheda all'altra. */
   get statoEditor(): StatoEditor { return this.ed; }
   impostaStatoEditor(s: StatoEditor): void { this.ed = s; this.ridisegna(); this.ricostruisciErroriOrtografia(); this.avvisa(); }
@@ -437,8 +670,73 @@ export class DocsEditor extends LinguaElement {
   immagineSelezionata(): boolean { return immagineSelezionataDi(this.stato.doc, this.stato.sel) !== null; }
   /** true se il cursore è dentro una tabella. */
   inTabella(): boolean { return inTabellaStato(this.stato); }
+  /** true se il cursore è in una riga di intestazione di una tabella. */
+  inRigaIntestazione(): boolean { return inIntestazione(this.stato); }
+  /** Perché l'operazione sulla tabella non si può fare qui (testo da tradurre), o null se si può. */
+  motivoTabella(op: OperazioneTabella): string | null { return motivoTabella(this.stato, op); }
   /** Cosa c'è sotto il cursore o la selezione, per il dialogo del link. */
   linkAttuale(): StatoLink { return statoLinkDi(this.stato); }
+
+  /** L'immagine selezionata, o null. */
+  immagineCorrente(): Immagine | null { return immagineSelezionataDi(this.stato.doc, this.stato.sel)?.im ?? null; }
+  /** Mette al cursore un riferimento incrociato al paragrafo `p` (Inserisci › Riferimento incrociato): un passo di annulla. */
+  inserisciRiferimento(p: number, modo: ModoRiferimento): boolean {
+    const st = this.stato;
+    const nuovo = inserisciRiferimentoA(st, p, modo);
+    if (nuovo === st) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'riferimento' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Inserisce una didascalia numerata sotto (o sopra) il paragrafo del cursore: un passo di annulla. */
+  inserisciDidascalia(serie: string, testo: string, sopra: boolean): boolean {
+    const st = this.stato;
+    const nuovo = inserisciDidascaliaA(st, serie, testo, sopra);
+    if (nuovo === st) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'didascalia' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Mette al cursore un campo di unione «nome» (Strumenti › Stampa unione): un passo di annulla. */
+  inserisciCampoUnione(nome: string): boolean {
+    const st = this.stato;
+    const nuovo = inserisciCampoUnioneA(st, nome);
+    if (nuovo === st) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'campo' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Il documento così com'è (per i controlli che non lo cambiano, come quello dell'accessibilità). */
+  documentoCorrente(): Stato['doc'] { return this.stato.doc; }
+  /** Porta il cursore in un punto del testo (con estendi seleziona fino a lì + 1, per un'immagine). */
+  vaiA(p: number, o: number, seleziona = false): void {
+    this.applicaAzione({ tipo: 'vai', pos: { p, o }, estendi: false });
+    if (seleziona) this.applicaAzione({ tipo: 'vai', pos: { p, o: o + 1 }, estendi: true });
+    this.focalizza();
+  }
+  /** Il testo alternativo dell'immagine selezionata: un passo di annulla. */
+  impostaTestoAlternativo(testo: string): boolean {
+    const st = this.stato;
+    const nuovo = impostaTestoAlternativoA(st, testo);
+    if (nuovo === st) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'immagine' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+  /** Mette al posto dell'immagine selezionata quella data (ruotata, capovolta, ritagliata): un passo di annulla. */
+  sostituisciImmagineSelezionata(im: Immagine): boolean {
+    const st = this.stato;
+    const nuovo = sostituisciImmagine(st, im);
+    if (nuovo === st) return false;
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'immagine' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
 
   /** Ridimensiona l'immagine selezionata alla nuova larghezza (pixel, da 20 a 2000). */
   ridimensionaImmagineSelezionata(larghezza: number): boolean {
@@ -467,6 +765,22 @@ export class DocsEditor extends LinguaElement {
     this.ridisegna();
     this.avvisa();
     return true;
+  }
+
+  // ---- maiuscola automatica a inizio frase ----
+  private maiuscolaAuto = true;
+  get maiuscolaAutomaticaAttiva(): boolean { return this.maiuscolaAuto; }
+  /** Accende o spegne la maiuscola automatica a inizio frase (Preferenze › Correzione automatica). */
+  impostaMaiuscolaAutomatica(attiva: boolean): void { this.maiuscolaAuto = attiva; }
+  // ---- correzione automatica (sostituzioni, virgolette, trattini, DUe MAiuscole, bLOC MAIUSC, elenchi) ----
+  private correzione: OpzioniCorrezione = CORREZIONE_PREDEFINITA;
+  /** Bloc Maiusc acceso all'ultimo tasto premuto */
+  private blocAcceso = false;
+  get opzioniCorrezione(): OpzioniCorrezione { return this.correzione; }
+  impostaCorrezione(opz: OpzioniCorrezione): void { this.correzione = opz; }
+  /** Registra una correzione automatica come passo a sé della storia (Ctrl+Z subito dopo la annulla e basta). */
+  private registraCorrezione(ed: StatoEditor, corretto: Stato | null): StatoEditor {
+    return corretto ? { ...ed, storia: registra(ed.storia, corretto), ultima: 'correzione' } : ed;
   }
 
   // ---- correttore ortografico (Windows) ----
@@ -591,7 +905,7 @@ export class DocsEditor extends LinguaElement {
     const par = this.stato.doc.paragrafi[e.p];
     if (!par || testoParagrafo(par).slice(e.da, e.a) !== e.parola) return false;
     const nuovo = sostituisciUna(this.stato, this.corrispondenzaErrore(e), testo, OPZIONI_PREDEFINITE);
-    this.ed = { storia: registra(this.ed.storia, nuovo), ultima: 'sostituisci' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'sostituisci' };
     this.ridisegna();
     this.avvisa();
     return true;
@@ -605,7 +919,7 @@ export class DocsEditor extends LinguaElement {
       .map((x) => this.corrispondenzaErrore(x));
     if (tutte.length === 0) return 0;
     const r = sostituisciTutte(this.stato, tutte, testo, OPZIONI_PREDEFINITE);
-    this.ed = { storia: registra(this.ed.storia, r.stato), ultima: 'sostituisci' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, r.stato), ultima: 'sostituisci' };
     this.ridisegna();
     this.avvisa();
     return r.conteggio;
@@ -697,6 +1011,10 @@ export class DocsEditor extends LinguaElement {
 
   /** Inserisce un salto di pagina al cursore. */
   inserisciSaltoPagina(): void { this.applicaAzione({ tipo: 'saltoPagina' }); }
+  /** Inserisce un'interruzione di colonna al cursore. */
+  inserisciSaltoColonna(): void { this.applicaAzione({ tipo: 'saltoColonna' }); }
+  /** Inserisce un carattere al cursore (spazio e trattino non divisibili, trattino facoltativo). */
+  inserisciCarattere(c: string): void { this.applicaAzione({ tipo: 'incolla', testo: c }); }
 
   /** Inserisce una linea orizzontale al cursore. */
   inserisciLineaOrizzontale(): void { this.applicaAzione({ tipo: 'lineaOrizzontale' }); }
@@ -791,14 +1109,76 @@ export class DocsEditor extends LinguaElement {
       if (!pos) return;
       a = { tipo: 'vai', pos, estendi: a.estendi };
     }
+    const prima = this.ed;
     this.ed = eseguiAzioneFormato(this.ed, a).ed;
+    // documento in sola lettura: la modifica non è entrata (modello/storia.ts); lo si dice
+    if (this.stato.doc.protezione && this.ed.storia === prima.storia && !SOLO_LETTURA.has(a.tipo)) {
+      this.dispatchEvent(new CustomEvent('documento-protetto', { bubbles: true, composed: true }));
+    }
     this.ridisegna();
     this.avvisa();
   }
 
+  /** Il testo da leggere ad alta voce: la selezione, o dal paragrafo del cursore alla fine; un pezzo per paragrafo. */
+  testoDaLeggere(): string[] {
+    const st = this.stato;
+    const [i, f] = ordina(st.doc, st.sel);
+    const fine = collassata(st.sel) ? st.doc.paragrafi.length - 1 : f.p;
+    const out: string[] = [];
+    for (let p = i.p; p <= fine; p++) {
+      const t = testoParagrafo(st.doc.paragrafi[p]).replace(/\uFFFC/g, ' ');
+      const da = p === i.p ? (collassata(st.sel) ? 0 : i.o) : 0;
+      const a = !collassata(st.sel) && p === f.p ? f.o : t.length;
+      out.push(t.slice(da, a));
+    }
+    return out;
+  }
+
+  /** Il testo della filigrana del documento ('' = nessuna). */
+  filigrana(): string { return this.stato.doc.filigrana ?? ''; }
+  /** Mette, cambia o toglie ('') la filigrana: un passo di annulla. */
+  impostaFiligrana(testo: string): boolean {
+    const f = filigranaValida(testo);
+    if (f === undefined) return false;
+    return this.cambiaDocumento((d) => {
+      if ((d.filigrana ?? '') === f) return d;
+      const n = { ...d };
+      if (f === '') delete n.filigrana; else n.filigrana = f;
+      return n;
+    }, 'filigrana');
+  }
+
+  // ---- protezione del documento (sola lettura, come «Limita modifica» di Word) ----
+  /** true se il documento è in sola lettura. */
+  protetto(): boolean { return !!this.stato.doc.protezione; }
+  /** true se la protezione ha una password. */
+  protettoConPassword(): boolean { return !!this.stato.doc.protezione?.impronte; }
+  /** Mette il documento in sola lettura (password vuota: senza password). Non è un passo di annulla: la cronologia ricomincia. */
+  proteggi(password: string): void {
+    const st = this.stato;
+    const doc = { ...st.doc, protezione: password === '' ? {} : { impronte: impronteNuoveWord(password) } };
+    this.ed = { ...this.ed, storia: nuovaStoria({ ...st, doc, pendenti: null }), ultima: 'protezione' };
+    this.ridisegna();
+    this.avvisa();
+  }
+  /** Toglie la sola lettura: false se la password non è quella giusta. */
+  async togliProtezione(password: string): Promise<boolean> {
+    const st = this.stato;
+    if (!st.doc.protezione) return true;
+    if (!(await verificaPassword(password, st.doc.protezione.impronte))) return false;
+    const { protezione, ...doc } = st.doc; void protezione;
+    this.ed = { ...this.ed, storia: nuovaStoria({ ...st, doc, pendenti: null }), ultima: 'protezione' };
+    this.ridisegna();
+    this.avvisa();
+    return true;
+  }
+
   private ridisegna(): void {
+    // le colonne vengono dal documento (anche dopo Apri, Annulla e Ripeti)
+    this.colonne = this.stato.doc.colonne ?? 1;
     const zona = this.zonaTesto();
     if (!zona) return;
+    this.aggiornaFoglioStili();
     disegna(zona, this.stato.doc);
     this.impaginaTesto(zona);
     this.disegnaNumeriRiga(zona);
@@ -881,7 +1261,7 @@ export class DocsEditor extends LinguaElement {
     const r = this.ric;
     if (!r || r.corr.length === 0) return this.statoRicerca();
     const nuovo = sostituisciUna(this.stato, r.corr[r.indice], testo, r.opz);
-    this.ed = { storia: registra(this.ed.storia, nuovo), ultima: 'sostituisci' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'sostituisci' };
     this.ridisegna();
     this.avvisa();
     r.origine = ordina(this.stato.doc, this.stato.sel)[0];
@@ -893,7 +1273,7 @@ export class DocsEditor extends LinguaElement {
     const r = this.ric;
     if (!r || r.corr.length === 0) return { ...this.statoRicerca(), conteggio: 0 };
     const { stato, conteggio } = sostituisciTutte(this.stato, r.corr, testo, r.opz);
-    this.ed = { storia: registra(this.ed.storia, stato), ultima: 'sostituisci' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, stato), ultima: 'sostituisci' };
     this.ridisegna();
     this.avvisa();
     r.origine = ordina(this.stato.doc, this.stato.sel)[0];
@@ -990,6 +1370,24 @@ export class DocsEditor extends LinguaElement {
     let pagine = 1;
     try { pagine = this.applicaSalti(zona); } catch { pagine = 1; }
     this.disegnaFogli(pagine);
+    this.numeriSommario(zona);
+  }
+
+  /** Il numero di pagina di ogni voce del sommario: la pagina in cui cade il suo titolo (senza pagine: nessun numero). */
+  private numeriSommario(zona: HTMLElement): void {
+    const voci = Array.from(zona.querySelectorAll<HTMLElement>('p.sommario[data-sm]'));
+    if (voci.length === 0) return;
+    const origine = this.getBoundingClientRect().top;
+    const passo = (this.geometria.altezzaPagina + this.geometria.spazio);
+    for (const v of voci) {
+      const nome = v.getAttribute('data-sm') ?? '';
+      const titolo = Array.from(zona.querySelectorAll<HTMLElement>('p[data-sg]')).find((x) => !x.classList.contains('sommario') && (x.getAttribute('data-sg') ?? '').toLowerCase() === nome.toLowerCase());
+      if (this.senzaPagine || !titolo || passo <= 0) { v.removeAttribute('data-pg'); continue; }
+      // la riga del testo, non l'inizio del paragrafo: un salto di pagina prima del titolo è uno spazio in alto nel paragrafo (padding)
+      const riga = titolo.getBoundingClientRect().top + (parseFloat(getComputedStyle(titolo).paddingTop) || 0) + 1;
+      const pagina = Math.floor((riga - origine) / passo) + 1;
+      v.setAttribute('data-pg', String(Math.max(1, pagina)));
+    }
   }
 
   private applicaSalti(zona: HTMLElement): number {
@@ -1017,6 +1415,16 @@ export class DocsEditor extends LinguaElement {
           cella.style.height = `${h}px`;
           spazio.appendChild(cella);
           m.tr.parentNode?.insertBefore(spazio, m.tr);
+          // le righe di intestazione si ripetono in cima al foglio nuovo: copie senza numeri di paragrafo (non si scrivono, non si contano)
+          if (!m.tr.classList.contains('intestazione')) {
+            for (const h of Array.from(m.tr.parentNode?.querySelectorAll<HTMLTableRowElement>(':scope > tr.intestazione') ?? [])) {
+              const copia = h.cloneNode(true) as HTMLTableRowElement;
+              copia.className = 'salto-riga intestazione-ripetuta';
+              copia.setAttribute('aria-hidden', 'true');
+              copia.querySelectorAll('[data-p]').forEach((p) => p.removeAttribute('data-p'));
+              m.tr.parentNode?.insertBefore(copia, m.tr);
+            }
+          }
           continue;
         }
         if (m.primaDelParagrafo || !m.nodo) {
@@ -1134,10 +1542,17 @@ export class DocsEditor extends LinguaElement {
       f.className = 'foglio';
       fogli.appendChild(f);
     }
+    const filigrana = this.stato.doc.filigrana ?? '';
     (Array.from(fogli.children) as HTMLElement[]).forEach((f, i) => {
       f.style.top = `${inizioPagina(i, this.geometria)}px`;
       f.style.height = `${this.geometria.altezzaPagina}px`;
       f.style.backgroundColor = this.impostazioniPagina.coloreSfondo || '#ffffff';
+      // la filigrana: in diagonale al centro del foglio, sotto il testo
+      let segno = f.querySelector<HTMLElement>('.filigrana');
+      if (filigrana === '') { segno?.remove(); return; }
+      if (!segno) { segno = document.createElement('span'); segno.className = 'filigrana'; segno.setAttribute('aria-hidden', 'true'); f.appendChild(segno); }
+      if (segno.textContent !== filigrana) segno.textContent = filigrana;
+      segno.style.fontSize = `${Math.round(Math.min(110, 900 / Math.max(4, filigrana.length) * 1.6))}px`;
     });
     // l'altezza dei fogli si dà all'area del testo (la cornice di margine sopra e sotto è già nel riempimento dell'editor)
     // in stampa niente altezza minima: sono le righe a decidere quanti fogli escono (una frazione in più darebbe un foglio bianco)
@@ -1158,9 +1573,12 @@ export class DocsEditor extends LinguaElement {
   // ---- tastiera e appunti ----
   private suTasto = (e: KeyboardEvent): void => {
     if (this.componendo || e.isComposing) return;
+    this.blocAcceso = typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
     const a = azioneDaTastoFormato(e);
     if (!a || a.tipo === 'testo') return;
     e.preventDefault();
+    // prima di andare a capo si corregge la parola appena finita
+    if (a.tipo === 'invio') this.ed = this.registraCorrezione(this.ed, correggiPrimaDiInvio(this.ed.storia.presente, this.correzione, this.blocAcceso));
     this.applica(a);
   };
   private suInput = (): void => {
@@ -1176,7 +1594,17 @@ export class DocsEditor extends LinguaElement {
     if (!c || c.value === '') return;
     const testo = c.value;
     c.value = '';
-    this.applica({ tipo: 'testo', testo });
+    let ed = eseguiAzioneFormato(this.ed, { tipo: 'testo', testo }).ed;
+    // correzioni solo per un carattere scritto da tastiera, mai sul testo incollato o composto tutto insieme;
+    // ognuna è un passo a sé nella storia: Ctrl+Z subito dopo la toglie e lascia ciò che si è scritto
+    if (Array.from(testo).length === 1) {
+      const st = ed.storia.presente;
+      const corretto = (this.maiuscolaAuto ? maiuscolaAutomatica(st) : null) ?? correggiDopoCarattere(st, testo, this.correzione, this.blocAcceso);
+      ed = this.registraCorrezione(ed, corretto);
+    }
+    this.ed = ed;
+    this.ridisegna();
+    this.avvisa();
   }
   private suCopia = (e: ClipboardEvent): void => {
     const r = eseguiAzioneFormato(this.ed, { tipo: 'copia' });
@@ -1296,7 +1724,7 @@ export class DocsEditor extends LinguaElement {
     this.formatoCopiato = null;
     const nuovo = incollaFormato(st, copia);
     if (nuovo.doc !== st.doc) {
-      this.ed = { storia: registra(this.ed.storia, nuovo), ultima: 'copia-formato' };
+      this.ed = { ...this.ed, storia: registra(this.ed.storia, nuovo), ultima: 'copia-formato' };
       this.ridisegna();
       this.avvisa();
     }
@@ -1307,7 +1735,7 @@ export class DocsEditor extends LinguaElement {
     const st = this.stato;
     const doc = alternaFatto(st.doc, p);
     if (doc === st.doc) return;
-    this.ed = { storia: registra(this.ed.storia, { ...st, doc }), ultima: 'spunta' };
+    this.ed = { ...this.ed, storia: registra(this.ed.storia, { ...st, doc }), ultima: 'spunta' };
     this.ridisegna();
     this.avvisa();
     this.focalizza();
@@ -1315,6 +1743,13 @@ export class DocsEditor extends LinguaElement {
   /** Ctrl+clic su un link: chiede al guscio di aprirlo. Restituisce false se sotto il clic non c'è un link. */
   private apriLinkSotto(e: MouseEvent): boolean {
     for (const n of e.composedPath()) {
+      // una voce del sommario: si va al titolo
+      if (n instanceof HTMLElement && n.tagName === 'P' && n.classList.contains('sommario')) {
+        const p = destinazioneVoce(this.stato.doc, n.getAttribute('data-sm') ?? '');
+        if (p === null) return false;
+        this.vaiATitolo(p);
+        return true;
+      }
       if (n instanceof HTMLElement && n.classList.contains('link')) {
         const url = n.getAttribute('data-u') ?? '';
         if (!urlValido(url)) return false;
@@ -1373,6 +1808,30 @@ export class DocsEditor extends LinguaElement {
     return Array.from(r.getClientRects());
   }
 
+  /**
+   * Tasto destro nel punto (x, y): se il punto non cade nel testo selezionato il cursore va lì (come in Word e Writer),
+   * altrimenti la selezione resta. Dice se c'è del testo selezionato, per le voci Taglia, Copia ed Elimina del menu.
+   */
+  preparaMenuContestuale(x: number, y: number): { selezione: boolean } {
+    const st = this.stato;
+    const pos = this.posizioneDaPunto(x, y);
+    const [i, f] = ordina(st.doc, st.sel);
+    const prima = (a: Posizione, b: Posizione): boolean => a.p < b.p || (a.p === b.p && a.o <= b.o);
+    const dentro = pos !== null && !collassata(st.sel) && prima(i, pos) && prima(pos, f);
+    if (pos && !dentro) this.applica({ tipo: 'vai', pos, estendi: false });
+    this.focalizza();
+    return { selezione: !collassata(this.stato.sel) };
+  }
+  /** Nessun testo selezionato (solo il cursore). */
+  get selezioneVuota(): boolean { return collassata(this.stato.sel); }
+  /** Dove sta il cursore sullo schermo (per aprire il menu dal tasto Menu o da Maiusc+F10). */
+  puntoCursore(): { x: number; y: number } {
+    const c = this.renderRoot.querySelector<HTMLElement>('.cursore');
+    const r = c?.getBoundingClientRect();
+    if (r && (r.width > 0 || r.height > 0)) return { x: r.left, y: r.bottom };
+    const a = this.getBoundingClientRect();
+    return { x: a.left + 40, y: a.top + 40 };
+  }
   private posizioneDaPunto(x: number, y: number): Posizione | null {
     const zona = this.zonaTesto();
     let paragrafi = paragrafiDom(zona);

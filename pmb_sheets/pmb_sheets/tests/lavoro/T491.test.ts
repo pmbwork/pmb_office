@@ -13,7 +13,7 @@ describe('T491: nomi italiani', () => {
   });
   it('verso l\'italiano LCM diventa MCM e LEN resta LUNGH', () => {
     expect(translateFormula('=LCM(4,6)', 'en', 'it')).toBe('=MCM(4;6)');
-    expect(translateFormula('=LEN(A1)', 'en', 'it')).toBe('=LUNGH(A1)');
+    expect(translateFormula('=LEN(A1)', 'en', 'it')).toBe('=LUNGHEZZA(A1)');   // il nome di Excel (2026-11-20); LUNGH si capisce ancora
   });
 });
 

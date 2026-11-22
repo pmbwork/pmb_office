@@ -24,18 +24,18 @@ export class DocsPreferenze extends LinguaElement {
     :host-context([riduci-animazioni]) * { transition: none !important; animation: none !important; }
 
     /* stesso aspetto della finestra Preferenze di pmb_sheets: un riquadro per argomento, con il titolo in grassetto */
-    :host { display: block; font: 13px Roboto, Arial, sans-serif; color: #202124; }
-    .dialogo { width: 380px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 20px 24px; background: #ffffff; border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); }
+    :host { display: block; font: 13px Roboto, Arial, sans-serif; color: var(--pmb-testo, #202124); }
+    .dialogo { width: 380px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 20px 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); }
     h2 { margin: 0 0 16px; font-size: 16px; font-weight: 500; }
     fieldset { border: 0; padding: 0; margin: 0 0 16px; }
     legend { font-weight: 500; margin-bottom: 8px; padding: 0; }
     label.voce { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
-    select { height: 30px; border: 1px solid #dadce0; border-radius: 4px; font: inherit; padding: 0 8px; background: #ffffff; min-width: 200px; }
-    p.nota, .aiuto { color: #5f6368; font-size: 12px; margin: 4px 0 0; }
+    select { height: 30px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; font: inherit; padding: 0 8px; background: var(--pmb-superficie, #ffffff); min-width: 200px; }
+    p.nota, .aiuto { color: var(--pmb-testo-2, #5f6368); font-size: 12px; margin: 4px 0 0; }
     .aiuto { margin: 0; }
     .chiudi { display: flex; justify-content: flex-end; }
-    button { padding: 7px 16px; border-radius: 4px; border: 1px solid #dadce0; background: #ffffff; color: inherit; font: inherit; cursor: pointer; }
-    button:hover { background: #f8f9fa; }
+    button { padding: 7px 16px; border-radius: 4px; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: inherit; font: inherit; cursor: pointer; }
+    button:hover { background: var(--pmb-superficie-2, #f8f9fa); }
   `;
 
   focalizza(): void { this.renderRoot.querySelector<HTMLElement>('input, select')?.focus(); }
@@ -88,6 +88,18 @@ export class DocsPreferenze extends LinguaElement {
             </select></label>
           ${this.casella('Sottolinea gli errori mentre scrivo', p.ortografia, 'ortografia')}
           <p class="nota">Il controllo usa i dizionari di Windows: per altre lingue aggiungile nelle impostazioni di lingua di Windows.</p>
+        </fieldset>
+        <fieldset>
+          <legend>Correzione automatica</legend>
+          ${this.casella('Maiuscola automatica a inizio frase', p.maiuscolaAutomatica, 'maiuscolaAutomatica', 'Dopo il punto e a inizio paragrafo. Ctrl+Z subito dopo la toglie.')}
+          <button class="opzioni-correzione" @click=${() => this.dispatchEvent(new CustomEvent('apri-correzione', { bubbles: true, composed: true }))}>Opzioni di correzione automatica…</button>
+        </fieldset>
+        <fieldset>
+          <legend>Commenti e revisioni</legend>
+          <label class="voce"><span>Il tuo nome:</span>
+            <input type="text" class="nome-autore" maxlength="100" aria-label="Il tuo nome per commenti e modifiche" placeholder=${t('Autore')} .value=${p.autore}
+              @change=${(e: Event) => this.cambia({ autore: (e.target as HTMLInputElement).value })} /></label>
+          <p class="nota">Compare accanto ai tuoi commenti e alle modifiche che registri, anche nei file .docx e .odt.</p>
         </fieldset>
         <div class="chiudi"><button @click=${() => this.chiudi()}>Chiudi</button></div>
       </div>`;

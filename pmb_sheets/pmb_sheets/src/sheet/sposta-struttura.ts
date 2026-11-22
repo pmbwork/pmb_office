@@ -3,6 +3,7 @@
  * "attaccati" alle posizioni: stili, larghezze e altezze, righe e colonne nascoste, celle unite, convalide, formattazioni condizionali,
  * filtri, commenti, intervalli denominati e blocco di righe e colonne del foglio. Qui sta la regola, uguale per tutti: modulo puro, niente DOM e niente motore.
  */
+import { copiaPagina, type ImpostaPagina } from './pagina';
 import type { SheetDocument } from './document-store';
 import { adjustMergesOnStructureChange } from './cell-merge';
 import { columnIndexToLetters } from '../engine/address';
@@ -124,6 +125,27 @@ function formuleRegoleDopoStruttura(regole: ConditionalFormatRule[], vecchie: Co
 }
 
 /** Sposta tutto ciò che è legato alle posizioni del foglio attivo del documento. Modifica i campi vivi del documento. */
+/** Righe o colonne inserite o eliminate: l'area di stampa, le righe e colonne ripetute e le interruzioni di pagina si spostano, o spariscono con ciò che si elimina. */
+export function paginaDopoStruttura(p: ImpostaPagina, op: OperazioneStruttura): ImpostaPagina {
+  const righe = eRiga(op);
+  const out = copiaPagina(p);
+  if (out.area) {
+    const r = righe ? nuovoIntervallo(out.area.startRow, out.area.endRow, op) : [out.area.startRow, out.area.endRow] as [number, number];
+    const c = righe ? [out.area.startCol, out.area.endCol] as [number, number] : nuovoIntervallo(out.area.startCol, out.area.endCol, op);
+    if (r && c) out.area = { startRow: r[0], endRow: r[1], startCol: c[0], endCol: c[1] }; else delete out.area;
+  }
+  const rip = righe ? out.righeRipetute : out.colonneRipetute;
+  if (rip) {
+    const x = nuovoIntervallo(rip.da, rip.a, op);
+    const nuovo = x ? { da: x[0], a: x[1] } : undefined;
+    if (righe) { if (nuovo) out.righeRipetute = nuovo; else delete out.righeRipetute; }
+    else if (nuovo) out.colonneRipetute = nuovo; else delete out.colonneRipetute;
+  }
+  const interruzioni = (l: number[]): number[] => [...new Set(l.map((x) => nuovoIndice(x, op)).filter((x): x is number => x !== null && x >= 2))].sort((a, b) => a - b);
+  if (righe) out.interruzioniRighe = interruzioni(out.interruzioniRighe); else out.interruzioniColonne = interruzioni(out.interruzioniColonne);
+  return out;
+}
+
 export function spostaDatiAccessori(doc: SheetDocument, op: OperazioneStruttura): void {
   const righe = eRiga(op);
   // stili
@@ -146,6 +168,15 @@ export function spostaDatiAccessori(doc: SheetDocument, op: OperazioneStruttura)
     const c = righe ? [a.startCol, a.endCol] as [number, number] : nuovoIntervallo(a.startCol, a.endCol, op);
     if (r && c) doc.filterArea = { startRow: r[0], endRow: r[1], startCol: c[0], endCol: c[1] };
     else { doc.filterArea = undefined; doc.isFilterActive = false; doc.activeFilters.clear(); }
+  }
+  // impostazione di pagina: area di stampa, righe e colonne ripetute e interruzioni seguono righe e colonne
+  if (doc.impostaPagina) doc.impostaPagina = paginaDopoStruttura(doc.impostaPagina, op);
+  // righe e colonne raggruppate (struttura) seguono righe e colonne
+  if (doc.gruppi) {
+    const asse = righe ? 'righe' : 'colonne';
+    const spostati: Record<number, number> = {};
+    for (const [k, l] of Object.entries(doc.gruppi[asse])) { const n = nuovoIndice(Number(k), op); if (n !== null) spostati[n] = l; }
+    doc.gruppi = { ...doc.gruppi, [asse]: spostati };
   }
   // blocco di righe e colonne (riquadri bloccati)
   if (righe) doc.freezeRows = Math.min(200, bloccatiDopoStruttura(doc.freezeRows || 0, op));

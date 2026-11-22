@@ -40,7 +40,8 @@ describe('T043: menu a tendina', () => {
 
   it('stile, carattere e corpo', () => {
     const s = popupPerComando('stile-paragrafo')!;
-    expect(s.voci.map((v) => v.etichetta)).toEqual(['Testo normale', 'Titolo', 'Sottotitolo', 'Titolo 1', 'Titolo 2', 'Titolo 3']);
+    // dal 0.4.14 in fondo c'è la voce per creare e gestire gli stili personali
+    expect(s.voci.map((v) => v.etichetta)).toEqual(['Testo normale', 'Titolo', 'Sottotitolo', 'Titolo 1', 'Titolo 2', 'Titolo 3', 'Crea o gestisci stili…']);
     expect(Object.values(NOMI_STILE).length).toBe(6);
     expect(s.voci[0].attiva).toBe(true);
     const c = popupPerComando('carattere')!;

@@ -3,24 +3,28 @@
 // salvo l'invio e la cancellazione dentro un elenco, che qui hanno il comportamento di Google Documenti.
 import {
   alternaElenco, applicaParagrafo, attributiParagrafo, cambiaRientro, collassata, corpoSuccessivo, formatoSelezione,
-  impostaAttributo, spazioValido, impostaBordo, type Bordo, impostaIntestazione, impostaLarghezzaImmagine, impostaPiede, inserisciImmagine, inserisciTesto, ordina, pulisciFormato, segniVuoti, testoParagrafo,
+  impostaAttributo, spazioValido, impostaBordo, type Bordo, impostaIntestazione, impostaLarghezzaImmagine, impostaDisposizioneImmagine, type DisposizioneImmagine, impostaPiede, inserisciImmagine, inserisciTesto, ordina, pulisciFormato, segniVuoti, testoParagrafo,
   CORPO_NORMALE,
   type Allineamento, type Immagine, type ChiaveAttributo, type Paragrafo, type Stato, type StileParagrafo, type TipoElenco,
 } from '../modello/documento';
 import { registra } from '../modello/storia';
+import { applicaStile, togliStile } from '../modello/stili';
+import { cambiaMaiuscole, type ModoMaiuscole } from '../modello/maiuscole';
 import { inserisciLink, rimuoviLink } from './link';
-import { attraversaCelle, cancellaSuConfine, cellaVicina, inserisciTabella, modificaTabella, svuotaSelezione, testoSelezionato, type OperazioneTabella } from './tabelle';
+import { attraversaCelle, cancellaSuConfine, cellaVicina, fuoriDalleCoperte, inserisciTabella, modificaTabella, svuotaSelezione, testoSelezionato, type OperazioneTabella } from './tabelle';
 import { azioneDaComando, azioneDaTasto, eseguiAzione, type Azione, type Esito, type EventoTasto, type StatoEditor } from './azioni';
 
 export type AzioneFormato =
   | Azione
   | { tipo: 'attributo'; chiave: ChiaveAttributo; valore: string | number | undefined }
-  | { tipo: 'alterna'; chiave: 'x' | 'v'; valore: string }
+  | { tipo: 'alterna'; chiave: 'x' | 'v' | 'w' | 'q'; valore: string }
   | { tipo: 'allinea'; valore: Allineamento }
   | { tipo: 'interlinea'; valore: number | undefined }
   | { tipo: 'spazio'; chiave: 'sb' | 'sa'; valore: number | undefined }
   | { tipo: 'bordo'; parziale: Partial<Bordo> | null }
   | { tipo: 'stile'; valore: StileParagrafo }
+  | { tipo: 'stilePersonale'; id: string }
+  | { tipo: 'maiuscole'; modo: ModoMaiuscole }
   | { tipo: 'elenco'; elenco: TipoElenco }
   | { tipo: 'rientro'; delta: 1 | -1 }
   | { tipo: 'tab'; indietro: boolean }
@@ -30,6 +34,7 @@ export type AzioneFormato =
   | { tipo: 'togliLink' }
   | { tipo: 'immagine'; immagine: Immagine }
   | { tipo: 'larghezzaImmagine'; larghezza: number }
+  | { tipo: 'disposizioneImmagine'; a: DisposizioneImmagine | undefined }
   | { tipo: 'tabella'; righe: number; colonne: number }
   | { tipo: 'modificaTabella'; op: OperazioneTabella }
   | { tipo: 'margini'; intestazione?: Paragrafo[]; piede?: Paragrafo[] };
@@ -42,9 +47,18 @@ export function azioneDaTastoFormato(e: EventoTastoFormato): AzioneFormato | nul
   const altGr = e.ctrlKey && e.altKey;
   const tasto = e.key.toLowerCase();
   if (e.key === 'Tab' && !ctrl && !e.altKey) return { tipo: 'tab', indietro: e.shiftKey };
+  // Maiusc+F3: il giro delle maiuscole di Word (minuscolo → MAIUSCOLO → Iniziali)
+  if (e.key === 'F3' && e.shiftKey && !ctrl && !e.altKey) return { tipo: 'maiuscole', modo: 'giro' };
   if (e.altKey && e.shiftKey && !ctrl && (e.code === 'Digit5' || e.key === '5' || e.key === '%')) return { tipo: 'alterna', chiave: 'x', valore: 'b' };
   if (ctrl && !e.altKey && !altGr) {
     if (e.shiftKey) {
+      // come Word: Ctrl+Maiusc+Invio interruzione di colonna, Ctrl+Maiusc+Spazio spazio non divisibile, Ctrl+Maiusc+- trattino non divisibile
+      if (e.key === 'Enter') return { tipo: 'saltoColonna' };
+      if (e.code === 'Space' || e.key === ' ') return { tipo: 'incolla', testo: '\u00a0' };
+      if (e.code === 'Minus' || e.key === '_') return { tipo: 'incolla', testo: '\u2011' };
+      // come Word: Ctrl+Maiusc+K maiuscoletto, Ctrl+Maiusc+D sottolineato doppio
+      if (tasto === 'k' || e.code === 'KeyK') return { tipo: 'alterna', chiave: 'q', valore: 'm' };
+      if (tasto === 'd' || e.code === 'KeyD') return { tipo: 'alterna', chiave: 'w', valore: 'd' };
       if (tasto === 'l') return { tipo: 'allinea', valore: 'sx' };
       if (tasto === 'e') return { tipo: 'allinea', valore: 'ce' };
       if (tasto === 'r') return { tipo: 'allinea', valore: 'dx' };
@@ -60,6 +74,8 @@ export function azioneDaTastoFormato(e: EventoTastoFormato): AzioneFormato | nul
       if (e.key === ']') return { tipo: 'rientro', delta: 1 };
       if (e.key === '[') return { tipo: 'rientro', delta: -1 };
       if (e.key === 'Enter') return { tipo: 'saltoPagina' };
+      // Ctrl+-: trattino facoltativo (si vede solo se la parola va a capo lì)
+      if (e.code === 'Minus' || e.key === '-') return { tipo: 'incolla', testo: '\u00ad' };
     }
   }
   return azioneDaTasto(e);
@@ -77,6 +93,8 @@ export function azioneDaComandoFormato(id: string): AzioneFormato | null {
     case 'aumenta-rientro': return { tipo: 'rientro', delta: 1 };
     case 'cancella-formattazione': return { tipo: 'pulisci' };
     case 'barrato': return { tipo: 'alterna', chiave: 'x', valore: 'b' };
+    case 'maiuscoletto': return { tipo: 'alterna', chiave: 'q', valore: 'm' };
+    case 'sottolineato-doppio': case 'sottolineato doppio': return { tipo: 'alterna', chiave: 'w', valore: 'd' };
     case 'apice': return { tipo: 'alterna', chiave: 'v', valore: 'p' };
     case 'pedice': return { tipo: 'alterna', chiave: 'v', valore: 'd' };
     default: return azioneDaComando(id);
@@ -84,13 +102,20 @@ export function azioneDaComandoFormato(id: string): AzioneFormato | null {
 }
 
 function esegueInBase(a: AzioneFormato): a is Azione {
-  return !['attributo', 'alterna', 'allinea', 'interlinea', 'spazio', 'bordo', 'stile', 'elenco', 'rientro', 'tab', 'corpo', 'pulisci', 'link', 'togliLink', 'tabella', 'modificaTabella', 'immagine', 'larghezzaImmagine', 'margini'].includes(a.tipo);
+  return !['attributo', 'alterna', 'allinea', 'interlinea', 'spazio', 'bordo', 'stile', 'elenco', 'rientro', 'tab', 'corpo', 'pulisci', 'link', 'togliLink', 'tabella', 'modificaTabella', 'stilePersonale', 'maiuscole', 'immagine', 'larghezzaImmagine', 'disposizioneImmagine', 'margini'].includes(a.tipo);
 }
 
-/** Applica un'azione. Non modifica mai l'ingresso. */
+/** Applica un'azione. Non modifica mai l'ingresso. Il cursore non resta mai in una cella coperta da un'unione. */
 export function eseguiAzioneFormato(ed: StatoEditor, a: AzioneFormato): Esito {
+  const r = esegui(ed, a);
+  const st = r.ed.storia.presente;
+  const fuori = fuoriDalleCoperte(st, ed.storia.presente.sel);
+  return fuori === st ? r : { ...r, ed: { ...r.ed, storia: { ...r.ed.storia, presente: fuori } } };
+}
+
+function esegui(ed: StatoEditor, a: AzioneFormato): Esito {
   const st = ed.storia.presente;
-  const fatto = (nuovo: Stato): Esito => ({ ed: { storia: registra(ed.storia, nuovo), ultima: a.tipo }, copiato: null });
+  const fatto = (nuovo: Stato): Esito => ({ ed: { ...ed, storia: registra(ed.storia, nuovo), ultima: a.tipo }, copiato: null });
   const [inizio] = ordina(st.doc, st.sel);
   const attr = attributiParagrafo(st.doc, inizio);
   const vuoto = testoParagrafo(st.doc.paragrafi[inizio.p]) === '';
@@ -102,9 +127,9 @@ export function eseguiAzioneFormato(ed: StatoEditor, a: AzioneFormato): Esito {
   if (!collassata(st.sel) && attraversaCelle(st.doc, st.sel) && ['testo', 'invio', 'incolla', 'cancella', 'taglia'].includes(a.tipo)) {
     const testo = testoSelezionato(st);
     const svuotato = svuotaSelezione(st);
-    if (a.tipo === 'cancella' || a.tipo === 'taglia') return { ed: { storia: registra(ed.storia, svuotato), ultima: a.tipo }, copiato: a.tipo === 'taglia' ? testo : null };
-    const r = eseguiAzioneFormato({ storia: { passato: ed.storia.passato, presente: svuotato, futuro: [] }, ultima: ed.ultima }, a);
-    return { ed: { storia: registra(ed.storia, r.ed.storia.presente), ultima: a.tipo }, copiato: r.copiato };
+    if (a.tipo === 'cancella' || a.tipo === 'taglia') return { ed: { ...ed, storia: registra(ed.storia, svuotato), ultima: a.tipo }, copiato: a.tipo === 'taglia' ? testo : null };
+    const r = esegui({ ...ed, storia: { passato: ed.storia.passato, presente: svuotato, futuro: [] }, ultima: ed.ultima }, a);
+    return { ed: { ...ed, storia: registra(ed.storia, r.ed.storia.presente), ultima: a.tipo }, copiato: r.copiato };
   }
   if (a.tipo === 'invio' && collassata(st.sel) && attr.el !== undefined && vuoto) {
     return fatto(senzaPendenti(applicaParagrafo(applicaParagrafo(doc, st.sel, 'el', undefined), st.sel, 'ri', undefined)));
@@ -113,7 +138,8 @@ export function eseguiAzioneFormato(ed: StatoEditor, a: AzioneFormato): Esito {
     // a capo in fondo a un titolo: il paragrafo nuovo torna "testo normale"
     const diviso = inserisciTesto(st, '\n');
     const nuova = { p: inizio.p + 1, o: 0 };
-    return fatto({ ...diviso, doc: applicaParagrafo(diviso.doc, { ancora: nuova, fuoco: nuova }, 'st', undefined) });
+    // (anche uno stile personale che ha per base un titolo)
+    return fatto({ ...diviso, doc: togliStile(applicaParagrafo(diviso.doc, { ancora: nuova, fuoco: nuova }, 'st', undefined), { ancora: nuova, fuoco: nuova }) });
   }
   if (a.tipo === 'cancella' && !a.parola && a.direzione === 'indietro' && collassata(st.sel) && inizio.o === 0
     && (attr.el !== undefined || attr.ri !== undefined)) {
@@ -138,7 +164,15 @@ export function eseguiAzioneFormato(ed: StatoEditor, a: AzioneFormato): Esito {
     case 'interlinea': return fatto(senzaPendenti(applicaParagrafo(doc, st.sel, 'ls', a.valore === undefined || a.valore === 1.15 ? undefined : a.valore)));
     case 'spazio': return fatto(senzaPendenti(applicaParagrafo(doc, st.sel, a.chiave, spazioValido(a.valore))));
     case 'bordo': return fatto(senzaPendenti(impostaBordo(doc, st.sel, a.parziale)));
-    case 'stile': return fatto(senzaPendenti(applicaParagrafo(doc, st.sel, 'st', a.valore === 'n' ? undefined : a.valore)));
+    case 'stile': return fatto(senzaPendenti(applicaParagrafo(togliStile(doc, st.sel), st.sel, 'st', a.valore === 'n' ? undefined : a.valore)));
+    case 'maiuscole': {
+      const nuovo = cambiaMaiuscole(st, a.modo);
+      return nuovo === st ? { ed, copiato: null } : fatto(nuovo);
+    }
+    case 'stilePersonale': {
+      const nuovo = applicaStile(doc, st.sel, a.id);
+      return nuovo === doc ? { ed, copiato: null } : fatto(senzaPendenti(nuovo));
+    }
     case 'elenco': return fatto(senzaPendenti(alternaElenco(doc, st.sel, a.elenco)));
     case 'rientro': return fatto(senzaPendenti(cambiaRientro(doc, st.sel, a.delta)));
     case 'tab': {
@@ -170,6 +204,10 @@ export function eseguiAzioneFormato(ed: StatoEditor, a: AzioneFormato): Esito {
       const nuovo = impostaLarghezzaImmagine(st, a.larghezza);
       return nuovo === st ? { ed, copiato: null } : fatto(nuovo);
     }
+    case 'disposizioneImmagine': {
+      const nuovo = impostaDisposizioneImmagine(st, a.a);
+      return nuovo === st ? { ed, copiato: null } : fatto(nuovo);
+    }
     case 'tabella': {
       const nuovo = inserisciTabella(st, a.righe, a.colonne);
       return nuovo === st ? { ed, copiato: null } : fatto(nuovo);
@@ -185,7 +223,7 @@ export function eseguiAzioneFormato(ed: StatoEditor, a: AzioneFormato): Esito {
       return nuovo === st ? { ed, copiato: null } : fatto(nuovo);
     }
     case 'pulisci': {
-      if (collassata(st.sel)) return fatto({ ...senzaPendenti(applicaParagrafo(doc, st.sel, 'st', undefined)), pendenti: segniVuoti() });
+      if (collassata(st.sel)) return fatto({ ...senzaPendenti(applicaParagrafo(togliStile(doc, st.sel), st.sel, 'st', undefined)), pendenti: segniVuoti() });
       return fatto(senzaPendenti(pulisciFormato(doc, st.sel)));
     }
   }

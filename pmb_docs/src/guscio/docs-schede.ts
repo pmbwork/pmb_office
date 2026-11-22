@@ -24,24 +24,24 @@ export class DocsSchede extends LinguaElement {
     :host-context([alto-contrasto]) button:focus-visible, :host-context([alto-contrasto]) input:focus-visible { outline: 3px solid #000000; outline-offset: 1px; }
     :host-context([alto-contrasto]) .scheda.attiva { background: #000000; }
     :host-context([alto-contrasto]) .scheda.attiva button.nome { color: #ffffff; }
-    :host { display: block; font: 13px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .pannello { box-sizing: border-box; width: 100%; max-height: 100%; overflow-y: auto; background: #ffffff; border: 1px solid #dadce0; border-radius: 8px; padding: 8px; box-shadow: 0 1px 3px rgba(60, 64, 67, 0.2); }
-    .intestazione { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; font-weight: 500; color: #444746; }
+    :host { display: block; font: 13px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .pannello { box-sizing: border-box; width: 100%; max-height: 100%; overflow-y: auto; background: var(--pmb-superficie, #ffffff); border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 8px; padding: 8px; box-shadow: 0 1px 3px rgba(60, 64, 67, 0.2); }
+    .intestazione { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; font-weight: 500; color: var(--pmb-testo-2, #444746); }
     .scheda { display: flex; align-items: center; gap: 2px; border-radius: 16px; padding: 0 4px 0 0; }
-    .scheda:hover { background: #f1f3f4; }
-    .scheda.attiva { background: #e8f0fe; }
-    button { font: inherit; cursor: pointer; border: 0; background: none; color: #444746; }
-    button.nome { flex: 1; min-width: 0; height: 32px; padding: 0 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 16px; color: #1f1f1f; }
-    .scheda.attiva button.nome { font-weight: 500; color: #0b57d0; }
+    .scheda:hover { background: var(--pmb-superficie-2, #f1f3f4); }
+    .scheda.attiva { background: var(--pmb-selezione, #e8f0fe); }
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: var(--pmb-testo-2, #444746); }
+    button.nome { flex: 1; min-width: 0; height: 32px; padding: 0 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 16px; color: var(--pmb-testo, #1f1f1f); }
+    .scheda.attiva button.nome { font-weight: 500; color: var(--pmb-accento, #0b57d0); }
     button.icona { width: 26px; height: 26px; border-radius: 13px; padding: 0; visibility: hidden; }
     .scheda:hover button.icona, .scheda:focus-within button.icona { visibility: visible; }
-    button.icona:hover { background: #dadce0; }
-    button.icona:disabled { color: #bdc1c6; cursor: default; }
-    button.nuova { width: 28px; height: 28px; border-radius: 14px; font-size: 18px; line-height: 1; color: #0b57d0; }
-    button.nuova:hover { background: #e8f0fe; }
+    button.icona:hover { background: var(--pmb-hover, #dadce0); }
+    button.icona:disabled { color: var(--pmb-testo-disabilitato, #bdc1c6); cursor: default; }
+    button.nuova { width: 28px; height: 28px; border-radius: 14px; font-size: 18px; line-height: 1; color: var(--pmb-accento, #0b57d0); }
+    button.nuova:hover { background: var(--pmb-selezione, #e8f0fe); }
     input { flex: 1; min-width: 0; height: 30px; box-sizing: border-box; margin: 1px 0; padding: 0 8px; border: 1px solid #0b57d0; border-radius: 6px; font: inherit; outline: none; }
     .conferma { display: flex; align-items: center; gap: 4px; padding: 2px 6px 2px 10px; font-size: 12px; }
-    .conferma button { height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid #dadce0; background: #ffffff; color: #0b57d0; }
+    .conferma button { height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); }
   `;
 
   private invia(nome: string, dettaglio: object = {}): void { this.dispatchEvent(new CustomEvent(nome, { detail: dettaglio, bubbles: true, composed: true })); }

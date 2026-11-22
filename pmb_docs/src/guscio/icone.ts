@@ -3,6 +3,7 @@
 // Zoom, stile-paragrafo, carattere e corpo sono caselle di testo, non icone.
 // Marcatore: ICONE_DOCS_T026
 import { ICONE, iconaDiMisura } from '@comune/icone';
+import { iconaFunzione } from '@comune/icone-funzioni';
 
 const LATO = 18;
 const di = (svg: string): string => iconaDiMisura(svg, LATO);
@@ -22,7 +23,7 @@ export const ICONE_DOCS: Record<string, string> = {
   'barrato': di(ICONE.strike),
   'colore-testo': di(ICONE.textColor),
   // l'evidenziatore è il colore di sfondo del testo: la stessa icona del colore di sfondo della cella in pmb_sheets
-  'evidenzia': di(ICONE.fillColor),
+  'evidenzia': di(ICONE.highlight),
   'link': di(ICONE.link),
   'immagine': di(ICONE.image),
   'allineamento': di(ICONE.alignLeft),
@@ -35,3 +36,10 @@ export const ICONE_DOCS: Record<string, string> = {
   'cancella-formattazione': di(ICONE.clearFormatting),
   'funzioni': di(ICONE.extension),
 };
+
+/** L'icona di una funzione della barra: quella del comando se c'è, altrimenti (voci dei menu) quella scelta dal nome con la regola comune
+ *  della suite (comune/src/icone-funzioni.ts). Così una voce di menu messa nella barra è un pulsante a icona, non una scritta. */
+export function iconaDi(f: { id: string; etichetta: string; menu?: unknown }): string {
+  // le caselle (zoom, stile, carattere, corpo) non hanno icona: si mostrano col loro testo
+  return ICONE_DOCS[f.id] ?? (f.menu ? di(iconaFunzione(f.etichetta)) : '');
+}

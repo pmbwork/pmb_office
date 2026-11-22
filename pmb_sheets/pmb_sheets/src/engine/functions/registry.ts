@@ -21,6 +21,9 @@ import * as array from './array';
 import * as extra from './extra';
 import * as student from './student';
 import * as query from './query';
+import * as distribuzioni from './distribuzioni';
+import * as altre from './altre-excel';
+import * as complessi from './complessi';
 import { EN_TO_IT_FUNCTIONS } from '../i18n';
 
 export type FunctionImpl = (args: EvalArg[], context?: FunctionContext) => CellValue;
@@ -421,11 +424,125 @@ class FunctionRegistry {
     this.register('CSC', extra.fnCSC);
     this.register('COT', extra.fnCOT);
 
+    // Funzioni di Excel che mancavano (2026-11-20, confrontate con Excel installato): distribuzioni e statistiche, con i vecchi nomi
+    // di Excel 2007 che i file vecchi usano ancora
+    this.register('BINOM.DIST', distribuzioni.fnBINOM_DIST, ['BINOMDIST']);
+    this.register('BINOM.DIST.RANGE', distribuzioni.fnBINOM_DIST_RANGE);
+    this.register('BINOM.INV', distribuzioni.fnBINOM_INV, ['CRITBINOM']);
+    this.register('POISSON.DIST', distribuzioni.fnPOISSON_DIST, ['POISSON']);
+    this.register('CHISQ.DIST', distribuzioni.fnCHISQ_DIST);
+    this.register('CHISQ.DIST.RT', distribuzioni.fnCHISQ_DIST_RT, ['CHIDIST']);
+    this.register('CHISQ.INV', distribuzioni.fnCHISQ_INV);
+    this.register('CHISQ.INV.RT', distribuzioni.fnCHISQ_INV_RT, ['CHIINV']);
+    this.register('CHISQ.TEST', distribuzioni.fnCHISQ_TEST, ['CHITEST']);
+    this.register('F.DIST', distribuzioni.fnF_DIST);
+    this.register('F.DIST.RT', distribuzioni.fnF_DIST_RT, ['FDIST']);
+    this.register('F.INV', distribuzioni.fnF_INV);
+    this.register('F.INV.RT', distribuzioni.fnF_INV_RT, ['FINV']);
+    this.register('F.TEST', distribuzioni.fnF_TEST, ['FTEST']);
+    this.register('EXPON.DIST', distribuzioni.fnEXPON_DIST, ['EXPONDIST']);
+    this.register('GAMMA.DIST', distribuzioni.fnGAMMA_DIST, ['GAMMADIST']);
+    this.register('GAMMA.INV', distribuzioni.fnGAMMA_INV, ['GAMMAINV']);
+    this.register('LOGNORM.DIST', distribuzioni.fnLOGNORM_DIST);
+    this.register('LOGNORMDIST', distribuzioni.fnLOGNORMDIST);
+    this.register('LOGNORM.INV', distribuzioni.fnLOGNORM_INV, ['LOGINV']);
+    this.register('BETA.DIST', distribuzioni.fnBETA_DIST);
+    this.register('BETADIST', distribuzioni.fnBETADIST);
+    this.register('BETA.INV', distribuzioni.fnBETA_INV, ['BETAINV']);
+    this.register('WEIBULL.DIST', distribuzioni.fnWEIBULL_DIST, ['WEIBULL']);
+    this.register('HYPGEOM.DIST', distribuzioni.fnHYPGEOM_DIST);
+    this.register('HYPGEOMDIST', distribuzioni.fnHYPGEOMDIST);
+    this.register('NEGBINOM.DIST', distribuzioni.fnNEGBINOM_DIST);
+    this.register('NEGBINOMDIST', distribuzioni.fnNEGBINOMDIST);
+    this.register('Z.TEST', distribuzioni.fnZ_TEST, ['ZTEST']);
+    this.register('CONFIDENCE.NORM', distribuzioni.fnCONFIDENCE_NORM, ['CONFIDENCE']);
+    this.register('CONFIDENCE.T', distribuzioni.fnCONFIDENCE_T);
+    this.register('TDIST', distribuzioni.fnTDIST);
+    this.register('GAMMA', distribuzioni.fnGAMMA);
+    this.register('GAMMALN', distribuzioni.fnGAMMALN, ['GAMMALN.PRECISE']);
+    this.register('FISHER', distribuzioni.fnFISHER);
+    this.register('FISHERINV', distribuzioni.fnFISHERINV);
+    this.register('PHI', distribuzioni.fnPHI);
+    this.register('GAUSS', distribuzioni.fnGAUSS);
+    this.register('STANDARDIZE', distribuzioni.fnSTANDARDIZE);
+    this.register('DEVSQ', distribuzioni.fnDEVSQ);
+    this.register('STEYX', distribuzioni.fnSTEYX);
+    this.register('PERMUTATIONA', distribuzioni.fnPERMUTATIONA);
+    this.register('SKEW.P', distribuzioni.fnSKEW_P);
+    this.register('PROB', distribuzioni.fnPROB);
+    this.register('PERCENTRANK.EXC', distribuzioni.fnPERCENTRANK_EXC);
+    this.register('ERF', distribuzioni.fnERF);
+    this.register('ERF.PRECISE', distribuzioni.fnERF_PRECISE);
+    this.register('ERFC', distribuzioni.fnERFC, ['ERFC.PRECISE']);
+    this.register('MODE.MULT', distribuzioni.fnMODE_MULT);
+    // vecchi nomi di funzioni che c'erano già con il nome nuovo
+    for (const [vecchio, nuovo] of [['NORMDIST', 'NORM.DIST'], ['NORMINV', 'NORM.INV'], ['NORMSDIST', 'NORM.S.DIST'], ['NORMSINV', 'NORM.S.INV'],
+      ['TINV', 'T.INV.2T'], ['TTEST', 'T.TEST'], ['COVAR', 'COVARIANCE.P'], ['FORECAST.LINEAR', 'FORECAST']] as const) {
+      this.aliases.set(vecchio, nuovo);
+    }
+    // matematiche, finanziarie, testo
+    this.register('ACOT', altre.fnACOT);
+    this.register('ACOTH', altre.fnACOTH);
+    this.register('COTH', altre.fnCOTH);
+    this.register('CSCH', altre.fnCSCH);
+    this.register('SECH', altre.fnSECH);
+    this.register('CEILING.PRECISE', altre.fnCEILING_PRECISE, ['ISO.CEILING']);
+    this.register('FLOOR.PRECISE', altre.fnFLOOR_PRECISE);
+    this.register('MUNIT', altre.fnMUNIT);
+    this.register('VDB', altre.fnVDB);
+    this.register('ISPMT', altre.fnISPMT);
+    this.register('FVSCHEDULE', altre.fnFVSCHEDULE);
+    this.register('PDURATION', altre.fnPDURATION);
+    this.register('RRI', altre.fnRRI);
+    this.register('DOLLARDE', altre.fnDOLLARDE);
+    this.register('DOLLARFR', altre.fnDOLLARFR);
+    this.register('TEXTBEFORE', altre.fnTEXTBEFORE);
+    this.register('TEXTAFTER', altre.fnTEXTAFTER);
+    this.register('VALUETOTEXT', altre.fnVALUETOTEXT);
+    this.register('ARRAYTOTEXT', altre.fnARRAYTOTEXT);
+    // numeri complessi, Bessel, basi, ENCODEURL (2026-11-20); FINDB, SEARCHB, REPLACEB: con una lingua senza caratteri doppi sono FIND, SEARCH, REPLACE
+    this.register('COMPLEX', complessi.fnCOMPLEX);
+    this.register('IMABS', complessi.fnIMABS);
+    this.register('IMAGINARY', complessi.fnIMAGINARY);
+    this.register('IMREAL', complessi.fnIMREAL);
+    this.register('IMARGUMENT', complessi.fnIMARGUMENT);
+    this.register('IMCONJUGATE', complessi.fnIMCONJUGATE);
+    this.register('IMSUM', complessi.fnIMSUM);
+    this.register('IMSUB', complessi.fnIMSUB);
+    this.register('IMPRODUCT', complessi.fnIMPRODUCT);
+    this.register('IMDIV', complessi.fnIMDIV);
+    this.register('IMPOWER', complessi.fnIMPOWER);
+    this.register('IMSQRT', complessi.fnIMSQRT);
+    this.register('IMEXP', complessi.fnIMEXP);
+    this.register('IMLN', complessi.fnIMLN);
+    this.register('IMLOG10', complessi.fnIMLOG10);
+    this.register('IMLOG2', complessi.fnIMLOG2);
+    this.register('IMSIN', complessi.fnIMSIN);
+    this.register('IMCOS', complessi.fnIMCOS);
+    this.register('IMTAN', complessi.fnIMTAN);
+    this.register('IMSEC', complessi.fnIMSEC);
+    this.register('IMCSC', complessi.fnIMCSC);
+    this.register('IMCOT', complessi.fnIMCOT);
+    this.register('IMSINH', complessi.fnIMSINH);
+    this.register('IMCOSH', complessi.fnIMCOSH);
+    this.register('IMSECH', complessi.fnIMSECH);
+    this.register('IMCSCH', complessi.fnIMCSCH);
+    this.register('BESSELJ', complessi.fnBESSELJ);
+    this.register('BESSELY', complessi.fnBESSELY);
+    this.register('BESSELI', complessi.fnBESSELI);
+    this.register('BESSELK', complessi.fnBESSELK);
+    this.register('HEX2OCT', complessi.fnHEX2OCT);
+    this.register('OCT2HEX', complessi.fnOCT2HEX);
+    this.register('ENCODEURL', complessi.fnENCODEURL);
+    for (const [b, n] of [['FINDB', 'FIND'], ['SEARCHB', 'SEARCH'], ['REPLACEB', 'REPLACE']] as const) this.aliases.set(b, n);
+
     // Registra alias italiani (i18n)
     for (const [en, it] of Object.entries(EN_TO_IT_FUNCTIONS)) {
-      const canonical = en.toUpperCase();
+      // un vecchio nome (BINOMDIST) è già un alias del nuovo (BINOM.DIST): il nome italiano va alla funzione vera
+      const canonical = this.aliases.get(en.toUpperCase()) ?? en.toUpperCase();
       const alias = it.toUpperCase();
-      if (alias !== canonical) {
+      // un nome italiano non deve mai coprire il nome inglese di un'altra funzione
+      if (alias !== canonical && !this.functions.has(alias)) {
         this.aliases.set(alias, canonical);
       }
     }

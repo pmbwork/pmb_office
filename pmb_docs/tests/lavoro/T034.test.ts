@@ -7,6 +7,7 @@ async function monta(): Promise<any> {
   const el: any = document.createElement('docs-editor');
   document.body.appendChild(el);
   await el.updateComplete;
+  el.impostaMaiuscolaAutomatica(false); // qui si provano formato e storia: la maiuscola a inizio frase ha il suo test (T530)
   return el;
 }
 const casella = (el: any): HTMLTextAreaElement => el.shadowRoot.querySelector('textarea.ingresso');

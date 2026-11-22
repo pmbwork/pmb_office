@@ -45,29 +45,29 @@ export class DocsMenubar extends LinguaElement {
     :host-context(docs-guscio[tema="scuro"]) .titolo-menu[aria-expanded='true'], :host-context(docs-guscio[tema="scuro"]) .titolo-menu:hover { background: #3c4043; }
     .barra { display: flex; height: ${unsafeCSS(String(MISURE.barraMenu.altezza))}px; font-size: ${unsafeCSS(String(MISURE.barraMenu.corpo))}px; position: relative; }
     .titolo-menu { background: none; border: 0; padding: 0 8px; font: inherit; color: inherit; cursor: default; border-radius: 4px; }
-    .titolo-menu[aria-expanded='true'], .titolo-menu:hover { background: #e8eaed; }
+    .titolo-menu[aria-expanded='true'], .titolo-menu:hover { background: var(--pmb-hover, #e8eaed); }
     /* il carattere usato qui è un po' più stretto di quello del riferimento grafico: i titoli successivi si spostano per stare alla stessa distanza */
     .titolo-menu[data-menu='visualizza'], .titolo-menu[data-menu='formato'] { margin-left: 1px; }
     .titolo-menu[data-menu='strumenti'] { margin-left: 2px; }
     /* «Segnalazione bug» si nota: sfondo azzurro chiaro e testo blu (variante scura nel tema scuro) */
-    .titolo-menu[data-menu='segnalazione'] { background: #e8f0fe; color: #0b57d0; margin-left: 4px; }
-    .titolo-menu[data-menu='segnalazione']:hover { background: #d3e3fd; }
+    .titolo-menu[data-menu='segnalazione'] { background: var(--pmb-selezione, #e8f0fe); color: var(--pmb-accento, #0b57d0); margin-left: 4px; }
+    .titolo-menu[data-menu='segnalazione']:hover { background: var(--pmb-selezione-forte, #d3e3fd); }
     :host-context(docs-guscio[tema="scuro"]) .titolo-menu[data-menu='segnalazione'] { background: #1f3760; color: #a8c7fa; }
     :host-context(docs-guscio[tema="scuro"]) .titolo-menu[data-menu='segnalazione']:hover { background: #28477a; }
     .pannello { position: absolute; top: 100%; background: ${unsafeCSS(COLORI.pannelloMenu)}; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; border-radius: ${unsafeCSS(STILI.raggioPannelloMenu)}; min-width: 320px; padding: 6px 0; z-index: 10; }
     .voce { display: flex; align-items: center; height: ${unsafeCSS(String(MISURE.pannelloMenu.altezzaVoce))}px; padding: 0 16px; position: relative; }
-    .voce:hover { background: #e8eaed; }
-    .voce.disabilitata, .voce.disabilitata:hover { color: #9aa0a6; background: none; }
-    .voce.disabilitata .scorciatoia, .voce.disabilitata .freccia { color: #bdc1c6; }
+    .voce:hover { background: var(--pmb-hover, #e8eaed); }
+    .voce.disabilitata, .voce.disabilitata:hover { color: var(--pmb-testo-disabilitato, #9aa0a6); background: none; }
+    .voce.disabilitata .scorciatoia, .voce.disabilitata .freccia { color: var(--pmb-testo-disabilitato, #bdc1c6); }
     .etichetta { flex: 1; }
-    .scorciatoia { margin-left: 24px; color: #5f6368; }
-    .freccia { margin-left: 24px; color: #5f6368; }
+    .scorciatoia { margin-left: 24px; color: var(--pmb-testo-2, #5f6368); }
+    .freccia { margin-left: 24px; color: var(--pmb-testo-2, #5f6368); }
     .sottopannello { position: absolute; left: 100%; top: -6px; background: ${unsafeCSS(COLORI.pannelloMenu)}; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; border-radius: ${unsafeCSS(STILI.raggioPannelloMenu)}; min-width: 240px; padding: 6px 0; z-index: 11; }
-    .spunta { position: absolute; left: 0; width: 16px; text-align: center; color: #1f1f1f; font-size: 13px; }
+    .spunta { position: absolute; left: 0; width: 16px; text-align: center; color: var(--pmb-testo, #1f1f1f); font-size: 13px; }
     .figlio { position: relative; display: flex; align-items: center; height: ${unsafeCSS(String(MISURE.pannelloMenu.altezzaVoce))}px; padding: 0 16px; }
-    .figlio:hover { background: #e8eaed; }
-    .figlio.disabilitata, .figlio.disabilitata:hover { color: #9aa0a6; background: none; cursor: default; }
-    .intestazione-sotto { padding: 6px 16px 2px; font-size: 12px; color: #5f6368; }
+    .figlio:hover { background: var(--pmb-hover, #e8eaed); }
+    .figlio.disabilitata, .figlio.disabilitata:hover { color: var(--pmb-testo-disabilitato, #9aa0a6); background: none; cursor: default; }
+    .intestazione-sotto { padding: 6px 16px 2px; font-size: 12px; color: var(--pmb-testo-2, #5f6368); }
   `;
 
   /** true se il pannello aperto si è aperto passando il mouse sul titolo (e non con un clic): solo allora esce dal pannello lo richiude */

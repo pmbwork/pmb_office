@@ -48,7 +48,7 @@ export class DocsImpostaPagina extends LinguaElement {
     :host {
       display: block;
       font: 14px Roboto, Arial, sans-serif;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     .velo {
       position: fixed;
@@ -66,7 +66,7 @@ export class DocsImpostaPagina extends LinguaElement {
       width: 440px;
       box-sizing: border-box;
       padding: 24px;
-      background: #ffffff;
+      background: var(--pmb-superficie, #ffffff);
       border-radius: 8px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     }
@@ -74,7 +74,7 @@ export class DocsImpostaPagina extends LinguaElement {
       margin: 0 0 16px;
       font-size: 18px;
       font-weight: 500;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     .sezione {
       margin-bottom: 16px;
@@ -82,7 +82,7 @@ export class DocsImpostaPagina extends LinguaElement {
     .sezione-titolo {
       font-size: 13px;
       font-weight: 500;
-      color: #444746;
+      color: var(--pmb-testo-2, #444746);
       margin-bottom: 8px;
     }
     .opzioni-radio {
@@ -98,12 +98,12 @@ export class DocsImpostaPagina extends LinguaElement {
     select {
       width: 100%;
       height: 36px;
-      border: 1px solid #c4c7c5;
+      border: 1px solid var(--pmb-bordo, #c4c7c5);
       border-radius: 4px;
       padding: 0 8px;
       font: inherit;
       color: inherit;
-      background: #ffffff;
+      background: var(--pmb-superficie, #ffffff);
       outline: none;
     }
     select:focus {
@@ -120,12 +120,12 @@ export class DocsImpostaPagina extends LinguaElement {
     }
     .campo-margine label {
       font-size: 12px;
-      color: #444746;
+      color: var(--pmb-testo-2, #444746);
       margin-bottom: 2px;
     }
     .campo-margine input {
       height: 32px;
-      border: 1px solid #c4c7c5;
+      border: 1px solid var(--pmb-bordo, #c4c7c5);
       border-radius: 4px;
       padding: 0 8px;
       font: inherit;
@@ -152,10 +152,10 @@ export class DocsImpostaPagina extends LinguaElement {
     }
     button.annulla {
       background: none;
-      color: #0b57d0;
+      color: var(--pmb-accento, #0b57d0);
     }
     button.annulla:hover {
-      background: #f1f3f4;
+      background: var(--pmb-superficie-2, #f1f3f4);
     }
     button.ok {
       background: #0b57d0;

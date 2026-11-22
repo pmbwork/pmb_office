@@ -11,7 +11,7 @@ import { suMac } from '@comune/piattaforma';
 export class DocsFinestra extends LinguaElement {
   static styles = css`
     :host { position: absolute; top: 0; right: 0; z-index: 30; display: flex; height: 32px; -webkit-app-region: no-drag; }
-    button { width: 46px; height: 32px; border: 0; padding: 0; background: transparent; color: #1f1f1f; display: flex; align-items: center; justify-content: center; cursor: default; }
+    button { width: 46px; height: 32px; border: 0; padding: 0; background: transparent; color: var(--pmb-testo, #1f1f1f); display: flex; align-items: center; justify-content: center; cursor: default; }
     button:hover { background: rgba(0, 0, 0, 0.08); }
     button.chiudi:hover { background: #c42b1c; color: #ffffff; }
     svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; }

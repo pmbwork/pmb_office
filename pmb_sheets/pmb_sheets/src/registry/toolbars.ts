@@ -25,6 +25,8 @@ export interface ToolbarGroup {
   label?: string;
   priority?: number;
   items: ToolbarItem[];
+  /** pezzo di un gruppo più lungo (barra personalizzata): niente linea di separazione dopo, il gruppo continua nel pezzo seguente */
+  continua?: boolean;
 }
 
 export const sheetToolbar: ToolbarGroup[] = [

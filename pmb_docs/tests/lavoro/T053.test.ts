@@ -13,7 +13,7 @@ describe('T053: nomi di file', () => {
     expect(FORMATI.map((f) => [f.id, f.estensione])).toEqual([['docx', 'docx'], ['txt', 'txt'], ['fdoc', 'pdoc'], ['odt', 'odt'], ['pdf', 'pdf']]);
     expect(FORMATI[0].mime).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     expect(TITOLO_PREDEFINITO).toBe('Documento senza titolo');
-    expect(ESTENSIONI_APRI).toBe('.docx,.odt,.txt,.md,.pdoc,.fdoc'); // .fdoc = estensione di quando il programma si chiamava free_docs: si apre ancora
+    expect(ESTENSIONI_APRI).toBe('.docx,.docm,.dotx,.dotm,.doc,.dot,.odt,.ott,.fodt,.rtf,.html,.htm,.xhtml,.txt,.md,.pdoc,.fdoc'); // .fdoc = estensione di quando il programma si chiamava free_docs: si apre ancora
   });
 
   it('nomeFile toglie i caratteri vietati da Windows, i punti e gli spazi in fondo, e limita la lunghezza', () => {
@@ -100,7 +100,7 @@ describe('T053: salvare e riaprire', () => {
 
   it('file sbagliati: messaggi chiari', async () => {
     await expect(importa(new Uint8Array([1, 2, 0, 3, 4]), 'a.dat')).rejects.toThrow(/non riconosciuto/);
-    await expect(importa(enc.encode('non è uno zip'), 'x.docx')).rejects.toThrow(/DOCX non valido/);
+    await expect(importa(enc.encode('non è uno zip'), 'x.docx')).rejects.toThrow(/non è un file .docx valido/); // dal 2026-11-18 lo stesso messaggio chiaro di pmb_sheets
     await expect(importa(enc.encode('{"v":2}'), 'x.fdoc')).rejects.toThrow(/Documento non valido/);
     await expect(importa(new Uint8Array(DIMENSIONE_MASSIMA + 1), 'enorme.txt')).rejects.toThrow(/troppo grande/);
     expect(testoDi((await importa(new Uint8Array(0), 'vuoto.txt')).doc)).toBe('');

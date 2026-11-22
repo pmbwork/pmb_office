@@ -24,27 +24,27 @@ export class DocsOrtografia extends LinguaElement {
     :host-context([alto-contrasto]) button.attivo, :host-context([alto-contrasto]) button[aria-checked="true"], :host-context([alto-contrasto]) button[aria-pressed="true"] { background: #000000; color: #ffffff; }
     :host-context([riduci-animazioni]) * { transition: none !important; animation: none !important; }
 
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: 460px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: 460px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
     h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; }
-    .posizione { color: #5f6368; font-size: 12px; margin-bottom: 14px; }
+    .posizione { color: var(--pmb-testo-2, #5f6368); font-size: 12px; margin-bottom: 14px; }
     .parola { font-size: 20px; font-weight: 500; color: #d93025; margin: 0 0 4px; overflow-wrap: anywhere; }
-    .contesto { color: #5f6368; font-size: 12px; margin: 0 0 14px; overflow-wrap: anywhere; }
-    label { display: block; font-size: 13px; color: #444746; margin-bottom: 6px; }
-    input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border: 1px solid #dadce0; border-radius: 4px; font: inherit; outline: none; margin-bottom: 8px; }
+    .contesto { color: var(--pmb-testo-2, #5f6368); font-size: 12px; margin: 0 0 14px; overflow-wrap: anywhere; }
+    label { display: block; font-size: 13px; color: var(--pmb-testo-2, #444746); margin-bottom: 6px; }
+    input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; font: inherit; outline: none; margin-bottom: 8px; }
     input:focus { border-color: #0b57d0; }
-    ul { list-style: none; margin: 0 0 14px; padding: 0; max-height: 150px; overflow-y: auto; border: 1px solid #e8eaed; border-radius: 4px; }
+    ul { list-style: none; margin: 0 0 14px; padding: 0; max-height: 150px; overflow-y: auto; border: 1px solid var(--pmb-bordo, #e8eaed); border-radius: 4px; }
     li button.sugg { display: block; width: 100%; text-align: left; padding: 7px 10px; border: 0; background: none; font: inherit; cursor: pointer; }
-    li button.sugg:hover, li button.sugg.attiva { background: #e8f0fe; }
-    .nessun { color: #5f6368; padding: 8px 10px; }
+    li button.sugg:hover, li button.sugg.attiva { background: var(--pmb-selezione, #e8f0fe); }
+    .nessun { color: var(--pmb-testo-2, #5f6368); padding: 8px 10px; }
     .file { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-    button.az { height: 32px; padding: 0 14px; border-radius: 16px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid #dadce0; background: #ffffff; color: #0b57d0; }
-    button.az:hover { background: #f8f9fa; }
-    button.az:disabled { color: #9aa0a6; cursor: default; background: #ffffff; }
+    button.az { height: 32px; padding: 0 14px; border-radius: 16px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); }
+    button.az:hover { background: var(--pmb-superficie-2, #f8f9fa); }
+    button.az:disabled { color: var(--pmb-testo-disabilitato, #9aa0a6); cursor: default; background: var(--pmb-superficie, #ffffff); }
     button.primario { border: 0; background: #0b57d0; color: #ffffff; }
     button.primario:hover { background: #0842a0; }
-    button.primario:disabled { background: #dadce0; color: #ffffff; }
+    button.primario:disabled { background: var(--pmb-hover, #dadce0); color: #ffffff; }
     .chiudi { display: flex; justify-content: flex-end; margin-top: 8px; }
   `;
 

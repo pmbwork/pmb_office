@@ -4,7 +4,7 @@
 # (con -LogoNero il monogramma resta nero). Produce, per ciascuna app: icons\icon.ico, icon.png (512), 128x128.png, 32x32.png
 # e un PNG 64x64 in base64 (icone\titolo-<app>.b64.txt) per l'icona accanto al titolo.
 param(
-  [string]$Sorgente = (Join-Path $PSScriptRoot '..\..\..\PMB_work\media\logo\Logo PMB (personale).jpg'),
+  [string]$Sorgente = (Join-Path $PSScriptRoot '..\..\LAVORO\logo-sorgente\Logo PMB (personale).jpg'),
   [string]$Radice = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)),
   [switch]$LogoNero
 )

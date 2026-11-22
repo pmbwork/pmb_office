@@ -63,6 +63,78 @@
         "description": "Testo semplice o Markdown",
         "role": "Editor",
         "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "docm"
+        ],
+        "name": "Documento Word con macro",
+        "description": "Documento Word con macro (.docm)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "dotx"
+        ],
+        "name": "Modello Word",
+        "description": "Modello Word (.dotx)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "dotm"
+        ],
+        "name": "Modello Word con macro",
+        "description": "Modello Word con macro (.dotm)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "doc"
+        ],
+        "name": "Documento Word 97-2003",
+        "description": "Documento Word 97-2003 (.doc)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "dot"
+        ],
+        "name": "Modello Word 97-2003",
+        "description": "Modello Word 97-2003 (.dot)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "ott"
+        ],
+        "name": "Modello OpenDocument",
+        "description": "Modello OpenDocument (.ott)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "fodt"
+        ],
+        "name": "Documento OpenDocument piatto",
+        "description": "Documento OpenDocument piatto (.fodt)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "rtf"
+        ],
+        "name": "Documento RTF",
+        "description": "Documento RTF (.rtf)",
+        "role": "Editor",
+        "rank": "Alternate"
       }
     ]
   }

@@ -1,5 +1,7 @@
 # AUDIT DI CONFORMITÀ LEGALE E STANZA PULITA — pmb_office
 
+> **Documento superato (nota del 2026-11-22).** Descrive lo stato del 2026-11-02. Dal 2026-11-22 licenze, provenienza dei file e originalità si verificano in automatico con `agente-suite-office` (a ogni invio di codice, ogni settimana e prima di ogni pubblicazione): il suo rapporto è il riferimento valido. Qui sotto alcune affermazioni non sono più esatte: i caratteri inclusi sono molti di più (tutti con licenza OFL-1.1 o Apache-2.0, elencati nel programma); i programmi non sono del tutto senza rete, perché la voce «Segnala un bug o invia un feedback» invia il messaggio, solo quando lo decide l'utente, a un servizio Google gestito da PMB.
+
 Data dell'audit: 2026-11-02
 Oggetto: Verifica conformità delle licenze software, font, icone e assenza di codice/marchi proprietari terzi nella suite **pmb_office** (`pmb_sheets`, `pmb_docs`, `comune`).
 

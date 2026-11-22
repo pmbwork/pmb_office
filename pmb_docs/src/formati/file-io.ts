@@ -36,21 +36,32 @@ export async function scriviSuManiglia(maniglia: ManiglioFile, bytes: Uint8Array
   await file.close();
 }
 
-/** Salva con la finestra "Salva con nome" (o scaricando). Restituisce la maniglia del file scelto, se il sistema la dà. */
-export async function salvaSuDisco(nome: string, bytes: Uint8Array, mime: string, iniziaDa?: ManiglioFile | null): Promise<ManiglioFile | null> {
+/** Esito di salvaSuDisco quando l'utente chiude la finestra «Salva con nome» senza scegliere: niente è stato salvato. */
+export const SALVATAGGIO_ANNULLATO = 'annullato' as const;
+
+/**
+ * Salva con la finestra "Salva con nome" (o scaricando, dove la finestra non c'è). Restituisce la maniglia del file scelto se il
+ * sistema la dà, null se il file è stato scaricato, SALVATAGGIO_ANNULLATO se l'utente ha annullato. Se il file è stato scelto ma non
+ * si riesce a scriverlo (disco pieno, file aperto da un altro programma) l'errore arriva a chi salva: niente ripieghi silenziosi.
+ */
+export async function salvaSuDisco(nome: string, bytes: Uint8Array, mime: string, iniziaDa?: ManiglioFile | null): Promise<ManiglioFile | typeof SALVATAGGIO_ANNULLATO | null> {
   const selettore = (window as unknown as { showSaveFilePicker?: SelettoreSalvataggio }).showSaveFilePicker;
   const punto = nome.lastIndexOf('.');
   if (typeof selettore === 'function') {
+    let maniglia: ManiglioFile | null = null;
     try {
-      const maniglia = await selettore.call(window, {
+      maniglia = await selettore.call(window, {
         suggestedName: nome,
         ...(iniziaDa ? { startIn: iniziaDa } : {}),
         types: punto > 0 ? [{ description: nome.slice(punto + 1).toUpperCase(), accept: { [mime]: [nome.slice(punto)] } }] : undefined,
       });
+    } catch (e) {
+      if ((e as { name?: string }).name === 'AbortError') return SALVATAGGIO_ANNULLATO;
+      // la finestra non c'è o non si apre: si ripiega sullo scaricamento qui sotto
+    }
+    if (maniglia) {
       await scriviSuManiglia(maniglia, bytes);
       return maniglia;
-    } catch (e) {
-      if ((e as { name?: string }).name === 'AbortError') return null;
     }
   }
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));

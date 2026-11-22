@@ -69,10 +69,11 @@ describe('Barra degli strumenti personalizzabile', () => {
 
     // Con configurazione personalizzata
     tb.barra = ['bold', 'italic', SEPARATORE, 'format-currency'];
+    // dal 2026-11-19 ogni elemento è un pezzo a sé («continua» fino alla fine del tratto), così con la finestra stretta i pulsanti che non
+    // entrano passano uno per uno sotto «Altri strumenti» (T547)
     const gruppi = tb.gruppiEffettivi;
-    expect(gruppi.length).toBe(2);
-    expect(gruppi[0].items.map((i) => i.id)).toEqual(['bold', 'italic']);
-    expect(gruppi[1].items.map((i) => i.id)).toEqual(['format-currency']);
+    expect(gruppi.map((g) => g.items.map((i) => i.id))).toEqual([['bold'], ['italic'], ['format-currency']]);
+    expect(gruppi.map((g) => !!g.continua)).toEqual([true, false, false]);
   });
 
   it('FreeDialogoPersonalizzaBarra inizializza e risponde agli eventi', () => {

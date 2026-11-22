@@ -1,4 +1,6 @@
 import { t } from '../i18n/lingua';
+import { impronteValide, type Impronta } from '@comune/protezione/impronte';
+import { controllaUnioni, unioneDi, type Unione } from './unioni';
 // Modello del documento di pmb_docs: dati puri e funzioni che non modificano mai l'ingresso.
 // Un documento è un elenco di paragrafi; un paragrafo è un elenco di tratti di testo con
 // grassetto (g), corsivo (c), sottolineato (s) e, se serve, carattere (f), corpo in punti (z),
@@ -15,27 +17,57 @@ import { t } from '../i18n/lingua';
 // Gli attributi "di default" non sono scritti: assenti = valore normale. Mai chiavi con valore undefined.
 
 export type NomeSegno = 'g' | 'c' | 's';
-export type ChiaveAttributo = 'f' | 'z' | 'k' | 'h' | 'u' | 'x' | 'v';
-export type ChiaveParagrafo = 'al' | 'ls' | 'el' | 'ri' | 'st' | 'sp' | 'hr' | 'fa' | 'sg' | 'sb' | 'sa';
+export type ChiaveAttributo = 'f' | 'z' | 'k' | 'h' | 'u' | 'x' | 'v' | 'w' | 'q';
+export type ChiaveParagrafo = 'al' | 'ls' | 'el' | 'ri' | 'st' | 'sp' | 'sc' | 'hr' | 'fa' | 'sg' | 'sb' | 'sa' | 'su';
 export type Allineamento = 'sx' | 'ce' | 'dx' | 'gi';
 /** p = puntato, n = numerato, t = elenco di attività (casella da spuntare; fa = voce fatta). */
 export type TipoElenco = 'p' | 'n' | 't';
 export type StileParagrafo = 'n' | 't' | 's' | '1' | '2' | '3';
-export interface CellaTabella { i: number; r: number; c: number; w?: number }
+/** Cella di una tabella: cs e rs = colonne e righe coperte da una cella unita (sull'ancora), co = cella coperta da un'unione, h = riga di intestazione (vedi unioni.ts). */
+export interface CellaTabella { i: number; r: number; c: number; w?: number; cs?: number; rs?: number; co?: boolean; h?: boolean }
 export interface Segni { g: boolean; c: boolean; s: boolean }
-export interface Attributi { f?: string; z?: number; k?: string; h?: string; u?: string; x?: string; v?: string }
-/** Immagine incorporata: indirizzo "data:image/...;base64,...", larghezza e altezza in pixel come si vedono nel foglio. */
-export interface Immagine { s: string; w: number; h: number }
-export interface Run extends Segni, Attributi { t: string; im?: Immagine }
+/** w = sottolineato doppio ('d'), q = maiuscoletto ('m'). */
+export interface Attributi { f?: string; z?: number; k?: string; h?: string; u?: string; x?: string; v?: string; w?: string; q?: string }
+/** Immagine incorporata: indirizzo "data:image/...;base64,...", larghezza e altezza in pixel come si vedono nel foglio;
+ *  a = testo intorno: l'immagine sta a sinistra (sx) o a destra (dx) e il testo le scorre accanto (senza a: in linea con il testo). */
+export type DisposizioneImmagine = 'sx' | 'dx';
+/** d = testo alternativo (la descrizione per chi usa un lettore di schermo; Formato › Immagine › Testo alternativo…). */
+export interface Immagine { s: string; w: number; h: number; a?: DisposizioneImmagine; d?: string }
+export const LUNGHEZZA_MASSIMA_TESTO_ALTERNATIVO = 1000;
+/** Una copia pulita dell'immagine (solo i campi che conosce il programma). */
+export function copiaImmagine(im: Immagine): Immagine {
+  return { s: im.s, w: im.w, h: im.h, ...(im.a === 'sx' || im.a === 'dx' ? { a: im.a } : {}), ...(typeof im.d === 'string' && im.d.trim() !== '' ? { d: im.d.trim().slice(0, LUNGHEZZA_MASSIMA_TESTO_ALTERNATIVO) } : {}) };
+}
+/** Modifica registrata (Strumenti › Revisioni): testo inserito (i) o cancellato (d), da chi (a) e quando (d, data ISO). */
+export interface Revisione { t: 'i' | 'd'; a: string; d: string }
+/** Un tratto: testo e formato; cm = commento a cui appartiene (identificativo), rv = modifica registrata. */
+/** cu = campo di unione (Strumenti › Stampa unione): il tratto è il carattere CAMPO_UNIONE e cu il nome della colonna dell'elenco. */
+/** sq = numero di una didascalia (Inserisci › Didascalia): il tratto è il carattere CAMPO_SEQUENZA e sq il nome della serie («Figura»,
+ *  «Tabella»...); il numero è la posizione tra le didascalie della stessa serie e si ricalcola da solo. */
+/** xr = riferimento incrociato (Inserisci › Riferimento incrociato): il tratto è il carattere CAMPO_RIFERIMENTO, xr il segnalibro del
+ *  paragrafo a cui rimanda e xm che cosa mostra: 't' il testo del paragrafo, 'e' etichetta e numero della didascalia («Figura 2»). */
+export type ModoRiferimento = 't' | 'e';
+export interface Run extends Segni, Attributi { t: string; im?: Immagine; cm?: string; rv?: Revisione; cu?: string; sq?: string; xr?: string; xm?: ModoRiferimento }
+/** Risposta a un commento. */
+export interface Risposta { a: string; d: string; t: string }
+/** Commento a un pezzo di testo (i tratti con cm = id): autore, data ISO, testo, risolto (ok) e risposte. */
+export interface Commento { id: string; a: string; d: string; t: string; ok?: boolean; r?: Risposta[] }
 /** Il carattere che sta al posto di un'immagine nel testo. */
 export const OGGETTO = '\uFFFC';
 /** Nel testo di un'intestazione o di un piè di pagina: il numero della pagina in cui si trova. */
 export const CAMPO_PAGINA = '\uE000';
 /** Nel testo di un'intestazione o di un piè di pagina: il numero di pagine del documento. */
 export const CAMPO_PAGINE = '\uE001';
+/** Un campo di unione nel testo (il nome della colonna è nel tratto, cu): si vede come «Nome» e la stampa unione lo sostituisce. */
+export const CAMPO_UNIONE = '\uE002';
+export const LUNGHEZZA_MASSIMA_NOME_CAMPO = 100;
+/** Il numero di una didascalia nel testo (la serie è nel tratto, sq). */
+export const CAMPO_SEQUENZA = '\uE003';
+/** Un riferimento incrociato nel testo (il segnalibro è nel tratto, xr). */
+export const CAMPO_RIFERIMENTO = '\uE004';
 export const RIGHE_MARGINE_MASSIME = 3;
 const LUNGHEZZA_MARGINE_MASSIMA = 300;
-const CAMPI = /[\uE000\uE001]/g;
+const CAMPI = /[\uE000\uE001\uE002\uE003\uE004]/g;
 const HA_CAMPI = /[\uE000\uE001]/;
 const IMMAGINE_BASE64 = /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 export const IMMAGINE_MASSIMA = 7_000_000;
@@ -47,7 +79,8 @@ export function immagineValida(im: unknown): im is Immagine {
   const x = im as Record<string, unknown> | null;
   if (!x || typeof x !== 'object') return false;
   const misura = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 10000;
-  return typeof x.s === 'string' && x.s.length <= IMMAGINE_MASSIMA && IMMAGINE_BASE64.test(x.s) && misura(x.w) && misura(x.h);
+  return typeof x.s === 'string' && x.s.length <= IMMAGINE_MASSIMA && IMMAGINE_BASE64.test(x.s) && misura(x.w) && misura(x.h) && (x.a === undefined || x.a === 'sx' || x.a === 'dx')
+    && (x.d === undefined || (typeof x.d === 'string' && x.d.length <= LUNGHEZZA_MASSIMA_TESTO_ALTERNATIVO));
 }
 
 /** Misure con cui mettere nel foglio un'immagine grande w per h: dentro la larghezza del testo e l'altezza massima, mai ingrandita. */
@@ -56,9 +89,17 @@ export function dimensioniIniziali(w: number, h: number): { w: number; h: number
   const scala = Math.min(1, LARGHEZZA_TESTO / w, ALTEZZA_MASSIMA / h);
   return { w: Math.max(1, Math.round(w * scala)), h: Math.max(1, Math.round(h * scala)) };
 }
-export interface AttributiParagrafo { al?: Allineamento; ls?: number; el?: TipoElenco; ri?: number; st?: StileParagrafo; tb?: CellaTabella; sp?: boolean; hr?: boolean; fa?: boolean; sg?: string; sb?: number; sa?: number; bd?: Bordo }
+export interface AttributiParagrafo { al?: Allineamento; ls?: number; el?: TipoElenco; ri?: number; st?: StileParagrafo; tb?: CellaTabella; sp?: boolean; /** interruzione di colonna prima del paragrafo (con il testo in 2 o 3 colonne) */ sc?: boolean; hr?: boolean; fa?: boolean; sg?: string; sb?: number; sa?: number; bd?: Bordo; sm?: VoceSommario; su?: string }
+/** Voce del sommario: segnalibro del titolo a cui rimanda (n) e livello del titolo (l). */
+export interface VoceSommario { n: string; l: 1 | 2 | 3 }
 export interface Paragrafo extends AttributiParagrafo { runs: Run[] }
-export interface Documento { paragrafi: Paragrafo[]; intestazione?: Paragrafo[]; piede?: Paragrafo[] }
+/** commenti: quelli con del testo nel corpo; revisioni: la registrazione delle modifiche è accesa (Word: trackRevisions). */
+/** Stile di paragrafo creato dall'utente (o letto da un file): nome, stile di base (aspetto e livello nel sommario) e ciò che cambia
+ *  rispetto alla base: carattere, corpo, colore, grassetto, corsivo, sottolineato (disegnati dallo stile) e allineamento, spazi e
+ *  interlinea (copiati nel paragrafo quando si applica lo stile). Vedi modello/stili.ts. */
+export interface StilePersonale { id: string; nome: string; base: StileParagrafo; f?: string; z?: number; k?: string; g?: boolean; c?: boolean; s?: boolean; al?: Allineamento; sb?: number; sa?: number; ls?: number }
+/** protezione = il documento è in sola lettura («Limita modifica» di Word), con le impronte della password se c'è (vedi modello/storia.ts). */
+export interface Documento { paragrafi: Paragrafo[]; intestazione?: Paragrafo[]; piede?: Paragrafo[]; commenti?: Commento[]; revisioni?: boolean; stili?: StilePersonale[]; protezione?: { impronte?: Impronta[] }; filigrana?: string; /** il testo su 2 o 3 colonne (Formato › Colonne; senza = 1) */ colonne?: 2 | 3 }
 export interface Posizione { p: number; o: number }
 export interface Selezione { ancora: Posizione; fuoco: Posizione }
 export type Formato = Segni & Attributi;
@@ -83,17 +124,28 @@ function copiaRun(r: Run, t: string = r.t): Run {
   if (r.u !== undefined) o.u = r.u;
   if (r.x !== undefined) o.x = r.x;
   if (r.v !== undefined) o.v = r.v;
+  if (r.w !== undefined) o.w = r.w;
+  if (r.q !== undefined) o.q = r.q;
   if (r.im !== undefined) o.im = r.im;
+  if (r.cm !== undefined) o.cm = r.cm;
+  if (r.rv !== undefined) o.rv = { t: r.rv.t, a: r.rv.a, d: r.rv.d };
+  if (r.cu !== undefined) o.cu = r.cu;
+  if (r.sq !== undefined) o.sq = r.sq;
+  if (r.xr !== undefined) { o.xr = r.xr; o.xm = r.xm === 'e' ? 'e' : 't'; }
   return o;
 }
-function stessiRun(a: Run, b: Run): boolean {
-  if (a.im !== undefined || b.im !== undefined) return false;
-  return a.g === b.g && a.c === b.c && a.s === b.s && a.f === b.f && a.z === b.z && a.k === b.k && a.h === b.h && a.u === b.u && a.x === b.x && a.v === b.v;
+function stessaRevisione(a: Revisione | undefined, b: Revisione | undefined): boolean {
+  return a === undefined || b === undefined ? a === b : a.t === b.t && a.a === b.a && a.d === b.d;
 }
-function formatoDi(r: Run): Formato { const { t, im, ...resto } = copiaRun(r); void t; void im; return resto; }
+function stessiRun(a: Run, b: Run): boolean {
+  if (a.im !== undefined || b.im !== undefined || a.cu !== undefined || b.cu !== undefined || a.sq !== undefined || b.sq !== undefined || a.xr !== undefined || b.xr !== undefined) return false;
+  return a.g === b.g && a.c === b.c && a.s === b.s && a.f === b.f && a.z === b.z && a.k === b.k && a.h === b.h && a.u === b.u && a.x === b.x && a.v === b.v && a.w === b.w && a.q === b.q
+    && a.cm === b.cm && stessaRevisione(a.rv, b.rv);
+}
+function formatoDi(r: Run): Formato { const { t, im, cm, rv, cu, sq, xr, xm, ...resto } = copiaRun(r); void t; void im; void cm; void rv; void cu; void sq; void xr; void xm; return resto; }
 function runDa(t: string, f: Formato): Run { return copiaRun({ ...f, t }); }
 function haFormato(f: Formato): boolean {
-  return f.g || f.c || f.s || f.f !== undefined || f.z !== undefined || f.k !== undefined || f.h !== undefined || f.u !== undefined || f.x !== undefined || f.v !== undefined;
+  return f.g || f.c || f.s || f.f !== undefined || f.z !== undefined || f.k !== undefined || f.h !== undefined || f.u !== undefined || f.x !== undefined || f.v !== undefined || f.w !== undefined || f.q !== undefined;
 }
 const INDIRIZZO_LINK = /^(?:https?:\/\/[^\s\x00-\x1f\x7f/?#]+|mailto:[^\s\x00-\x1f\x7f]+)/i;
 /** Un indirizzo che pmb_docs accetta in un link: solo http, https e mailto, senza spazi né caratteri di controllo. */
@@ -110,12 +162,15 @@ function attributiDi(p: Paragrafo): AttributiParagrafo {
   if (p.st !== undefined) o.st = p.st;
   if (p.tb !== undefined) o.tb = { ...p.tb };
   if (p.sp !== undefined) o.sp = p.sp;
+  if (p.sc !== undefined) o.sc = p.sc;
   if (p.hr !== undefined) o.hr = p.hr;
   if (p.fa !== undefined && p.el === 't') o.fa = p.fa;
   if (p.sg !== undefined) o.sg = p.sg;
   if (p.sb !== undefined) o.sb = p.sb;
   if (p.sa !== undefined) o.sa = p.sa;
   if (p.bd !== undefined) o.bd = { ...p.bd };
+  if (p.sm !== undefined) o.sm = { n: p.sm.n, l: p.sm.l };
+  if (p.su !== undefined) o.su = p.su;
   return o;
 }
 
@@ -152,8 +207,8 @@ export function spazioValido(v: unknown): number | undefined {
 }
 /** Gli attributi per un paragrafo nuovo nato da uno esistente: niente salto di pagina, linea orizzontale, né segnalibro (il nome è unico). */
 function attributiSenzaSpHr(a: AttributiParagrafo): AttributiParagrafo {
-  const { sp, hr, sg, ...resto } = a;
-  void sp; void hr; void sg;
+  const { sp, sc, hr, sg, sm, ...resto } = a;
+  void sp; void sc; void hr; void sg; void sm;
   return resto;
 }
 
@@ -170,7 +225,8 @@ export interface VoceSegnalibro { nome: string; p: number; anteprima: string }
 export function elencoSegnalibri(doc: Documento): VoceSegnalibro[] {
   const out: VoceSegnalibro[] = [];
   doc.paragrafi.forEach((par, p) => {
-    if (par.sg === undefined) return;
+    // i segnalibri che cominciano con «_» sono interni (quelli dei titoli per il sommario, come in Word): non si elencano
+    if (par.sg === undefined || par.sg.startsWith('_')) return;
     out.push({ nome: par.sg, p, anteprima: par.runs.map((r) => r.t).join('').replace(/\s+/g, ' ').trim().slice(0, 60) });
   });
   return out;
@@ -213,6 +269,7 @@ export function controllaTabelle(doc: Documento): string | null {
     if (!tb) { k++; continue; }
     if (visti.has(tb.i)) return 'tabella spezzata';
     visti.add(tb.i);
+    const inizio = k;
     let r = 0;
     let c = 0;
     let colonne = -1;
@@ -231,6 +288,21 @@ export function controllaTabelle(doc: Documento): string | null {
       return 'celle fuori ordine';
     }
     if (colonne >= 0 && c + 1 !== colonne) return 'righe di lunghezza diversa';
+    // unioni e intestazione: una cella coperta ha un solo paragrafo, e la griglia delle unioni è coerente
+    const griglia: Unione[][] = [];
+    for (let q = inizio; q < k; q++) {
+      const x = doc.paragrafi[q].tb as CellaTabella;
+      if (q > inizio && stessaCella(doc.paragrafi[q - 1].tb, x)) {
+        if (x.co) return 'cella coperta con più paragrafi';
+        const u = unioneDi(x);
+        const g = griglia[x.r][x.c];
+        if (u.cs !== g.cs || u.rs !== g.rs || u.h !== g.h) return 'paragrafi della stessa cella con unioni diverse';
+        continue;
+      }
+      (griglia[x.r] ??= [])[x.c] = unioneDi(x);
+    }
+    const motivo = controllaUnioni(griglia);
+    if (motivo !== null) return motivo;
   }
   return null;
 }
@@ -277,7 +349,7 @@ export function collassata(sel: Selezione): boolean {
   return sel.ancora.p === sel.fuoco.p && sel.ancora.o === sel.fuoco.o;
 }
 
-function tagliaRuns(runs: Run[], da: number, a: number): Run[] {
+export function tagliaRuns(runs: Run[], da: number, a: number): Run[] {
   const out: Run[] = [];
   let pos = 0;
   for (const r of runs) {
@@ -289,7 +361,7 @@ function tagliaRuns(runs: Run[], da: number, a: number): Run[] {
   }
   return out;
 }
-function lunghezzaRuns(runs: Run[]): number { return runs.reduce((n, r) => n + r.t.length, 0); }
+export function lunghezzaRuns(runs: Run[]): number { return runs.reduce((n, r) => n + r.t.length, 0); }
 
 /** Formato completo (segni e attributi) del carattere prima della posizione, o del primo a inizio paragrafo. */
 export function formatoIn(doc: Documento, pos: Posizione): Formato {
@@ -306,6 +378,15 @@ export function linkIn(doc: Documento, pos: Posizione): string | undefined {
   const runs = doc.paragrafi[q.p].runs;
   const prima = q.o > 0 ? tagliaRuns(runs, q.o - 1, q.o)[0]?.u : undefined;
   const dopo = tagliaRuns(runs, q.o, q.o + 1)[0]?.u;
+  return prima !== undefined && prima === dopo ? prima : undefined;
+}
+
+/** Commento in cui cade il punto: c'è solo se il carattere prima e quello dopo sono nello stesso commento. */
+export function commentoIn(doc: Documento, pos: Posizione): string | undefined {
+  const q = limita(doc, pos);
+  const runs = doc.paragrafi[q.p].runs;
+  const prima = q.o > 0 ? tagliaRuns(runs, q.o - 1, q.o)[0]?.cm : undefined;
+  const dopo = tagliaRuns(runs, q.o, q.o + 1)[0]?.cm;
   return prima !== undefined && prima === dopo ? prima : undefined;
 }
 
@@ -338,7 +419,7 @@ export function formatoSelezione(doc: Documento, sel: Selezione): Formato {
   const runs = i.p === f.p && i.o === f.o ? [] : runInIntervallo(doc, i, f);
   if (runs.length === 0) return formatoIn(doc, i);
   const out: Formato = { g: runs.every((r) => r.g), c: runs.every((r) => r.c), s: runs.every((r) => r.s) };
-  for (const k of ['f', 'z', 'k', 'h', 'u', 'x', 'v'] as const) {
+  for (const k of ['f', 'z', 'k', 'h', 'u', 'x', 'v', 'w', 'q'] as const) {
     const v = runs[0][k];
     if (v !== undefined && runs.every((r) => r[k] === v)) (out as unknown as Record<string, unknown>)[k] = v;
   }
@@ -378,7 +459,10 @@ export function inserisciTesto(stato: Stato, testo: string, segni?: Segni): Stat
     if (u !== undefined && u === linkIn(stato.doc, f)) s = { ...s, u };
   }
   const righe = nuovoTesto.split('\n');
-  const nuovi: Run[][] = righe.map((r) => (r === '' ? [] : [runDa(r, s)]));
+  // dentro un commento il testo nuovo resta nel commento; ai bordi no (come per i link)
+  const cm = segni ? undefined : commentoIn(stato.doc, i);
+  const conCommento = (r: Run): Run => (cm !== undefined && cm === commentoIn(stato.doc, f) ? { ...r, cm } : r);
+  const nuovi: Run[][] = righe.map((r) => (r === '' ? [] : [conCommento(runDa(r, s))]));
   const r = sostituisci(stato.doc, i, f, nuovi);
   const resta = righe.length > 1 && righe[righe.length - 1] === '' && haFormato(s);
   return { doc: r.doc, sel: { ancora: r.pos, fuoco: r.pos }, pendenti: resta ? { ...s } : null };
@@ -419,7 +503,12 @@ export function cancella(stato: Stato, direzione: 'indietro' | 'avanti'): Stato 
   return { doc: r.doc, sel: { ancora: r.pos, fuoco: r.pos }, pendenti: null };
 }
 
-export function inserisciSaltoPagina(stato: Stato): Stato {
+/** Ctrl+Maiusc+Invio: il testo dopo il cursore passa alla colonna successiva (con il documento in 2 o 3 colonne). */
+export function inserisciSaltoColonna(stato: Stato): Stato { return inserisciSalto(stato, 'sc'); }
+
+export function inserisciSaltoPagina(stato: Stato): Stato { return inserisciSalto(stato, 'sp'); }
+
+function inserisciSalto(stato: Stato, chiave: 'sp' | 'sc'): Stato {
   const [i, f] = ordina(stato.doc, stato.sel);
   const st = (i.p === f.p && i.o === f.o) ? stato : cancellaSelezione(stato);
   const [pos] = ordina(st.doc, st.sel);
@@ -429,7 +518,8 @@ export function inserisciSaltoPagina(stato: Stato): Stato {
   const attrs = attributiDi(par);
   const attrsTesta = attributiSenzaSpHr(attrs);
   if (par.sp) attrsTesta.sp = true;
-  const attrsCoda = { ...attributiSenzaSpHr(attrs), sp: true };
+  if (par.sc) attrsTesta.sc = true;
+  const attrsCoda = { ...attributiSenzaSpHr(attrs), [chiave]: true };
   const p1: Paragrafo = { ...attrsTesta, runs: normalizza(testa) };
   const p2: Paragrafo = { ...attrsCoda, runs: normalizza(coda) };
   const nuoviParagrafi = [
@@ -489,7 +579,7 @@ export function inserisciLineaOrizzontale(stato: Stato): Stato {
   };
 }
 
-function modificaRun(doc: Documento, sel: Selezione, f: (r: Run) => Run): Documento {
+export function modificaRun(doc: Documento, sel: Selezione, f: (r: Run) => Run): Documento {
   const [i, fi] = ordina(doc, sel);
   if (i.p === fi.p && i.o === fi.o) return doc;
   const paragrafi = doc.paragrafi.map((par, p) => {
@@ -631,7 +721,7 @@ export function alternaFatto(doc: Documento, p: number): Documento {
 /** Toglie grassetto, corsivo, sottolineato, carattere, corpo e colori dal testo selezionato e lo stile dai paragrafi toccati. */
 export function pulisciFormato(doc: Documento, sel: Selezione): Documento {
   const senzaRun = modificaRun(doc, sel, (r) => ({ t: r.t, g: false, c: false, s: false, ...(r.u !== undefined ? { u: r.u } : {}), ...(r.im !== undefined ? { im: r.im } : {}) }));
-  return applicaParagrafo(senzaRun, sel, 'st', undefined);
+  return applicaParagrafo(applicaParagrafo(senzaRun, sel, 'st', undefined), sel, 'su', undefined);
 }
 
 /** Numero di ogni voce degli elenchi numerati (null per i paragrafi che non sono voci numerate). */
@@ -724,7 +814,59 @@ export function contaCaratteri(doc: Documento, senzaSpazi = false): number {
 export function inserisciImmagine(stato: Stato, im: Immagine): Stato {
   if (!immagineValida(im)) return stato;
   const [i, f] = ordina(stato.doc, stato.sel);
-  const r = sostituisci(stato.doc, i, f, [[{ t: OGGETTO, g: false, c: false, s: false, im: { s: im.s, w: im.w, h: im.h } }]]);
+  const r = sostituisci(stato.doc, i, f, [[{ t: OGGETTO, g: false, c: false, s: false, im: copiaImmagine(im) }]]);
+  return { doc: r.doc, sel: { ancora: r.pos, fuoco: r.pos }, pendenti: null };
+}
+
+/** Inserisce al cursore un campo di unione (Strumenti › Stampa unione): un carattere che si vede «nome» e ha il formato del testo lì. */
+export function inserisciCampoUnione(stato: Stato, nome: string): Stato {
+  const n = nomeCampoValido(nome);
+  if (n === null) return stato;
+  const [i, f] = ordina(stato.doc, stato.sel);
+  const formato = stato.pendenti ?? senzaLink(formatoIn(stato.doc, i));
+  const r = sostituisci(stato.doc, i, f, [[{ ...formato, t: CAMPO_UNIONE, cu: n }]]);
+  return { doc: r.doc, sel: { ancora: r.pos, fuoco: r.pos }, pendenti: null };
+}
+
+/** Inserisce una didascalia «Figura N: testo» (come Inserisci › Didascalia di Word): un paragrafo nuovo dopo quello del cursore (o prima,
+ *  per le tabelle come vuole l'uso), in corsivo, con il numero che si conta da solo; il cursore va in fondo alla didascalia. */
+export function inserisciDidascalia(stato: Stato, serie: string, testo: string, prima = false): Stato {
+  const nome = nomeCampoValido(serie);
+  if (nome === null) return stato;
+  const [i] = ordina(stato.doc, stato.sel);
+  // in una tabella la didascalia va fuori: prima della sua prima riga o dopo l'ultima
+  let p = i.p;
+  const tb = stato.doc.paragrafi[p]?.tb;
+  if (tb) {
+    const righe = stato.doc.paragrafi.map((x, k) => (x.tb?.i === tb.i ? k : -1)).filter((k) => k >= 0);
+    p = prima ? righe[0] : righe[righe.length - 1];
+  }
+  const corsivo = (t: string): Run => ({ t, g: false, c: true, s: false });
+  const spiegazione = testo.replace(/[\r\n]+/g, ' ').trim().slice(0, 500);
+  const runs: Run[] = normalizza([corsivo(`${nome} `), { ...corsivo(CAMPO_SEQUENZA), sq: nome }, ...(spiegazione ? [corsivo(`: ${spiegazione}`)] : [])]);
+  const indice = prima ? p : p + 1;
+  const paragrafi = [...stato.doc.paragrafi.slice(0, indice), { runs }, ...stato.doc.paragrafi.slice(indice)];
+  const fine = { p: indice, o: runs.reduce((n, r) => n + r.t.length, 0) };
+  return { doc: conParagrafi(stato.doc, paragrafi), sel: { ancora: fine, fuoco: fine }, pendenti: null };
+}
+
+/** Inserisce al cursore un riferimento incrociato al paragrafo `bersaglio` (un titolo, un segnalibro, una didascalia). Se il paragrafo
+ *  non ha un segnalibro gliene dà uno nascosto («_Ref» e un numero, come Word); tutto in un passo. */
+export function inserisciRiferimento(stato: Stato, bersaglio: number, modo: ModoRiferimento): Stato {
+  const par = stato.doc.paragrafi[bersaglio];
+  if (!par) return stato;
+  let doc = stato.doc;
+  let nome = par.sg;
+  if (nome === undefined) {
+    const usati = new Set(doc.paragrafi.map((p) => p.sg?.toLowerCase()).filter((x): x is string => !!x));
+    let n = 1 + doc.paragrafi.length;
+    while (usati.has(`_ref${n}`)) n++;
+    nome = `_Ref${n}`;
+    doc = conParagrafi(doc, doc.paragrafi.map((p, k) => (k === bersaglio ? { ...p, sg: nome } : p)));
+  }
+  const [i, f] = ordina(doc, stato.sel);
+  const formato = stato.pendenti ?? senzaLink(formatoIn(doc, i));
+  const r = sostituisci(doc, i, f, [[{ ...formato, t: CAMPO_RIFERIMENTO, xr: nome, xm: modo }]]);
   return { doc: r.doc, sel: { ancora: r.pos, fuoco: r.pos }, pendenti: null };
 }
 
@@ -744,8 +886,50 @@ export function impostaLarghezzaImmagine(stato: Stato, larghezza: number): Stato
   const h = Math.max(1, Math.round((w * sel.im.h) / sel.im.w));
   const da = { p: sel.p, o: sel.o };
   const a = { p: sel.p, o: sel.o + 1 };
-  const r = sostituisci(stato.doc, da, a, [[{ t: OGGETTO, g: false, c: false, s: false, im: { s: sel.im.s, w, h } }]]);
+  const r = sostituisci(stato.doc, da, a, [[{ t: OGGETTO, g: false, c: false, s: false, im: { ...copiaImmagine(sel.im), w, h } }]]);
   return { doc: r.doc, sel: { ancora: da, fuoco: a }, pendenti: null };
+}
+
+/** Mette al posto dell'immagine selezionata un'altra immagine (ruotata, capovolta, ritagliata), tenendo il resto del tratto (link,
+ *  commento) e il testo intorno; l'immagine resta selezionata. Se non c'è un'immagine selezionata o la nuova non è ammessa, nulla cambia. */
+export function sostituisciImmagine(stato: Stato, nuova: Immagine): Stato {
+  const sel = immagineSelezionata(stato.doc, stato.sel);
+  if (!sel || !immagineValida(nuova)) return stato;
+  const da = { p: sel.p, o: sel.o };
+  const a = { p: sel.p, o: sel.o + 1 };
+  const vecchio = tagliaRuns(stato.doc.paragrafi[sel.p].runs, sel.o, sel.o + 1)[0];
+  // la nuova immagine (ruotata, ritagliata...) tiene il testo intorno e il testo alternativo di quella di prima
+  const im = copiaImmagine({ ...nuova, ...(sel.im.a !== undefined && nuova.a === undefined ? { a: sel.im.a } : {}), ...(sel.im.d !== undefined && nuova.d === undefined ? { d: sel.im.d } : {}) });
+  const r = sostituisci(stato.doc, da, a, [[{ ...vecchio, t: OGGETTO, im }]]);
+  return { doc: r.doc, sel: { ancora: da, fuoco: a }, pendenti: null };
+}
+
+/** Testo intorno all'immagine selezionata: a sinistra, a destra, oppure in linea con il testo (undefined). */
+export function impostaDisposizioneImmagine(stato: Stato, a: DisposizioneImmagine | undefined): Stato {
+  const sel = immagineSelezionata(stato.doc, stato.sel);
+  if (!sel || (sel.im.a ?? undefined) === a) return stato;
+  const im = copiaImmagine(sel.im);
+  if (a === undefined) delete im.a; else im.a = a;
+  const da = { p: sel.p, o: sel.o };
+  const fine = { p: sel.p, o: sel.o + 1 };
+  const vecchio = tagliaRuns(stato.doc.paragrafi[sel.p].runs, sel.o, sel.o + 1)[0];
+  const r = sostituisci(stato.doc, da, fine, [[{ ...vecchio, im }]]);
+  return { doc: r.doc, sel: { ancora: da, fuoco: fine }, pendenti: null };
+}
+
+/** Il testo alternativo dell'immagine selezionata ('' lo toglie). Se non c'è un'immagine selezionata, nulla cambia. */
+export function impostaTestoAlternativo(stato: Stato, testo: string): Stato {
+  const sel = immagineSelezionata(stato.doc, stato.sel);
+  if (!sel) return stato;
+  const d = testo.trim().slice(0, LUNGHEZZA_MASSIMA_TESTO_ALTERNATIVO);
+  if ((sel.im.d ?? '') === d) return stato;
+  const im = copiaImmagine(sel.im);
+  if (d === '') delete im.d; else im.d = d;
+  const da = { p: sel.p, o: sel.o };
+  const fine = { p: sel.p, o: sel.o + 1 };
+  const vecchio = tagliaRuns(stato.doc.paragrafi[sel.p].runs, sel.o, sel.o + 1)[0];
+  const r = sostituisci(stato.doc, da, fine, [[{ ...vecchio, im }]]);
+  return { doc: r.doc, sel: { ancora: da, fuoco: fine }, pendenti: null };
 }
 
 // ---- intestazione e piè di pagina ----
@@ -818,7 +1002,14 @@ function serializzaParagrafi(paragrafi: Paragrafo[]): unknown[] {
       if (r.u !== undefined) o.u = r.u;
       if (r.x !== undefined) { o.x = r.x; }
       if (r.v !== undefined) { o.v = r.v; }
-      if (r.im !== undefined) o.im = { s: r.im.s, w: r.im.w, h: r.im.h };
+      if (r.w !== undefined) o.w = r.w;
+      if (r.q !== undefined) o.q = r.q;
+      if (r.im !== undefined) o.im = copiaImmagine(r.im);
+      if (r.cm !== undefined) o.cm = r.cm;
+      if (r.rv !== undefined) o.rv = { t: r.rv.t, a: r.rv.a, d: r.rv.d };
+      if (r.cu !== undefined) o.cu = r.cu;
+      if (r.sq !== undefined) o.sq = r.sq;
+      if (r.xr !== undefined) { o.xr = r.xr; o.xm = r.xm ?? 't'; }
       return o;
     });
     const a = attributiDi(par);
@@ -830,6 +1021,14 @@ export function serializza(doc: Documento): string {
   const o: Record<string, unknown> = { v: 1, p: serializzaParagrafi(doc.paragrafi) };
   if (doc.intestazione !== undefined) o.ih = serializzaParagrafi(doc.intestazione);
   if (doc.piede !== undefined) o.pf = serializzaParagrafi(doc.piede);
+  const commenti = commentiUsati(doc);
+  if (commenti.length > 0) o.cm = commenti.map((c) => ({ id: c.id, a: c.a, d: c.d, t: c.t, ...(c.ok ? { ok: true } : {}), ...(c.r && c.r.length > 0 ? { r: c.r.map((x) => ({ a: x.a, d: x.d, t: x.t })) } : {}) }));
+  if (doc.revisioni) o.tr = true;
+  const stili = stiliUsati(doc);
+  if (stili.length > 0) o.su = stili.map((s) => ({ ...s }));
+  if (doc.filigrana) o.fg = doc.filigrana;
+  if (doc.colonne) o.co = doc.colonne;
+  if (doc.protezione) o.pr = doc.protezione.impronte ? { impronte: doc.protezione.impronte.map((i) => ({ ...i })) } : {};
   return JSON.stringify(o);
 }
 
@@ -844,12 +1043,33 @@ function leggiRun(r: unknown): Run {
   if (x.h !== undefined) { if (typeof x.h !== 'string' || !COLORE.test(x.h)) throw new Error(t('Documento non valido: colore')); o.h = x.h; }
   if (x.u !== undefined) { if (typeof x.u !== 'string' || !urlValido(x.u)) throw new Error(t('Documento non valido: link')); o.u = x.u; }
   if (x.x !== undefined) { if (x.x !== 'b') throw new Error(t('Documento non valido: barrato')); o.x = x.x; }
+  if (x.w !== undefined) { if (x.w !== 'd') throw new Error(t('Documento non valido: sottolineato doppio')); o.w = x.w; }
+  if (x.q !== undefined) { if (x.q !== 'm') throw new Error(t('Documento non valido: maiuscoletto')); o.q = x.q; }
   if (x.v !== undefined) { if (x.v !== 'p' && x.v !== 'd') throw new Error(t('Documento non valido: apice o pedice')); o.v = x.v; }
   if (x.im !== undefined) {
     if (!immagineValida(x.im) || x.t !== OGGETTO) throw new Error(t('Documento non valido: immagine'));
-    o.im = { s: x.im.s, w: x.im.w, h: x.im.h };
+    o.im = copiaImmagine(x.im);
   } else if (x.t.includes(OGGETTO)) throw new Error(t('Documento non valido: immagine'));
+  if (x.cm !== undefined) { if (typeof x.cm !== 'string' || !ID_COMMENTO.test(x.cm)) throw new Error(t('Documento non valido: commento')); o.cm = x.cm; }
+  if (x.rv !== undefined) { const rv = revisioneValida(x.rv); if (!rv) throw new Error(t('Documento non valido: modifica registrata')); o.rv = rv; }
+  if (x.cu !== undefined) {
+    if (typeof x.cu !== 'string' || nomeCampoValido(x.cu) === null || x.t !== CAMPO_UNIONE) throw new Error(t('Documento non valido: campo di unione'));
+    o.cu = x.cu;
+  } else if (x.t.includes(CAMPO_UNIONE)) throw new Error(t('Documento non valido: campo di unione'));
+  if (x.sq !== undefined) {
+    if (typeof x.sq !== 'string' || nomeCampoValido(x.sq) === null || x.t !== CAMPO_SEQUENZA) throw new Error(t('Documento non valido: didascalia'));
+    o.sq = x.sq;
+  } else if (x.t.includes(CAMPO_SEQUENZA)) throw new Error(t('Documento non valido: didascalia'));
+  if (x.xr !== undefined) {
+    if (typeof x.xr !== 'string' || nomeSegnalibroValido(x.xr) === null || x.t !== CAMPO_RIFERIMENTO || (x.xm !== 't' && x.xm !== 'e')) throw new Error(t('Documento non valido: riferimento incrociato'));
+    o.xr = x.xr; o.xm = x.xm;
+  } else if (x.t.includes(CAMPO_RIFERIMENTO)) throw new Error(t('Documento non valido: riferimento incrociato'));
   return o;
+}
+/** Il nome di un campo di unione ripulito (spazi in più tolti), o null se non va bene (vuoto, troppo lungo, con caratteri di controllo). */
+export function nomeCampoValido(nome: string): string | null {
+  const n = nome.replace(/\s+/g, ' ').trim();
+  return n !== '' && n.length <= LUNGHEZZA_MASSIMA_NOME_CAMPO && !/[\x00-\x1f\x7f\uE000-\uE002\uFFFC]/.test(n) ? n : null;
 }
 function leggiAttributi(a: unknown): AttributiParagrafo {
   const x = a as Record<string, unknown>;
@@ -865,8 +1085,19 @@ function leggiAttributi(a: unknown): AttributiParagrafo {
     const intero = (v: unknown, max: number): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= max;
     if (!tb || typeof tb !== 'object' || !intero(tb.i, 1e9) || !intero(tb.r, 999) || !intero(tb.c, 99)) throw new Error(t('Documento non valido: attributi del paragrafo'));
     o.tb = { i: tb.i, r: tb.r, c: tb.c };
+    for (const [k, max] of [['cs', 100], ['rs', 1000]] as const) {
+      if (tb[k] === undefined) continue;
+      if (!Number.isInteger(tb[k]) || (tb[k] as number) < 1 || (tb[k] as number) > max) throw new Error(t('Documento non valido: attributi del paragrafo'));
+      if ((tb[k] as number) > 1) o.tb[k] = tb[k] as number;
+    }
+    for (const k of ['co', 'h'] as const) {
+      if (tb[k] === undefined) continue;
+      if (typeof tb[k] !== 'boolean') throw new Error(t('Documento non valido: attributi del paragrafo'));
+      if (tb[k]) o.tb[k] = true;
+    }
   }
   if (x.sp !== undefined) { if (typeof x.sp !== 'boolean') throw new Error(t('Documento non valido: attributi del paragrafo')); if (x.sp) o.sp = true; }
+  if (x.sc !== undefined) { if (typeof x.sc !== 'boolean') throw new Error(t('Documento non valido: attributi del paragrafo')); if (x.sc) o.sc = true; }
   if (x.hr !== undefined) { if (typeof x.hr !== 'boolean') throw new Error(t('Documento non valido: attributi del paragrafo')); if (x.hr) o.hr = true; }
   if (x.fa !== undefined) { if (typeof x.fa !== 'boolean') throw new Error(t('Documento non valido: attributi del paragrafo')); if (x.fa && o.el === 't') o.fa = true; }
   for (const k of ['sb', 'sa'] as const) {
@@ -877,6 +1108,12 @@ function leggiAttributi(a: unknown): AttributiParagrafo {
   }
   if (x.bd !== undefined) { const b = bordoValido(x.bd); if (!b) throw new Error(t('Documento non valido: attributi del paragrafo')); o.bd = b; }
   if (x.sg !== undefined) { const n = typeof x.sg === 'string' ? nomeSegnalibroValido(x.sg) : null; if (n === null) throw new Error(t('Documento non valido: attributi del paragrafo')); o.sg = n; }
+  if (x.sm !== undefined) {
+    const sm = x.sm as Record<string, unknown>;
+    if (!sm || typeof sm !== 'object' || typeof sm.n !== 'string' || sm.n.length > LUNGHEZZA_MASSIMA_SEGNALIBRO || (sm.l !== 1 && sm.l !== 2 && sm.l !== 3)) throw new Error(t('Documento non valido: attributi del paragrafo'));
+    o.sm = { n: sm.n, l: sm.l };
+  }
+  if (x.su !== undefined) { if (typeof x.su !== 'string' || !ID_STILE_PERSONALE.test(x.su)) throw new Error(t('Documento non valido: attributi del paragrafo')); o.su = x.su; }
   return o;
 }
 
@@ -908,7 +1145,131 @@ export function deserializza(testo: string): Documento {
   if (intestazione !== undefined) doc.intestazione = intestazione;
   if (piede !== undefined) doc.piede = piede;
   if (controllaTabelle(doc) !== null) throw new Error(t('Documento non valido: tabella'));
+  const dd = d as { cm?: unknown; tr?: unknown };
+  if (dd.cm !== undefined) {
+    if (!Array.isArray(dd.cm)) throw new Error(t('Documento non valido: commento'));
+    const commenti = dd.cm.map((c) => { const v = commentoValido(c); if (!v) throw new Error(t('Documento non valido: commento')); return v; });
+    if (commenti.length > 0) doc.commenti = commenti;
+  }
+  if (dd.tr !== undefined) { if (typeof dd.tr !== 'boolean') throw new Error(t('Documento non valido: modifica registrata')); if (dd.tr) doc.revisioni = true; }
+  const ds = d as { su?: unknown };
+  if (ds.su !== undefined) {
+    if (!Array.isArray(ds.su)) throw new Error(t('Documento non valido: stile'));
+    const stili = ds.su.map((s) => { const v = stileValido(s); if (!v) throw new Error(t('Documento non valido: stile')); return v; });
+    if (new Set(stili.map((s) => s.id)).size !== stili.length || new Set(stili.map((s) => s.nome.toLowerCase())).size !== stili.length) throw new Error(t('Documento non valido: stile'));
+    if (stili.length > 0) doc.stili = stili;
+  }
+  const df = d as { fg?: unknown };
+  if (df.fg !== undefined) {
+    const f = typeof df.fg === 'string' ? filigranaValida(df.fg) : undefined;
+    if (f === undefined) throw new Error(t('Documento non valido: filigrana'));
+    if (f !== '') doc.filigrana = f;
+  }
+  const dc = d as { co?: unknown };
+  if (dc.co !== undefined) {
+    if (dc.co !== 2 && dc.co !== 3) throw new Error(t('Documento non valido: colonne'));
+    doc.colonne = dc.co;
+  }
+  const dp = d as { pr?: unknown };
+  if (dp.pr !== undefined) {
+    if (!dp.pr || typeof dp.pr !== 'object' || Array.isArray(dp.pr)) throw new Error(t('Documento non valido: protezione'));
+    const impronte = impronteValide((dp.pr as { impronte?: unknown }).impronte);
+    doc.protezione = impronte ? { impronte } : {};
+  }
+  const ids = new Set((doc.stili ?? []).map((s) => s.id));
+  if (doc.paragrafi.some((p) => p.su !== undefined && !ids.has(p.su))) throw new Error(t('Documento non valido: stile'));
   return doc;
 }
 
 export function documentiUguali(a: Documento, b: Documento): boolean { return serializza(a) === serializza(b); }
+
+// ---- commenti e modifiche registrate: controlli ----
+/** Identificativo di un commento: lettere, cifre, trattino e trattino basso, al massimo 40 caratteri. */
+export const ID_COMMENTO = /^[A-Za-z0-9_-]{1,40}$/;
+export const LUNGHEZZA_MASSIMA_COMMENTO = 5000;
+export const LUNGHEZZA_MASSIMA_AUTORE = 100;
+const testoBreve = (v: unknown, max: number): v is string => typeof v === 'string' && v.length <= max && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
+/** La modifica registrata ripulita, o undefined se non è valida. */
+export function revisioneValida(x: unknown): Revisione | undefined {
+  const r = x as Record<string, unknown> | null;
+  if (!r || typeof r !== 'object' || (r.t !== 'i' && r.t !== 'd') || !testoBreve(r.a, LUNGHEZZA_MASSIMA_AUTORE) || !testoBreve(r.d, 40)) return undefined;
+  return { t: r.t, a: r.a, d: r.d };
+}
+function rispostaValida(x: unknown): Risposta | undefined {
+  const r = x as Record<string, unknown> | null;
+  if (!r || typeof r !== 'object' || !testoBreve(r.a, LUNGHEZZA_MASSIMA_AUTORE) || !testoBreve(r.d, 40) || typeof r.t !== 'string' || r.t.length > LUNGHEZZA_MASSIMA_COMMENTO) return undefined;
+  return { a: r.a, d: r.d, t: r.t };
+}
+/** Il commento ripulito, o undefined se non è valido. */
+export function commentoValido(x: unknown): Commento | undefined {
+  const c = x as Record<string, unknown> | null;
+  if (!c || typeof c !== 'object' || typeof c.id !== 'string' || !ID_COMMENTO.test(c.id)) return undefined;
+  const base = rispostaValida(c);
+  if (!base) return undefined;
+  const o: Commento = { id: c.id, ...base };
+  if (c.ok === true) o.ok = true;
+  if (c.r !== undefined) {
+    if (!Array.isArray(c.r) || c.r.length > 500) return undefined;
+    const risposte = c.r.map(rispostaValida);
+    if (risposte.some((r) => r === undefined)) return undefined;
+    if (risposte.length > 0) o.r = risposte as Risposta[];
+  }
+  return o;
+}
+/** Gli identificativi dei commenti che hanno del testo nel corpo del documento. */
+export function idCommentiNelTesto(doc: Documento): Set<string> {
+  const ids = new Set<string>();
+  for (const par of doc.paragrafi) for (const r of par.runs) if (r.cm !== undefined) ids.add(r.cm);
+  return ids;
+}
+/** I commenti del documento che hanno ancora del testo (quelli il cui testo è stato cancellato tutto non contano più). */
+export function commentiUsati(doc: Documento): Commento[] {
+  if (!doc.commenti || doc.commenti.length === 0) return [];
+  const ids = idCommentiNelTesto(doc);
+  return doc.commenti.filter((c) => ids.has(c.id));
+}
+
+// ---- stili personali: controlli ----
+/** Identificativo di uno stile personale: una lettera, poi lettere, cifre e trattino basso (va bene anche come styleId di Word). */
+export const ID_STILE_PERSONALE = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+export const LUNGHEZZA_MASSIMA_NOME_STILE = 60;
+/** Lo stile ripulito, o undefined se non è valido. */
+export function stileValido(x: unknown): StilePersonale | undefined {
+  const s = x as Record<string, unknown>;
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return undefined;
+  if (typeof s.id !== 'string' || !ID_STILE_PERSONALE.test(s.id)) return undefined;
+  if (typeof s.nome !== 'string' || s.nome.trim() === '' || s.nome.length > LUNGHEZZA_MASSIMA_NOME_STILE || /[\x00-\x1f\x7f]/.test(s.nome)) return undefined;
+  if (!['n', 't', 's', '1', '2', '3'].includes(s.base as string)) return undefined;
+  const o: StilePersonale = { id: s.id, nome: s.nome, base: s.base as StileParagrafo };
+  if (s.f !== undefined) { if (typeof s.f !== 'string' || s.f === '' || s.f.length > 100 || /[\x00-\x1f\x7f"';{}<>\\]/.test(s.f)) return undefined; o.f = s.f; }
+  if (s.z !== undefined) { if (typeof s.z !== 'number' || !(s.z > 0 && s.z <= 400)) return undefined; o.z = s.z; }
+  if (s.k !== undefined) { if (typeof s.k !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(s.k)) return undefined; o.k = s.k; }
+  for (const k of ['g', 'c', 's'] as const) { if (s[k] === undefined) continue; if (typeof s[k] !== 'boolean') return undefined; if (s[k]) o[k] = true; }
+  if (s.al !== undefined) { if (!['sx', 'ce', 'dx', 'gi'].includes(s.al as string)) return undefined; o.al = s.al as Allineamento; }
+  if (s.ls !== undefined) { if (typeof s.ls !== 'number' || !(s.ls >= 0.5 && s.ls <= 5)) return undefined; o.ls = s.ls; }
+  for (const k of ['sb', 'sa'] as const) {
+    if (s[k] === undefined) continue;
+    if (typeof s[k] !== 'number' || !((s[k] as number) >= 0 && (s[k] as number) <= SPAZIO_PARAGRAFO_MASSIMO)) return undefined;
+    const v = spazioValido(s[k]);
+    if (v !== undefined) o[k] = v;
+  }
+  return o;
+}
+/** Gli stili personali del documento che servono (usati da un paragrafo), nell'ordine in cui sono stati creati. Quelli non usati restano
+ *  nel documento finché è aperto, ma non si salvano. */
+export function stiliUsati(doc: Documento): StilePersonale[] {
+  if (!doc.stili || doc.stili.length === 0) return [];
+  const usati = new Set<string>();
+  for (const p of doc.paragrafi) if (p.su !== undefined) usati.add(p.su);
+  return doc.stili.filter((s) => usati.has(s.id));
+}
+
+// ---- filigrana ----
+/** La filigrana: un testo grande, chiaro e in diagonale su ogni pagina (come la filigrana di testo di Word). */
+export const LUNGHEZZA_MASSIMA_FILIGRANA = 40;
+/** Il testo della filigrana ripulito ('' = nessuna), o undefined se non va bene. */
+export function filigranaValida(x: string): string | undefined {
+  const s = x.replace(/\s+/g, ' ').trim();
+  if (s.length > LUNGHEZZA_MASSIMA_FILIGRANA || /[\x00-\x1f\x7f]/.test(s)) return undefined;
+  return s;
+}

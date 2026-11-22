@@ -32,8 +32,10 @@ mkdir -p "$LAVORO/risorse"
 sed -e "s/@V_DOCS@/$V_DOCS/g" -e "s/@V_SHEETS@/$V_SHEETS/g" -e "s/@V_SUITE@/$V_SUITE/g" "$QUI/benvenuto.html" > "$LAVORO/risorse/benvenuto.html"
 # il logo ufficiale di pmb_office, sullo sfondo dell'installazione
 cp "$QUI/../../media/logo/Logo PMB Office (512x512).png" "$LAVORO/risorse/logo.png"
-# la licenza: nel repository è nella radice, nel vault in repo-github/
-if [ -f "$QUI/../../LICENSE" ]; then cp "$QUI/../../LICENSE" "$LAVORO/risorse/LICENSE.txt"; else cp "$QUI/../../repo-github/LICENSE" "$LAVORO/risorse/LICENSE.txt"; fi
+# la pagina della licenza (da accettare): la licenza di pmb_office (GPL-3.0) e, sotto, i componenti di terze parti dei due programmi con
+# i testi delle loro licenze, come nelle due pagine della suite di Windows (il Mac ne mostra una sola)
+node "$QUI/../genera-testi-licenze.mjs" "$LAVORO/licenze" --utf8
+{ cat "$LAVORO/licenze/licenza-pmb_office.txt"; printf '\n\n======================================================================\n\n'; cat "$LAVORO/licenze/licenze-terze-parti.txt"; } > "$LAVORO/risorse/LICENSE.txt"
 sed -e "s/@V_DOCS@/$V_DOCS/g" -e "s/@V_SHEETS@/$V_SHEETS/g" -e "s/@V_SUITE@/$V_SUITE/g" "$QUI/distribution.xml" > "$LAVORO/distribution.xml"
 
 mkdir -p "$USCITA"

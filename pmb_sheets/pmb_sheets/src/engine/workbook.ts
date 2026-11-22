@@ -1470,6 +1470,39 @@ export class Workbook {
       }
     }
   }
+
+  /** Valuta formula (come Formule › Valuta formula di Excel): i pezzi della formula di una cella dal più interno al più esterno —
+   *  riferimenti, operazioni e funzioni — ognuno con il testo e il valore che ha in quella cella. I pezzi che hanno senso solo dentro
+   *  LET o LAMBDA (i loro nomi) non si valutano da soli. */
+  public valutaPassi(sheetName: string, row: number, col: number, formula: string): Array<{ testo: string; valore: CellValue | null }> {
+    if (!formula.startsWith('=')) return [];
+    const res = parseFormula(formula.substring(1).trim(), sheetName, (nome) => this.nomi.get(nome.toUpperCase()));
+    if (res.error || !res.ast) return [];
+    const evalContext: EvalContext = {
+      currentSheet: sheetName, currentRow: row, currentCol: col,
+      getCellValue: (sh, r, c) => this.getCellValueInternal(sh, r, c),
+      getCellFormula: (sh, r, c) => this.getFormulaInternal(sh, r, c),
+      getRangeArg: (rng) => this.getRangeArgInternal(rng),
+      getRangeValues: (rng) => this.getRangeValuesInternal(rng),
+      rigaNascosta: (sh, r) => this.statoRigaNascosta(sh, r),
+    };
+    const out: Array<{ testo: string; valore: CellValue | null }> = [];
+    const dentroLet = (n: ASTNode): boolean => n.type === 'Call' && ['LET', 'LAMBDA', 'MAP', 'REDUCE', 'SCAN', 'BYROW', 'BYCOL', 'MAKEARRAY'].includes(n.name.toUpperCase());
+    const visita = (n: ASTNode, libero: boolean): void => {
+      const figli: ASTNode[] = n.type === 'Call' ? n.args : n.type === 'Binary' ? [n.left, n.right] : n.type === 'Unary' || n.type === 'Postfix' ? [n.expr] : [];
+      const qui = libero && !dentroLet(n);
+      for (const f of figli) visita(f, qui);
+      if (!['Cell', 'Range', 'Call', 'Binary', 'Unary', 'Postfix'].includes(n.type) || out.length >= 200) return;
+      let valore: CellValue | null = null;
+      if (libero) { try { valore = new Evaluator(evalContext).evaluate(n); } catch { valore = null; } }
+      out.push({ testo: senzaFoglio(printAst(n)), valore });
+    };
+    // i riferimenti al foglio della cella si mostrano come li scrive l'utente (A1:A2, non Foglio1!A1:A2)
+    const prefissi = [`'${sheetName.replace(/'/g, "''")}'!`, `${sheetName}!`];
+    const senzaFoglio = (testo: string): string => prefissi.reduce((x, p) => x.split(p).join(''), testo);
+    visita(res.ast, true);
+    return out;
+  }
 }
 
 export function createWorkbook(): Workbook {

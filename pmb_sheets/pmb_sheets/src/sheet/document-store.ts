@@ -6,9 +6,12 @@
  * Zero DOM, zero Lit, interamente testabile in ambiente Node.
  */
 
+import type { ImpostaPagina } from './pagina';
 import { EngineClient, InlineEngineClient } from './engine-client';
 import { SelectionState, createCellSelection } from './selection';
 import { HistoryManager } from './history';
+import type { ProtezioneCartella, ProtezioneFoglio } from './protezione';
+import type { Gruppi } from './gruppi';
 
 import { SheetStyles, createSheetStyles } from './styles';
 import { MergeRange } from './cell-merge';
@@ -37,10 +40,22 @@ export interface SheetDocument {
   freezeCols: number;
   /** colore della scheda del foglio attivo ("#rrggbb") */
   coloreScheda?: string;
+  /** il foglio attivo è nascosto (succede solo mentre lo si nasconde: il foglio attivo è sempre uno visibile) */
+  nascosto?: boolean;
   /** viste filtro salvate del foglio attivo */
   visteFiltro?: VistaFiltro[];
   /** la tabella su cui lavora il filtro del foglio attivo (senza: tutto il foglio, con l'intestazione in riga 1) */
   filterArea?: AreaFiltro;
+  /** impostazione di pagina del foglio attivo (senza: quella di partenza) */
+  impostaPagina?: ImpostaPagina;
+  /** la password per aprire del file (solo in memoria): con lei i .xlsx e .ods si salvano cifrati */
+  passwordApertura?: string;
+  /** righe e colonne raggruppate del foglio attivo (vedi gruppi.ts) */
+  gruppi?: Gruppi;
+  /** protezione del foglio attivo (senza: non protetto); vedi protezione.ts */
+  protezione?: ProtezioneFoglio;
+  /** struttura della cartella protetta (senza: non protetta) */
+  protezioneCartella?: ProtezioneCartella;
   history: HistoryManager;
   activeSheetName: string;
   styles: SheetStyles;

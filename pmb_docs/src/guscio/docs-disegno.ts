@@ -23,21 +23,21 @@ export class DocsDisegno extends LinguaElement {
   private ultimo: { x: number; y: number } | null = null;
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: 660px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 20px 24px 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: 660px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 20px 24px 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
     h2 { margin: 0 0 12px; font-size: 18px; font-weight: 500; }
     .strumenti { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
-    .strumenti button, .pulsanti button { height: 30px; padding: 0 12px; border: 1px solid #dadce0; border-radius: 15px; background: #ffffff; font: inherit; cursor: pointer; color: #0b57d0; }
-    .strumenti button:hover, .pulsanti button:hover { background: #f8f9fa; }
-    .strumenti button.attivo { background: #e8f0fe; border-color: #0b57d0; font-weight: 500; }
-    .strumenti button:disabled { color: #9aa0a6; cursor: default; background: #ffffff; }
+    .strumenti button, .pulsanti button { height: 30px; padding: 0 12px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 15px; background: var(--pmb-superficie, #ffffff); font: inherit; cursor: pointer; color: var(--pmb-accento, #0b57d0); }
+    .strumenti button:hover, .pulsanti button:hover { background: var(--pmb-superficie-2, #f8f9fa); }
+    .strumenti button.attivo { background: var(--pmb-selezione, #e8f0fe); border-color: #0b57d0; font-weight: 500; }
+    .strumenti button:disabled { color: var(--pmb-testo-disabilitato, #9aa0a6); cursor: default; background: var(--pmb-superficie, #ffffff); }
     .colori { display: flex; gap: 4px; align-items: center; }
-    .colori button.colore { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid #dadce0; }
+    .colori button.colore { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid var(--pmb-bordo, #dadce0); }
     .colori button.colore.attivo { border-color: #0b57d0; box-shadow: 0 0 0 2px #e8f0fe; }
-    label.opz { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #444746; }
-    select { height: 30px; border: 1px solid #dadce0; border-radius: 4px; font: inherit; background: #ffffff; }
-    canvas { display: block; width: ${LARGHEZZA}px; max-width: 100%; height: auto; aspect-ratio: ${LARGHEZZA} / ${ALTEZZA}; border: 1px solid #dadce0; border-radius: 4px; background: #ffffff; cursor: crosshair; touch-action: none; }
+    label.opz { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--pmb-testo-2, #444746); }
+    select { height: 30px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; font: inherit; background: var(--pmb-superficie, #ffffff); }
+    canvas { display: block; width: ${LARGHEZZA}px; max-width: 100%; height: auto; aspect-ratio: ${LARGHEZZA} / ${ALTEZZA}; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; background: var(--pmb-superficie, #ffffff); cursor: crosshair; touch-action: none; }
     .pulsanti { display: flex; justify-content: flex-end; gap: 12px; margin-top: 14px; }
     .pulsanti button { height: 36px; padding: 0 20px; border-radius: 18px; font-weight: 500; }
     .pulsanti button.primario { border: 0; background: #0b57d0; color: #ffffff; }

@@ -108,14 +108,17 @@ describe('T504: nomi italiani', () => {
     ['=DISTRIB.T.N(1,5;10;VERO)', '=T.DIST(1.5,10,TRUE)'],
     ['=DISTRIB.T.2T(2;7)', '=T.DIST.2T(2,7)'],
     ['=DISTRIB.T.DS(2;7)', '=T.DIST.RT(2,7)'],
-    ['=INV.T(0,975;10)', '=T.INV(0.975,10)'],
+    // nomi di Excel (2026-11-20): INVT è T.INV, INV.T è il vecchio TINV; TESTT è T.TEST, TEST.T il vecchio TTEST
+    ['=INVT(0,975;10)', '=T.INV(0.975,10)'],
+    ['=INV.T(0,05;10)', '=TINV(0.05,10)'],
     ['=INV.T.2T(0,05;10)', '=T.INV.2T(0.05,10)'],
-    ['=TEST.T(A1:A8;B1:B8;2;1)', '=T.TEST(A1:A8,B1:B8,2,1)'],
+    ['=TESTT(A1:A8;B1:B8;2;1)', '=T.TEST(A1:A8,B1:B8,2,1)'],
+    ['=TEST.T(A1:A8;B1:B8;2;1)', '=TTEST(A1:A8,B1:B8,2,1)'],
   ])('%s → %s', (it, en) => {
     expect(translateFormula(it, 'it', 'en')).toBe(en);
   });
   it('verso l\'italiano', () => {
-    expect(translateFormula('=T.TEST(A1:A8,B1:B8,2,1)', 'en', 'it')).toBe('=TEST.T(A1:A8;B1:B8;2;1)');
+    expect(translateFormula('=T.TEST(A1:A8,B1:B8,2,1)', 'en', 'it')).toBe('=TESTT(A1:A8;B1:B8;2;1)');
     expect(translateFormula('=T.INV.2T(0.05,10)', 'en', 'it')).toBe('=INV.T.2T(0,05;10)');
   });
 });

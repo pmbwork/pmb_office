@@ -26,19 +26,19 @@ export class DocsMargini extends LinguaElement {
   private ultima: Zona = 'intestazione';
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: 360px; box-sizing: border-box; padding: 16px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: 360px; box-sizing: border-box; padding: 16px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
-    label { display: block; margin: 8px 0 2px; color: #5f6368; font-size: 12px; }
-    textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #c4c7c5; border-radius: 4px; font: inherit; color: inherit; background: transparent; outline: none; resize: none; }
+    label { display: block; margin: 8px 0 2px; color: var(--pmb-testo-2, #5f6368); font-size: 12px; }
+    textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--pmb-bordo, #c4c7c5); border-radius: 4px; font: inherit; color: inherit; background: transparent; outline: none; resize: none; }
     textarea:focus { border-color: #0b57d0; }
     .allineamento { display: flex; gap: 4px; margin-top: 4px; }
     .campi { display: flex; gap: 8px; margin-top: 12px; }
     .errore { min-height: 18px; margin-top: 4px; color: #b3261e; font-size: 12px; }
     .pulsanti { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-    button { height: 28px; padding: 0 12px; border: 1px solid #c4c7c5; border-radius: 14px; background: none; color: #0b57d0; font: inherit; cursor: default; }
-    button:hover { background: #f1f3f4; }
-    button[aria-pressed='true'] { background: #d3e3fd; border-color: #d3e3fd; }
+    button { height: 28px; padding: 0 12px; border: 1px solid var(--pmb-bordo, #c4c7c5); border-radius: 14px; background: none; color: var(--pmb-accento, #0b57d0); font: inherit; cursor: default; }
+    button:hover { background: var(--pmb-superficie-2, #f1f3f4); }
+    button[aria-pressed='true'] { background: var(--pmb-selezione-forte, #d3e3fd); border-color: #d3e3fd; }
     .pulsanti button { height: 32px; padding: 0 16px; border: 0; border-radius: 16px; font-weight: 500; }
     .pulsanti button.applica { background: #0b57d0; color: #ffffff; }
   `;

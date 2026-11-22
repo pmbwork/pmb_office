@@ -30,9 +30,11 @@ export function catalogo(): Funzione[] {
   for (const m of MENU) {
     for (const v of m.voci) {
       if (v.figli) {
-        for (const f of v.figli) out.push({ id: idMenu(m.id, f.etichetta, v.etichetta), etichetta: `${v.etichetta} › ${f.etichetta}`, gruppo: m.etichetta, menu: { menu: m.id, voce: f.etichetta, padre: v.etichetta }, icona: false });
+        // anche le voci dei menu sono icone nella barra (icona scelta dal nome: iconaDi in icone.ts); prima erano testo e la barra diventava
+        // una fila di scritte lunghe (segnalazione dell'utente, 2026-11-19)
+        for (const f of v.figli) out.push({ id: idMenu(m.id, f.etichetta, v.etichetta), etichetta: `${v.etichetta} › ${f.etichetta}`, gruppo: m.etichetta, menu: { menu: m.id, voce: f.etichetta, padre: v.etichetta }, icona: true });
       } else {
-        out.push({ id: idMenu(m.id, v.etichetta), etichetta: v.etichetta, gruppo: m.etichetta, menu: { menu: m.id, voce: v.etichetta }, icona: false });
+        out.push({ id: idMenu(m.id, v.etichetta), etichetta: v.etichetta, gruppo: m.etichetta, menu: { menu: m.id, voce: v.etichetta }, icona: true });
       }
     }
   }

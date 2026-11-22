@@ -1,6 +1,6 @@
 # Prove fisiche di pmb_sheets
 
-Script Python che provano il programma **installato** come lo userebbe una persona: avviano `C:\AI_system\pmb_office\pmb_sheets\pmb-sheets-shell.exe`, lo guardano con Playwright (collegato al componente web WebView2) e lo comandano con mouse e tastiera **veri** di Windows (`SetCursorPos`, `mouse_event`, `SendInput`). Servono perché i test automatici (`npm test`) girano in un finto browser e non vedono i difetti di tastiera, focus, mouse, regole di sicurezza della finestra e disegno.
+Script Python che provano il programma **installato** come lo userebbe una persona: avviano `C:\Program Files\pmb_office\pmb_sheets\pmb-sheets-shell.exe`, lo guardano con Playwright (collegato al componente web WebView2) e lo comandano con mouse e tastiera **veri** di Windows (`SetCursorPos`, `mouse_event`, `SendInput`). Servono perché i test automatici (`npm test`) girano in un finto browser e non vedono i difetti di tastiera, focus, mouse, regole di sicurezza della finestra e disegno.
 
 ## Come si lancia
 ```powershell
@@ -54,10 +54,13 @@ Servono: Windows, Python con `playwright`, `pillow` e `openpyxl`, e Rust sotto `
 | `giro_42_finestra_stretta` | finestra di 760 pixel: bottone Segnalazione bug su una riga, menu «Altri strumenti» fisso e cliccabile, tavolozza dei colori dentro il menu |
 | `giro_43_contabilita` | formato Contabilità: simbolo a sinistra e numero a destra (positivo, negativo, zero) |
 | `giro_44_toolbar_personalizzata` | barra strumenti personalizzabile, menu contestuale tasto destro, frecce filtro in cella, bottone verde |
+| `giro_47_xls` | File › Apri di un .xls di LibreOffice, di un vero Excel 4.0 (tabella dell'IRS) e di un .xls protetto (`tests/file-prova/xls`): fogli, celle, formule calcolate, stili come si vedono, unioni, nascoste, commenti, messaggio, Salva in .xlsx con un nome nuovo |
+| `giro_48_funzioni_excel` | funzioni di Excel aggiunte nella 0.2.10 scritte in italiano con la tastiera vera (DISTRIB.BINOM.N, vecchi nomi come DISTRIB.CHI, TESTO.PRECEDENTE, AMMORT = DDB, AMMORT.VAR…) con i risultati di Excel; barra della formula in italiano; nei file salvati _xlfn. (.xlsx) e COM.MICROSOFT./LEGACY./FDIST (.ods) |
 
 `giro_lib.py` è la libreria comune (classe `Banco`). Ogni script stampa `OK` / `FAIL` / `MANCA` / `NOTA` e un riepilogo finale. Ogni script usa una porta e una cartella dati proprie, così non si disturbano.
 
 ## Trucchi imparati (evitano ore di strada sbagliata)
+- **La finestra parte sempre della stessa grandezza** (2032 x 1006 pixel, al centro dello schermo; `PMB_GIRO_FINESTRA=1600x900` per un'altra): `Banco` la ridimensiona appena il programma si apre, qualunque misura sia salvata nelle impostazioni. Con la finestra normale da 1200 pixel metà della barra va nel menu «Altri strumenti» e le prove 01, 03, 05 e 22 fallivano sul programma installato in Programmi (2026-11-19). La finestra stretta la prova `giro_42`.
 - **Le celle selezionate non mostrano il loro sfondo** ma il colore di selezione: per misurare uno stile bisogna prima spostare la selezione altrove.
 - **Il puntatore può essere spostato da fuori** (anche dall'utente). Per i clic che devono cadere su una cella si ripete il clic finché la selezione è quella giusta (vedi `clic_giusto` negli script 10, 11, 14).
 - **I clic del mouse sui menu** possono chiudere un menu aperto dal solo passaggio del puntatore: dopo `hover` si aspetta che il menu sia attivo prima di cliccare (già gestito in `Banco.menu`).

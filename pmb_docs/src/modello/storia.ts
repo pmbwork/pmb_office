@@ -10,6 +10,8 @@ export function nuovaStoria(stato: Stato): Storia { return { passato: [], presen
 // Con unisci = true una modifica si fonde nella voce corrente (digitazione continua).
 export function registra(storia: Storia, stato: Stato, unisci = false): Storia {
   if (documentiUguali(stato.doc, storia.presente.doc)) return { ...storia, presente: stato };
+  // documento protetto (sola lettura): la modifica non entra e tutto resta com'era; entra solo togliere la protezione
+  if (storia.presente.doc.protezione && stato.doc.protezione) return storia;
   if (unisci && storia.passato.length > 0) return { passato: storia.passato, presente: stato, futuro: [] };
   const passato = [...storia.passato, storia.presente];
   while (passato.length > LIMITE_STORIA) passato.shift();

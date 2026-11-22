@@ -28,6 +28,7 @@ function soglieLette(min: Soglia | undefined, mid: Soglia | undefined, max: Sogl
 import type { CommentoScambio, ConvalidaScambio, FiltroScambio, FoglioScambio, NomeScambio } from './scambio';
 import { indirizzoCella } from './scambio';
 import { urlAmmesso } from '../sheet/link';
+import { shiftFormula } from '../engine/shift-formula';
 
 const elenco = (n: NodoXml | undefined, nome: string): NodoXml[] => (n ? figliElemento(n, nome) : []);
 const intero = (v: number, min: number, max: number): boolean => Number.isInteger(v) && v >= min && v <= max;
@@ -259,6 +260,11 @@ export function leggiCondizionali(radice: NodoXml, dxfs: StileCondizionale[]): {
   let nonImportate = 0;
   for (const blocco of elenco(radice, 'conditionalFormatting')) {
     const aree = (blocco.attributi.sqref ?? '').split(/\s+/).map(leggiArea).filter((a): a is Area => a !== null);
+    // nelle formule delle regole i riferimenti relativi partono dall'angolo in alto a sinistra di tutte le aree insieme (in Excel la regola
+    // su «O10:O171 J10:J171» ha la formula scritta per J10); pmb_sheets valuta ogni regola dall'angolo della sua area: si sposta sotto
+    const cima = aree.length ? Math.min(...aree.map((a) => a.startRow)) : 1;
+    const sinistra = aree.length ? Math.min(...aree.map((a) => a.startCol)) : 1;
+    const cella = indirizzoCella(cima, sinistra);
     for (const cf of elenco(blocco, 'cfRule')) {
       const stile = cf.attributi.dxfId !== undefined ? dxfs[Number(cf.attributi.dxfId)] : undefined;
       const formule = elenco(cf, 'formula').map((x) => testoXml(x).trim());
@@ -270,6 +276,15 @@ export function leggiCondizionali(radice: NodoXml, dxfs: StileCondizionale[]): {
         const v1 = numero(formule[0]);
         const v2 = numero(formule[1]);
         if (op && v1 !== undefined && (v2 !== undefined || (op !== 'between' && op !== 'not_between'))) base = { type: 'cell_value', operator: op, value1: v1, ...(v2 !== undefined ? { value2: v2 } : {}), style: stile };
+        else if (op && formule[0]) {
+          // confronto con altre celle, testo o formule («tra $C$2 e $E$2», «uguale a "SI"»): diventa una regola formula equivalente
+          const f = confrontoCellIs(cf.attributi.operator ?? '', cella, formule[0], formule[1]);
+          if (f) base = { type: 'formula', value1: `=${f}`, style: stile };
+        }
+      } else if (tipo === 'timePeriod') {
+        // periodo di tempo (scadenze): Excel scrive anche la formula equivalente; se manca la si ricava dal periodo
+        const f = formule[0] || formulaPeriodo(cf.attributi.timePeriod ?? '', cella);
+        if (f) base = { type: 'formula', value1: `=${f}`, style: stile };
       } else if (tipo === 'containsText' || tipo === 'notContainsText' || tipo === 'beginsWith' || tipo === 'endsWith') {
         const testo = cf.attributi.text;
         const operatore = { containsText: 'contains', notContainsText: 'not_contains', beginsWith: 'starts_with', endsWith: 'ends_with' }[tipo];
@@ -301,10 +316,45 @@ export function leggiCondizionali(radice: NodoXml, dxfs: StileCondizionale[]): {
       }
       if (!base || aree.length === 0) { nonImportate++; continue; }
       if (base.style === undefined) delete (base as { style?: unknown }).style;
-      for (const area of aree) regole.push({ id: '', range: { ...area }, ...JSON.parse(JSON.stringify(base)) } as ConditionalFormatRule);
+      for (const area of aree) {
+        const regola = { id: '', range: { ...area }, ...JSON.parse(JSON.stringify(base)) } as ConditionalFormatRule;
+        if (regola.type === 'formula' && typeof regola.value1 === 'string' && (area.startRow !== cima || area.startCol !== sinistra)) {
+          try { regola.value1 = shiftFormula(regola.value1, area.startRow - cima, area.startCol - sinistra); } catch { /* formula non spostabile: resta com'è */ }
+        }
+        regole.push(regola);
+      }
     }
   }
   return { regole, nonImportate };
+}
+
+/** La formula equivalente a un confronto cellIs di Excel, scritta per la cella in alto a sinistra (relativa). */
+function confrontoCellIs(operatore: string, cella: string, a: string, b: string | undefined): string | null {
+  const semplici: Record<string, string> = { equal: '=', notEqual: '<>', greaterThan: '>', lessThan: '<', greaterThanOrEqual: '>=', lessThanOrEqual: '<=' };
+  if (semplici[operatore]) return `${cella}${semplici[operatore]}${a}`;
+  if (b === undefined) return null;
+  // «tra» in Excel comprende gli estremi e vale anche con gli estremi scritti al contrario
+  if (operatore === 'between') return `AND(${cella}>=MIN(${a},${b}),${cella}<=MAX(${a},${b}))`;
+  if (operatore === 'notBetween') return `OR(${cella}<MIN(${a},${b}),${cella}>MAX(${a},${b}))`;
+  return null;
+}
+
+/** La formula di un periodo di tempo (timePeriod), la stessa che scrive Excel, per la cella in alto a sinistra. */
+function formulaPeriodo(periodo: string, c: string): string | null {
+  const g = `INT(${c})`;
+  const formule: Record<string, string> = {
+    today: `${g}=TODAY()`,
+    yesterday: `${g}=TODAY()-1`,
+    tomorrow: `${g}=TODAY()+1`,
+    last7Days: `AND(TODAY()-${g}<=6,${g}<=TODAY())`,
+    thisWeek: `AND(TODAY()-${g}<=WEEKDAY(TODAY())-1,${g}-TODAY()<=7-WEEKDAY(TODAY()))`,
+    lastWeek: `AND(TODAY()-${g}>=(WEEKDAY(TODAY())),TODAY()-${g}<(WEEKDAY(TODAY())+7))`,
+    nextWeek: `AND(${g}-TODAY()>(7-WEEKDAY(TODAY())),${g}-TODAY()<(15-WEEKDAY(TODAY())))`,
+    thisMonth: `AND(MONTH(${c})=MONTH(TODAY()),YEAR(${c})=YEAR(TODAY()))`,
+    lastMonth: `AND(MONTH(${c})=MONTH(EDATE(TODAY(),0-1)),YEAR(${c})=YEAR(EDATE(TODAY(),0-1)))`,
+    nextMonth: `AND(MONTH(${c})=MONTH(EDATE(TODAY(),0+1)),YEAR(${c})=YEAR(EDATE(TODAY(),0+1)))`,
+  };
+  return formule[periodo] ?? null;
 }
 
 // ---- commenti
@@ -397,13 +447,14 @@ const quota = (foglio: string): string => (/^[A-Za-z_][A-Za-z0-9_.]*$/.test(fogl
 const assoluto = (rif: string): string => rif.replace(/\$/g, '').split(':').map((x) => x.replace(/^([A-Za-z]+)(\d+)$/, '$$$1$$$2')).join(':');
 
 /** I nomi definiti; `filtri` aggiunge per ogni foglio con un filtro automatico il nome nascosto _xlnm._FilterDatabase che Excel vuole accanto. */
-export function nomiXml(nomi: NomeScambio[], nomiFoglioNelFile: Map<string, string>, filtri: Array<{ indice: number; foglio: string; area: Area }> = []): string[] {
+export function nomiXml(nomi: NomeScambio[], nomiFoglioNelFile: Map<string, string>, filtri: Array<{ indice: number; foglio: string; area: Area }> = [], altri: string[] = []): string[] {
   const voci = nomi.filter((n) => nomiFoglioNelFile.has(n.foglio) && leggiArea(n.riferimento) !== null)
     .map((n) => elemento('definedName', { name: n.nome }, [escapaXml(`${quota(nomiFoglioNelFile.get(n.foglio) as string)}!${assoluto(n.riferimento)}`)]));
   for (const f of filtri) {
     const rif = `${indirizzoCella(f.area.startRow, f.area.startCol)}:${indirizzoCella(f.area.endRow, f.area.endCol)}`;
     voci.push(elemento('definedName', { name: '_xlnm._FilterDatabase', localSheetId: f.indice, hidden: 1 }, [escapaXml(`${quota(f.foglio)}!${assoluto(rif)}`)]));
   }
+  voci.push(...altri);
   return voci.length > 0 ? [elemento('definedNames', {}, voci)] : [];
 }
 

@@ -7,7 +7,7 @@ import { LinguaElement } from '../i18n/lingua-element';
 import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { catalogo, funzione, barraPredefinita, ripulisciBarra, sposta, SEPARATORE, type Funzione } from './barra-personalizzata';
-import { ICONE_DOCS } from './icone';
+import { iconaDi } from './icone';
 import { t, tVoce } from '../i18n/lingua';
 
 /** Il nome di una funzione nella lingua corrente (per le voci di sottomenu: «Grafico › A barre»). */
@@ -22,32 +22,34 @@ export class DocsPersonalizzaBarra extends LinguaElement {
   private trascinato: { indice?: number; id?: string } | null = null;
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: min(860px, calc(100vw - 48px)); max-height: calc(100vh - 80px); box-sizing: border-box; padding: 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: min(860px, calc(100vw - 48px)); max-height: calc(100vh - 80px); box-sizing: border-box; padding: 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); display: flex; flex-direction: column; gap: 12px; }
     h2 { margin: 0; font-size: 18px; font-weight: 500; }
-    h3 { margin: 4px 0 0; font-size: 14px; font-weight: 500; color: #444746; }
-    p.aiuto { margin: 0; color: #444746; font-size: 13px; }
-    .barra { display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px; padding: 8px; border: 2px dashed #c4c7c5; border-radius: 12px; background: #f0f4f9; }
+    h3 { margin: 4px 0 0; font-size: 14px; font-weight: 500; color: var(--pmb-testo-2, #444746); }
+    p.aiuto { margin: 0; color: var(--pmb-testo-2, #444746); font-size: 13px; }
+    /* come in pmb_sheets: con tanti pulsanti il riquadro scorre al suo interno (max-height + overflow) e non si restringe (flex-shrink: 0),
+       altrimenti i pulsanti uscivano dal bordo e coprivano «Funzioni disponibili» e la ricerca (trovato nella prova fisica del 2026-11-18) */
+    .barra { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; min-height: 44px; max-height: 180px; overflow-y: auto; flex-shrink: 0; box-sizing: border-box; padding: 8px; border: 2px dashed var(--pmb-bordo, #c4c7c5); border-radius: 12px; background: var(--pmb-superficie-2, #f0f4f9); }
     .barra.sopra { border-color: #0b57d0; }
-    .elemento { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 4px 0 8px; border-radius: 16px; background: #ffffff; border: 1px solid #c4c7c5; cursor: grab; user-select: none; }
+    .elemento { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 4px 0 8px; border-radius: 16px; background: var(--pmb-superficie, #ffffff); border: 1px solid var(--pmb-bordo, #c4c7c5); cursor: grab; user-select: none; }
     .elemento.separatore { padding: 0 4px; background: none; border-style: dashed; }
     .elemento.separatore .nome { width: 1px; height: 20px; background: #747775; display: inline-block; margin: 0 6px; }
     .elemento.sopra { outline: 2px solid #0b57d0; }
     .elemento .icona { display: inline-flex; width: 18px; height: 18px; margin-right: 4px; }
     .elemento .icona svg { width: 18px; height: 18px; }
-    .elemento button, .riga button.aggiungi { border: 0; background: none; border-radius: 12px; height: 24px; min-width: 24px; padding: 0 6px; font: inherit; color: #444746; cursor: default; }
-    .elemento button:hover, .riga button:hover { background: #e8eaed; }
-    .cerca { height: 32px; padding: 0 12px; border: 1px solid #747775; border-radius: 16px; font: inherit; width: 280px; }
-    .catalogo { overflow-y: auto; flex: 1 1 auto; min-height: 120px; max-height: 42vh; border: 1px solid #e3e3e3; border-radius: 8px; padding: 4px 8px; }
-    .catalogo.sopra { border-color: #0b57d0; background: #f8fbff; }
-    .gruppo { margin: 8px 0 2px; font-weight: 500; color: #444746; font-size: 13px; }
+    .elemento button, .riga button.aggiungi { border: 0; background: none; border-radius: 12px; height: 24px; min-width: 24px; padding: 0 6px; font: inherit; color: var(--pmb-testo-2, #444746); cursor: default; }
+    .elemento button:hover, .riga button:hover { background: var(--pmb-hover, #e8eaed); }
+    .cerca { flex-shrink: 0; box-sizing: border-box; height: 32px; padding: 0 12px; border: 1px solid var(--pmb-bordo-forte, #747775); border-radius: 16px; font: inherit; width: 280px; }
+    .catalogo { overflow-y: auto; flex: 1 1 auto; min-height: 120px; max-height: 42vh; border: 1px solid var(--pmb-bordo, #e3e3e3); border-radius: 8px; padding: 4px 8px; }
+    .catalogo.sopra { border-color: #0b57d0; background: var(--pmb-superficie-2, #f8fbff); }
+    .gruppo { margin: 8px 0 2px; font-weight: 500; color: var(--pmb-testo-2, #444746); font-size: 13px; }
     .riga { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px; border-radius: 6px; cursor: grab; }
-    .riga:hover { background: #f1f3f4; }
+    .riga:hover { background: var(--pmb-superficie-2, #f1f3f4); }
     .riga .nome { flex: 1; }
-    .riga.nella-barra { color: #747775; cursor: default; }
+    .riga.nella-barra { color: var(--pmb-testo-2, #747775); cursor: default; }
     .pulsanti { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-    .pulsanti button { height: 36px; padding: 0 20px; border: 1px solid #747775; border-radius: 18px; background: #ffffff; color: #0b57d0; font: inherit; font-weight: 500; cursor: default; }
+    .pulsanti button { height: 36px; padding: 0 20px; border: 1px solid var(--pmb-bordo-forte, #747775); border-radius: 18px; background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); font: inherit; font-weight: 500; cursor: default; }
     .pulsanti button.primario { background: #0b57d0; border-color: #0b57d0; color: #ffffff; }
     .pulsanti .spazio { flex: 1; }
   `;
@@ -93,7 +95,7 @@ export class DocsPersonalizzaBarra extends LinguaElement {
   private togli(i: number): void { this.cambia(this.barra.filter((_, k) => k !== i)); }
   private aggiungi(id: string): void { if (id !== SEPARATORE && this.barra.includes(id)) return; this.cambia([...this.barra, id]); }
 
-  private icona(f: Funzione | undefined) { return f && ICONE_DOCS[f.id] ? html`<span class="icona">${unsafeHTML(ICONE_DOCS[f.id])}</span>` : ''; }
+  private icona(f: Funzione | undefined) { const svg = f ? iconaDi(f) : ''; return svg ? html`<span class="icona">${unsafeHTML(svg)}</span>` : ''; }
 
   render() {
     const filtro = this.filtro.trim().toLowerCase();

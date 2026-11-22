@@ -133,12 +133,13 @@ describe('T111: Tab tra le celle', () => {
 });
 
 describe('T111: il menu della tabella', () => {
-  it('ha sette voci, ognuna con la sua operazione, e nessuna spuntata', () => {
+  it('ha dodici voci (dal 0.4.14 anche unisci, dividi, intestazione e ordina), ognuna con la sua operazione, e nessuna spuntata', () => {
     const p = popupTabella();
     expect(p.tipo).toBe('lista');
-    expect(p.voci.length).toBe(7);
+    expect(p.voci.length).toBe(12);
     expect(p.voci.map((v) => v.etichetta)).toEqual(VOCI_TABELLA.map((v) => v[0]));
-    expect(p.voci.map((v) => (v.azione as { op: string }).op)).toEqual(['rigaSopra', 'rigaSotto', 'colonnaPrima', 'colonnaDopo', 'eliminaRiga', 'eliminaColonna', 'eliminaTabella']);
+    expect(p.voci.map((v) => (v.azione as { op: string }).op)).toEqual(['rigaSopra', 'rigaSotto', 'colonnaPrima', 'colonnaDopo', 'eliminaRiga', 'eliminaColonna', 'unisciCelle', 'dividiCella', 'intestazione', 'ordinaCrescente', 'ordinaDecrescente', 'eliminaTabella']);
+    expect(popupTabella(true).voci.filter((v) => v.attiva).map((v) => (v.azione as { op: string }).op)).toEqual(['intestazione']);
     expect(p.voci.every((v) => !v.attiva && v.azione.tipo === 'modificaTabella')).toBe(true);
   });
 });
@@ -382,7 +383,7 @@ describe('T111: nel guscio', () => {
     expect(ed.stato.doc.paragrafi.length).toBe(1);
   });
 
-  it('Formato › Tabella è un sottomenu: fuori da una tabella dice che cosa serve; dentro ha le sette voci e la voce scelta cambia la tabella', async () => {
+  it('Formato › Tabella è un sottomenu: fuori da una tabella dice che cosa serve; dentro ha le dodici voci e la voce scelta cambia la tabella', async () => {
     const s = docTabella(2, 2);
     const { g, ed } = await guscio({ ...s, sel: cursore(0, 0) });
     const fuori = await sottovociFormato(g, 'Tabella');
@@ -390,7 +391,7 @@ describe('T111: nel guscio', () => {
     expect(fuori[0].classList.contains('disabilitata')).toBe(true);
     ed.impostaStato({ ...s, sel: cursore(1, 0) });
     const voci = await sottovociFormato(g, 'Tabella');
-    expect(voci.length).toBe(7);
+    expect(voci.length).toBe(12);
     voci.find((v) => (v.textContent ?? '').includes('Inserisci riga sotto'))!.click();
     await attendi();
     expect(g.shadowRoot.querySelector('docs-popup')).toBeNull();

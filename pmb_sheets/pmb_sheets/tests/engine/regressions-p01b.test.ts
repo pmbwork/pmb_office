@@ -200,7 +200,9 @@ describe('P01b Regression Tests', () => {
       // Funzioni logiche / informative speciali che intercettano, contano o verificano errori intenzionalmente
       const errorHandlingFunctions = new Set([
         'IFERROR', 'IFNA', 'ISERROR', 'ISERR', 'ISNA', 'COUNTA', 'COUNTBLANK',
-        'ISBLANK', 'ISNUMBER', 'ISTEXT', 'ISLOGICAL', 'ISNONTEXT', 'TYPE', 'ERROR.TYPE', 'SHEET', 'SHEETS'
+        'ISBLANK', 'ISNUMBER', 'ISTEXT', 'ISLOGICAL', 'ISNONTEXT', 'TYPE', 'ERROR.TYPE', 'SHEET', 'SHEETS',
+        // come in Excel, VALUETOTEXT scrive l'errore come testo: VALUETOTEXT(1/0) = "#DIV/0!"
+        'VALUETOTEXT'
       ]);
 
       for (const fnName of allNames) {

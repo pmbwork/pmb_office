@@ -35,17 +35,26 @@ const menu = (action: string, label = action) => app.renderRoot.querySelector('f
 const dialogo = (): any => app.renderRoot.querySelector('free-dialogo-preferenze');
 
 describe('T460: schermo intero', () => {
-  it('Visualizza > Schermo intero chiede alla finestra nativa di cambiare modo', async () => {
+  // dal 2026-11-18 come pmb_docs: la pagina tiene lo stato e chiede alla parte nativa di metterlo o toglierlo (imposta_schermo_intero)
+  it('Visualizza > Schermo intero chiede alla finestra nativa di andare a schermo intero, e la seconda volta di uscirne', async () => {
     invoke.mockClear();
     menu('toggle-fullscreen', 'Schermo intero');
-    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('toggle_fullscreen', {}));
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('imposta_schermo_intero', { attivo: true }));
     expect(dentro.statusMessage).not.toBe('Funzione non ancora disponibile: Schermo intero');
+    menu('toggle-fullscreen', 'Schermo intero');
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('imposta_schermo_intero', { attivo: false }));
   });
 
-  it('il tasto F11 fa la stessa cosa', async () => {
+  it('il tasto F11 fa la stessa cosa, ed Esc esce dallo schermo intero (come in pmb_docs)', async () => {
     invoke.mockClear();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F11', bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('toggle_fullscreen', {}));
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('imposta_schermo_intero', { attivo: true }));
+    invoke.mockClear();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('imposta_schermo_intero', { attivo: false }));
+    invoke.mockClear();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    expect(invoke).not.toHaveBeenCalledWith('imposta_schermo_intero', expect.anything()); // fuori dallo schermo intero Esc non lo tocca
   });
 });
 

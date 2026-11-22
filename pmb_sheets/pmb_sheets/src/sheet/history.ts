@@ -44,6 +44,10 @@ export class HistoryManager {
   private maxSteps: number;
   /** dice qual è il foglio attivo, per segnarlo su ogni passo */
   contesto?: () => string;
+  /** controllo della protezione dei fogli: il motivo per cui il passo non è permesso, o null (vedi protezione.ts) */
+  guardiano?: (step: HistoryStep) => string | null;
+  /** chiamato con il motivo quando il guardiano rifiuta un passo: il passo è già nella cronologia e va annullato subito (respingi) */
+  rifiutato?: (motivo: string) => void;
 
   constructor(maxSteps = 200) {
     this.maxSteps = maxSteps;
@@ -61,7 +65,12 @@ export class HistoryManager {
     }
     // Una nuova azione azzera sempre il redo stack
     this.redoStack = [];
+    const motivo = this.guardiano ? this.guardiano(step) : null;
+    if (motivo !== null && this.rifiutato) this.rifiutato(motivo);
   }
+
+  /** Toglie l'ultimo passo da ripetere (quello di un'operazione respinta dalla protezione, appena annullata: non si deve poter ripetere). */
+  public scartaUltimoRipeti(): void { this.redoStack.pop(); }
 
   public canUndo(): boolean {
     return this.undoStack.length > 0;

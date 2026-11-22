@@ -122,13 +122,17 @@ export class FreeToolbar extends LinguaElement {
     const gruppi: ToolbarGroup[] = [];
     let gruppoCorrente: ToolbarItem[] = [];
     let idx = 0;
+    // ogni gruppo si divide in pezzi da un elemento («continua»: senza linea in mezzo). Il calcolo dello spazio (recalculateOverflow)
+    // lavora a gruppi interi: una barra fatta con «Aggiungi», senza separatori, era un solo gruppo enorme che con la finestra stretta non
+    // passava sotto «Altri strumenti» e usciva dalla barra coprendo il pulsante Funzioni (prova fisica del 2026-11-19).
+    const chiudiGruppo = (): void => {
+      gruppoCorrente.forEach((item, i) => gruppi.push({ id: `custom-group-${idx++}`, items: [item], continua: i < gruppoCorrente.length - 1 }));
+      gruppoCorrente = [];
+    };
 
     for (const id of pulita) {
       if (id === SEPARATORE) {
-        if (gruppoCorrente.length > 0) {
-          gruppi.push({ id: `custom-group-${idx++}`, items: gruppoCorrente });
-          gruppoCorrente = [];
-        }
+        chiudiGruppo();
         continue;
       }
       const item = this.trovaToolbarItem(id);
@@ -136,9 +140,7 @@ export class FreeToolbar extends LinguaElement {
         gruppoCorrente.push(item);
       }
     }
-    if (gruppoCorrente.length > 0) {
-      gruppi.push({ id: `custom-group-${idx++}`, items: gruppoCorrente });
-    }
+    chiudiGruppo();
     return gruppi;
   }
 
@@ -340,6 +342,13 @@ export class FreeToolbar extends LinguaElement {
 
     .toolbar-group:last-child {
       border-right: none;
+    }
+
+    /* pezzo di un gruppo lungo della barra personalizzata: stessi 2 px fra i pulsanti che dentro un gruppo, niente linea */
+    .toolbar-group.continua {
+      border-right: none;
+      padding-right: 0;
+      margin-right: calc(2px - var(--space-2, 8px));
     }
 
     .tool-btn {
@@ -750,7 +759,7 @@ export class FreeToolbar extends LinguaElement {
     }
 
     return html`
-      <div class="toolbar-group" role="group" aria-label="${group.label ? t(group.label) : group.id}">
+      <div class="toolbar-group ${group.continua ? 'continua' : ''}" role="group" aria-label="${group.label ? t(group.label) : group.id}">
         ${group.items.map((it) => this.renderItem(it, false))}
       </div>
     `;

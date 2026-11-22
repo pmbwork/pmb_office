@@ -57,6 +57,8 @@ export function leggiRecupero(testo: string | null): Recuperato | null {
 
 export interface OpzioniRecupero {
   ritardo?: number;
+  /** chiamata dopo ogni scrittura con il suo esito (il guscio avvisa se la copia non si può scrivere) */
+  dopoScrittura?: (esito: EsitoScrittura) => void;
   ora?: () => number;
   imposta?: (azione: () => void, ms: number) => unknown;
   annulla?: (id: unknown) => void;
@@ -70,6 +72,7 @@ export class Recupero {
   private readonly ora: () => number;
   private readonly imposta: (azione: () => void, ms: number) => unknown;
   private readonly annulla: (id: unknown) => void;
+  private readonly dopoScrittura?: (esito: EsitoScrittura) => void;
   private timer: unknown = null;
   private inAttesa: { titolo: string; doc: Documento | (() => Documento) } | null = null;
 
@@ -78,6 +81,7 @@ export class Recupero {
     this.ora = opzioni.ora ?? (() => Date.now());
     this.imposta = opzioni.imposta ?? ((azione, ms) => setTimeout(azione, ms));
     this.annulla = opzioni.annulla ?? ((id) => clearTimeout(id as ReturnType<typeof setTimeout>));
+    this.dopoScrittura = opzioni.dopoScrittura;
   }
 
   /** Il documento è cambiato: si scriverà la versione più recente tra poco. */
@@ -94,10 +98,12 @@ export class Recupero {
     if (corrente === null) return;
     this.inAttesa = null;
     const doc = typeof corrente.doc === 'function' ? corrente.doc() : corrente.doc;
-    if (eVuoto(doc)) { this.archivio.cancella(); this.esito = 'vuoto'; return; }
-    const testo = pacchettoRecupero(corrente.titolo, doc, this.ora());
-    if (testo.length > LUNGHEZZA_MASSIMA_RECUPERO) { this.esito = 'troppo-grande'; return; }
-    this.esito = this.archivio.scrivi(testo) ? 'scritto' : 'errore';
+    if (eVuoto(doc)) { this.archivio.cancella(); this.esito = 'vuoto'; }
+    else {
+      const testo = pacchettoRecupero(corrente.titolo, doc, this.ora());
+      this.esito = testo.length > LUNGHEZZA_MASSIMA_RECUPERO ? 'troppo-grande' : this.archivio.scrivi(testo) ? 'scritto' : 'errore';
+    }
+    this.dopoScrittura?.(this.esito);
   }
 
   /** La copia di emergenza che c'è adesso, se c'è. */

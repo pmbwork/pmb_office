@@ -59,7 +59,7 @@ export function localeCorrente(): string { return corrente === 'en' ? 'en-GB' : 
 
 /** Una scorciatoia da tastiera scritta per la lingua corrente: «Ctrl+Maiusc+S» diventa «Ctrl+Shift+S» in inglese. */
 export function scorciatoia(s: string): string {
-  return scorciatoiaPerSistema(corrente === 'en' ? s.replace(/Maiusc/g, 'Shift').replace(/Invio/g, 'Enter').replace(/Canc\b/g, 'Del') : s); // su Mac: «⇧⌘S»
+  return scorciatoiaPerSistema(corrente === 'en' ? s.replace(/Maiusc/g, 'Shift').replace(/Invio/g, 'Enter').replace(/Canc\b/g, 'Del').replace(/Spazio\b/g, 'Space') : s); // su Mac: «⇧⌘S»
 }
 
 /** Un numero decimale scritto per la lingua corrente: 1,15 in italiano, 1.15 in inglese. */

@@ -18,14 +18,14 @@ export class DocsRighello extends LinguaElement {
   static styles = css`
     :host { display: block; line-height: 0; }
     svg { display: block; }
-    text { font: 11px Roboto, Arial, sans-serif; fill: #444746; text-anchor: middle; }
+    text { font: 11px Roboto, Arial, sans-serif; fill: var(--pmb-testo-2, #444746); text-anchor: middle; }
     .margine, .testo-area { fill: none; }
-    .tacca { stroke: #c4c7c5; stroke-width: 1; }
-    .tacca.scura { stroke: #747775; }
-    .tacca-cm { stroke: #c4c7c5; stroke-width: 1; }
-    .tacca-cm.scura { stroke: #747775; }
-    .punto { fill: #c4c7c5; }
-    .punto.scura { fill: #747775; }
+    .tacca { stroke: var(--pmb-bordo, #c4c7c5); stroke-width: 1; }
+    .tacca.scura { stroke: var(--pmb-bordo-forte, #747775); }
+    .tacca-cm { stroke: var(--pmb-bordo, #c4c7c5); stroke-width: 1; }
+    .tacca-cm.scura { stroke: var(--pmb-bordo-forte, #747775); }
+    .punto { fill: var(--pmb-bordo, #c4c7c5); }
+    .punto.scura { fill: var(--pmb-bordo-forte, #747775); }
     .indicatore-drag { cursor: ew-resize; }
     .indicatore { fill: #4285f4; cursor: ew-resize; }
   `;

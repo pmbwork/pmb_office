@@ -147,11 +147,12 @@ describe('T476: righe, colonne e fogli nascosti', () => {
     expect(r.scambio.fogli[0].colonneNascoste).toEqual([2]);
     expect(documentoDaScambio(r.scambio).hiddenRows).toEqual([3, 5]);
   });
-  it('un foglio nascosto si importa visibile e lo si dice', async () => {
+  // dal 0.2.13 (Nascondi foglio) il foglio resta nascosto e non c'è più l'avviso: vedi T567 e LAVORO/compiti/T476
+  it('un foglio nascosto resta nascosto, senza avviso', async () => {
     const r = await giro({ foglioAttivo: 'Uno', fogli: [foglio('Uno', { celle: { A1: 'x' } }), foglio('Segreto', { celle: { A1: 'y' }, nascosto: true })] });
     expect(r.scambio.fogli.map((x) => x.nome)).toEqual(['Uno', 'Segreto']);
     expect(r.scambio.fogli[1].nascosto).toBe(true);
-    expect(r.avvisi).toEqual(['Il foglio «Segreto» era nascosto: ora è visibile.']);
+    expect(r.avvisi).toEqual([]);
   });
 });
 

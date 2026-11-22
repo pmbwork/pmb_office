@@ -7,7 +7,7 @@ Uso: python giro_docs_01_menu_inglese_salvataggio.py   (non muovere il mouse dur
 import os, subprocess, sys, time
 from playwright.sync_api import sync_playwright
 
-EXE = r'C:\AI_system\pmb_office\pmb_docs\pmb-docs-shell.exe'
+EXE = os.environ.get('PMB_DOCS_EXE', r'C:\Program Files\pmb_office\pmb_docs\pmb-docs-shell.exe')
 PORTA = 9701
 G = "document.querySelector('docs-guscio')"
 # Schermo intero cambierebbe lo schermo di Windows (provato nei test automatici); Nascondi i menu toglie la barra dei menu: si prova a parte qui sotto

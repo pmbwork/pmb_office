@@ -8,7 +8,7 @@ import { nomeFunzione } from './docs-personalizza-barra';
 import { MISURE, COLORI, STILI } from './misure';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import { ICONE_DOCS } from './icone';
+import { ICONE_DOCS, iconaDi } from './icone';
 import { ICONE } from '@comune/icone';
 import { contenutoComando } from './contenuto-barra';
 import { t, tVoce } from '../i18n/lingua';
@@ -53,17 +53,17 @@ export class DocsToolbar extends LinguaElement {
     button.comando[data-id='zoom'] { width: 74px; font-size: 14px; }
     button.comando[data-id='stile-paragrafo'] { width: 112px; margin-left: 10px; font-size: 14px; }
     button.comando[data-id='carattere'] { width: 90px; margin-left: 12px; font-size: 14px; }
-    button.comando[data-id='corpo'] { width: 34px; font-size: 14px; border: 1px solid #747775; border-radius: 4px; height: 24px; }
+    button.comando[data-id='corpo'] { width: 34px; font-size: 14px; border: 1px solid var(--pmb-bordo-forte, #747775); border-radius: 4px; height: 24px; }
     button.comando[data-id='riduci-corpo'] { margin-left: 8px; }
     button.comando[data-id='stile-paragrafo']::before, button.comando[data-id='carattere']::before, button.comando[data-id='riduci-corpo']::before, button.comando[data-id='grassetto']::before, button.comando[data-id='link']::before, button.comando[data-id='allineamento']::before { content: ''; position: absolute; left: -6px; top: 6px; width: 1px; height: 20px; background: #c4c7c5; }
     button.comando[data-id='grassetto'], button.comando[data-id='link'], button.comando[data-id='allineamento'] { margin-left: 12px; }
     button.comando[data-id='zoom'], button.comando[data-id='stile-paragrafo'], button.comando[data-id='carattere'], button.comando[data-id='corpo'] { display: inline-flex; align-items: center; justify-content: flex-start; padding: 0 8px; white-space: nowrap; }
     button.comando[data-id='corpo'] { justify-content: center; padding: 0; }
-    .pannello-altri { position: absolute; top: 100%; right: 48px; background: #fff; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; display: flex; flex-direction: column; z-index: 30; }
+    .pannello-altri { position: absolute; top: 100%; right: 48px; background: var(--pmb-superficie, #fff); box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; display: flex; flex-direction: column; z-index: 30; }
     .voce-altri { width: auto; padding: 0 16px; text-align: left; }
-    button.comando.attivo { background: #d3e3fd; }
+    button.comando.attivo { background: var(--pmb-selezione-forte, #d3e3fd); }
     /* Colori, triangolini e posizioni della barra degli strumenti (misurati a 1600 px) */
-    .barra-strumenti, button { color: #0f172a; } /* stesso colore delle icone di pmb_sheets (--color-text) */
+    .barra-strumenti, button { color: var(--pmb-testo, #0f172a); } /* stesso colore delle icone di pmb_sheets (--color-text) */
     /* il segno ▾ del testo si fa invisibile (carattere ridotto all'1%): il triangolino vero è disegnato sul bordo destro della casella */
     button.comando[data-id='zoom'], button.comando[data-id='stile-paragrafo'], button.comando[data-id='carattere'] { font-family: 'FrecciaDocs', Roboto, Inter, Arial, sans-serif; }
     button.comando[data-id='annulla'] { margin-left: 2px; }
@@ -97,30 +97,30 @@ export class DocsToolbar extends LinguaElement {
     .barra-strumenti.personalizzata button.comando[data-id='zoom'], .barra-strumenti.personalizzata button.comando[data-id='stile-paragrafo'], .barra-strumenti.personalizzata button.comando[data-id='carattere'] { margin-left: 2px; }
     .separatore { flex: none; width: 1px; height: 20px; margin: 0 6px; background: #c4c7c5; }
     button.comando.testo { width: auto; max-width: 220px; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 500 13px Roboto, Arial, sans-serif; border-radius: 16px; }
-    button.comando:hover, button.altri:hover, button.fisso:hover, button.nascondi-menu:hover { background: #e1e5ea; }
+    button.comando:hover, button.altri:hover, button.fisso:hover, button.nascondi-menu:hover { background: var(--pmb-hover, #e1e5ea); }
     /* a destra: il pulsante Funzioni (come il pezzo di puzzle di Firefox) e la freccia che nasconde i menu */
     button.comando.fisso { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; }
     button.nascondi-menu { flex: none; margin-left: 13px; position: relative; display: inline-flex; align-items: center; justify-content: center; }
     button.nascondi-menu::before { content: ''; position: absolute; left: -7px; top: 6px; width: 1px; height: 20px; background: #c4c7c5; }
     button.nascondi-menu svg, button.fisso svg { width: 22px; height: 22px; }
     .pannello-funzioni { position: absolute; top: calc(100% + 4px); right: 40px; width: 360px; max-height: min(560px, calc(100vh - 140px)); display: flex; flex-direction: column; gap: 6px;
-      padding: 12px; background: #ffffff; color: #1f1f1f; border-radius: 12px; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; z-index: 40; font: 14px Roboto, Arial, sans-serif; cursor: default; }
+      padding: 12px; background: var(--pmb-superficie, #ffffff); color: var(--pmb-testo, #1f1f1f); border-radius: 12px; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; z-index: 40; font: 14px Roboto, Arial, sans-serif; cursor: default; }
     .pannello-funzioni h2 { margin: 0 0 4px; font-size: 15px; font-weight: 500; }
-    .pannello-funzioni input { height: 30px; padding: 0 12px; border: 1px solid #747775; border-radius: 15px; font: inherit; }
+    .pannello-funzioni input { height: 30px; padding: 0 12px; border: 1px solid var(--pmb-bordo-forte, #747775); border-radius: 15px; font: inherit; }
     .pannello-funzioni .elenco { overflow-y: auto; flex: 1 1 auto; }
-    .pannello-funzioni .gruppo { margin: 8px 4px 2px; font-size: 12px; font-weight: 500; color: #5f6368; text-transform: uppercase; letter-spacing: .3px; }
+    .pannello-funzioni .gruppo { margin: 8px 4px 2px; font-size: 12px; font-weight: 500; color: var(--pmb-testo-2, #5f6368); text-transform: uppercase; letter-spacing: .3px; }
     .riga-funzione { display: flex; align-items: center; border-radius: 6px; }
-    .riga-funzione:hover { background: #e8eaed; }
-    .riga-funzione button.esegui { flex: 1; width: auto; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px; text-align: left; font: inherit; color: #1f1f1f; }
+    .riga-funzione:hover { background: var(--pmb-hover, #e8eaed); }
+    .riga-funzione button.esegui { flex: 1; width: auto; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px; text-align: left; font: inherit; color: var(--pmb-testo, #1f1f1f); }
     .riga-funzione .icona { flex: none; width: 18px; height: 18px; }
     .riga-funzione .icona svg { width: 18px; height: 18px; }
-    .riga-funzione button.puntina { color: #5f6368; }
-    .riga-funzione button.puntina[aria-pressed='true'] { color: #0b57d0; }
+    .riga-funzione button.puntina { color: var(--pmb-testo-2, #5f6368); }
+    .riga-funzione button.puntina[aria-pressed='true'] { color: var(--pmb-accento, #0b57d0); }
     .riga-funzione button.puntina svg { width: 18px; height: 18px; }
-    .pannello-funzioni button.personalizza { width: auto; height: 36px; border-radius: 18px; padding: 0 16px; font: 500 14px Roboto, Arial, sans-serif; color: #0b57d0; border: 1px solid #747775; }
-    .menu-contesto { position: fixed; z-index: 50; min-width: 240px; padding: 6px 0; background: #ffffff; color: #1f1f1f; border-radius: 8px; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; display: flex; flex-direction: column; }
-    .menu-contesto button { width: auto; height: 32px; padding: 0 16px; text-align: left; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; border-radius: 0; }
-    .menu-contesto button:hover { background: #e8eaed; }
+    .pannello-funzioni button.personalizza { width: auto; height: 36px; border-radius: 18px; padding: 0 16px; font: 500 14px Roboto, Arial, sans-serif; color: var(--pmb-accento, #0b57d0); border: 1px solid var(--pmb-bordo-forte, #747775); }
+    .menu-contesto { position: fixed; z-index: 50; min-width: 240px; padding: 6px 0; background: var(--pmb-superficie, #ffffff); color: var(--pmb-testo, #1f1f1f); border-radius: 8px; box-shadow: ${unsafeCSS(STILI.ombraPannelloMenu)}; display: flex; flex-direction: column; }
+    .menu-contesto button { width: auto; height: 32px; padding: 0 16px; text-align: left; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); border-radius: 0; }
+    .menu-contesto button:hover { background: var(--pmb-hover, #e8eaed); }
   `;
 
   private emetti(id: string, ev?: Event) {
@@ -190,7 +190,7 @@ export class DocsToolbar extends LinguaElement {
             const dentro = barra.includes(f.id);
             const nome = nomeFunzione(f);
             return html`<div class="riga-funzione" data-funzione=${f.id}>
-              <button class="esegui" title=${nome} @click=${(e: Event) => this.esegui(f, e.currentTarget as Element)}><span class="icona">${ICONE_DOCS[f.id] ? unsafeHTML(ICONE_DOCS[f.id]) : ''}</span><span>${nome}</span></button>
+              <button class="esegui" title=${nome} @click=${(e: Event) => this.esegui(f, e.currentTarget as Element)}><span class="icona">${unsafeHTML(iconaDi(f))}</span><span>${nome}</span></button>
               <button class="puntina" aria-pressed=${dentro ? 'true' : 'false'} aria-label=${dentro ? t('Togli {} dalla barra', nome) : t('Metti {} nella barra', nome)} title=${dentro ? t('Togli dalla barra') : t('Metti nella barra')}
                 @click=${() => this.cambiaBarra(alternaNellaBarra(barra, f.id))}>${unsafeHTML(dentro ? ICONA_PUNTINA_PIENA : ICONA_PUNTINA)}</button>
             </div>`;
@@ -237,7 +237,7 @@ export class DocsToolbar extends LinguaElement {
         const f = funzione(id);
         if (!f) return '';
         if (!f.menu) return this.pulsanteComando(id);
-        return html`<button class="comando testo" data-id=${id} title=${nomeFunzione(f)} aria-label=${nomeFunzione(f)} @click=${(e: Event) => this.esegui(f, e.currentTarget as Element)}>${etichetta(id)}</button>`;
+        return html`<button class="comando" data-id=${id} title=${nomeFunzione(f)} aria-label=${nomeFunzione(f)} @click=${(e: Event) => this.esegui(f, e.currentTarget as Element)}><span class="icona" data-icona=${id}>${unsafeHTML(iconaDi(f))}</span></button>`;
       })}
       ${nascoste.length ? html`<button class="altri" aria-label="Altri comandi" @click=${() => { this.altriAperto = !this.altriAperto; }}>⋮</button>` : ''}
       ${this.parteDestra()}

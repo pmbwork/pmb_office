@@ -84,7 +84,8 @@ with Banco(9591, '08 Salvare e riaprire') as b:
         prima = istantanea(b)
         b.nota('documento costruito', {k: prima[k] for k in ('fogli', 'valori', 'nascR', 'nascC', 'blocco', 'unioni', 'convalide', 'condizionali', 'commenti', 'nomi')})
         for voce, est, nome, persi in [('Scarica come pmb_sheets (.psheet)', '.psheet', 'psheet', []), ('Scarica come cartella di lavoro (.xlsx)', '.xlsx', 'xlsx', []),
-                                       ('Scarica come OpenDocument (.ods)', '.ods', 'ods', ['condizionali', 'colori'])]:
+                                       # dalla 0.2.8 anche OpenDocument conserva formattazione condizionale e colore della scheda (T548)
+                                       ('Scarica come OpenDocument (.ods)', '.ods', 'ods', [])]:
             def f(voce=voce, est=est, nome=nome, persi=persi):
                 prima_n = len(b.salvati())
                 b.menu('File', voce); b.attendi(1200)

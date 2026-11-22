@@ -626,7 +626,17 @@ export function fnSPARKLINE(args: EvalArg[]): CellValue {
     }
   }
   if (nums.length === 0) return errorVal('#VALUE!');
-
-  // Formato compatto per rendering della cella: "SPARKLINE:<tipo>:<valori separati da virgola>"
-  return textVal(`SPARKLINE:line:${nums.join(',')}`);
+  // opzioni come in Fogli Google: {"charttype"\"column"} (righe chiave/valore); di serie la linea
+  let tipo = 'line';
+  if (args.length === 2) {
+    for (const riga of argToMatrix(args[1])) {
+      const k = riga[0], v = riga[1];
+      if (k?.kind === 'text' && k.value.toLowerCase() === 'charttype' && v?.kind === 'text') {
+        const scelto = v.value.toLowerCase();
+        if (scelto === 'column' || scelto === 'bar') tipo = 'column';
+      }
+    }
+  }
+  // Formato compatto per rendering della cella: "SPARKLINE:<tipo>:<valori separati da virgola>" (la griglia lo disegna)
+  return textVal(`SPARKLINE:${tipo}:${nums.slice(0, 1000).join(',')}`);
 }

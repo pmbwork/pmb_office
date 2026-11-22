@@ -8,13 +8,13 @@ export class DocsNota extends LinguaElement {
   @state() private testo = '';
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
     .dialogo {
       width: 440px;
       max-width: calc(100vw - 32px);
       box-sizing: border-box;
       padding: 24px;
-      background: #ffffff;
+      background: var(--pmb-superficie, #ffffff);
       border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
     }
@@ -22,7 +22,7 @@ export class DocsNota extends LinguaElement {
       margin: 0 0 16px;
       font-size: 18px;
       font-weight: 500;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     .campo {
       margin-bottom: 20px;
@@ -30,7 +30,7 @@ export class DocsNota extends LinguaElement {
     label {
       display: block;
       font-size: 13px;
-      color: #444746;
+      color: var(--pmb-testo-2, #444746);
       margin-bottom: 8px;
     }
     textarea {
@@ -38,7 +38,7 @@ export class DocsNota extends LinguaElement {
       height: 90px;
       box-sizing: border-box;
       padding: 10px;
-      border: 1px solid #dadce0;
+      border: 1px solid var(--pmb-bordo, #dadce0);
       border-radius: 4px;
       font: inherit;
       resize: vertical;
@@ -59,11 +59,11 @@ export class DocsNota extends LinguaElement {
       cursor: pointer;
     }
     button.annulla {
-      border: 1px solid #dadce0;
-      background: #ffffff;
-      color: #0b57d0;
+      border: 1px solid var(--pmb-bordo, #dadce0);
+      background: var(--pmb-superficie, #ffffff);
+      color: var(--pmb-accento, #0b57d0);
     }
-    button.annulla:hover { background: #f8f9fa; }
+    button.annulla:hover { background: var(--pmb-superficie-2, #f8f9fa); }
     button.applica {
       border: 0;
       background: #0b57d0;

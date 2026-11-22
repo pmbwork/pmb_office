@@ -21,16 +21,16 @@ export class DocsPopup extends LinguaElement {
     :host-context([riduci-animazioni]) * { transition: none !important; animation: none !important; }
 
     :host { position: fixed; z-index: 10; display: block; }
-    .pannello { background: #ffffff; border-radius: 4px; padding: 6px 0; min-width: 160px; max-height: 360px; overflow: auto;
-      box-shadow: 0 2px 6px 2px rgba(60, 64, 67, 0.15), 0 1px 2px rgba(60, 64, 67, 0.3); font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
+    .pannello { background: var(--pmb-superficie, #ffffff); border-radius: 4px; padding: 6px 0; min-width: 160px; max-height: 360px; overflow: auto;
+      box-shadow: 0 2px 6px 2px rgba(60, 64, 67, 0.15), 0 1px 2px rgba(60, 64, 67, 0.3); font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
     .voce { display: flex; align-items: center; width: 100%; height: 32px; padding: 0 16px 0 8px; border: 0; background: none;
       text-align: left; font: inherit; color: inherit; cursor: default; }
-    .voce:hover { background: #e8eaed; }
+    .voce:hover { background: var(--pmb-hover, #e8eaed); }
     .spunta { width: 24px; flex: none; text-align: center; }
-    .intestazione { padding: 8px 16px 2px; font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: #5f6368; }
+    .intestazione { padding: 8px 16px 2px; font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pmb-testo-2, #5f6368); }
     .voce { font-size: 15px; }
     .tavolozza { display: grid; grid-template-columns: repeat(10, 22px); gap: 4px; padding: 8px 12px; }
-    .colore { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid #c4c7c5; cursor: default; }
+    .colore { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1px solid var(--pmb-bordo, #c4c7c5); cursor: default; }
     .colore.attiva { outline: 2px solid #1a73e8; outline-offset: 1px; }
   `;
 

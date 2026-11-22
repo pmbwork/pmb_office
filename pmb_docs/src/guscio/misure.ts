@@ -19,12 +19,34 @@ export const MISURE = {
   dialogo: { raggio: 28 },
 } as const;
 
+/** Colori di base: variabili CSS con il valore del tema chiaro come riserva; il tema scuro le ridefinisce in docs-guscio (TEMA_SCURO). */
 export const COLORI = {
-  sfondoApp: '#F8FAFD',
-  barraStrumenti: '#F0F4F9',
-  testo: '#1F1F1F',
-  pannelloMenu: '#FFFFFF',
+  sfondoApp: 'var(--pmb-sfondo-app, #F8FAFD)',
+  barraStrumenti: 'var(--pmb-barra-strumenti, #F0F4F9)',
+  testo: 'var(--pmb-testo, #1F1F1F)',
+  pannelloMenu: 'var(--pmb-superficie, #FFFFFF)',
 } as const;
+
+/**
+ * Valori del tema scuro per tutte le variabili --pmb-*: si applicano a docs-guscio e passano a tutti i componenti
+ * dentro di lui (le variabili CSS attraversano lo shadow DOM). Il foglio del documento resta bianco, come in Word.
+ */
+export const TEMA_SCURO = `
+  color-scheme: dark;
+  --pmb-sfondo-app: #1e1f20;
+  --pmb-barra-strumenti: #282a2c;
+  --pmb-superficie: #282a2c;
+  --pmb-superficie-2: #333537;
+  --pmb-hover: #3c4043;
+  --pmb-selezione: #1f3760;
+  --pmb-selezione-forte: #28477a;
+  --pmb-testo: #e3e3e3;
+  --pmb-testo-2: #c4c7c5;
+  --pmb-testo-disabilitato: #80868b;
+  --pmb-accento: #a8c7fa;
+  --pmb-bordo: #444746;
+  --pmb-bordo-forte: #8e918f;
+`;
 
 export const STILI = {
   ombraPannelloMenu: '0 2px 6px 2px rgba(0, 0, 0, 0.15)',

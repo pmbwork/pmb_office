@@ -1,0 +1,868 @@
+{
+ "fonte": "Microsoft Excel 16.0 (build 20711), automazione COM, 2026-11-20",
+ "dati": {
+  "A1": "3+4i",
+  "A2": "1-2i",
+  "A3": "-2.5+0.5i",
+  "A4": "i",
+  "A5": 7,
+  "B1": "1+j",
+  "B2": "2-3j",
+  "C1": "Città e prezzi",
+  "C2": "a b&c=d/€?"
+ },
+ "casi": [
+  {
+   "formula": "=IMABS(\"3+4i\")",
+   "numero": 5.0
+  },
+  {
+   "formula": "=IMREAL(\"3+4i\")",
+   "numero": 3.0
+  },
+  {
+   "formula": "=IMAGINARY(\"3+4i\")",
+   "numero": 4.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"3+4i\")",
+   "testo": "3-4i"
+  },
+  {
+   "formula": "=IMABS(\"1-2i\")",
+   "numero": 2.23606797749979
+  },
+  {
+   "formula": "=IMREAL(\"1-2i\")",
+   "numero": 1.0
+  },
+  {
+   "formula": "=IMAGINARY(\"1-2i\")",
+   "numero": -2.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"1-2i\")",
+   "testo": "1+2i"
+  },
+  {
+   "formula": "=IMABS(\"-2.5+0.5i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMREAL(\"-2.5+0.5i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMAGINARY(\"-2.5+0.5i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCONJUGATE(\"-2.5+0.5i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMABS(\"i\")",
+   "numero": 1.0
+  },
+  {
+   "formula": "=IMREAL(\"i\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMAGINARY(\"i\")",
+   "numero": 1.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"i\")",
+   "testo": "-i"
+  },
+  {
+   "formula": "=IMABS(\"-i\")",
+   "numero": 1.0
+  },
+  {
+   "formula": "=IMREAL(\"-i\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMAGINARY(\"-i\")",
+   "numero": -1.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"-i\")",
+   "testo": "i"
+  },
+  {
+   "formula": "=IMABS(\"4\")",
+   "numero": 4.0
+  },
+  {
+   "formula": "=IMREAL(\"4\")",
+   "numero": 4.0
+  },
+  {
+   "formula": "=IMAGINARY(\"4\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"4\")",
+   "testo": "4"
+  },
+  {
+   "formula": "=IMABS(\"0\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMREAL(\"0\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMAGINARY(\"0\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"0\")",
+   "testo": "0"
+  },
+  {
+   "formula": "=IMABS(\"2j\")",
+   "numero": 2.0
+  },
+  {
+   "formula": "=IMREAL(\"2j\")",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMAGINARY(\"2j\")",
+   "numero": 2.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"2j\")",
+   "testo": "-2j"
+  },
+  {
+   "formula": "=IMABS(\"1.5e2+3E-1i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMREAL(\"1.5e2+3E-1i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMAGINARY(\"1.5e2+3E-1i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCONJUGATE(\"1.5e2+3E-1i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMABS(A5)",
+   "numero": 7.0
+  },
+  {
+   "formula": "=IMREAL(A5)",
+   "numero": 7.0
+  },
+  {
+   "formula": "=IMAGINARY(A5)",
+   "numero": 0.0
+  },
+  {
+   "formula": "=IMCONJUGATE(A5)",
+   "testo": "7"
+  },
+  {
+   "formula": "=IMABS(\"+3-i\")",
+   "numero": 3.1622776601683795
+  },
+  {
+   "formula": "=IMREAL(\"+3-i\")",
+   "numero": 3.0
+  },
+  {
+   "formula": "=IMAGINARY(\"+3-i\")",
+   "numero": -1.0
+  },
+  {
+   "formula": "=IMCONJUGATE(\"+3-i\")",
+   "testo": "3+i"
+  },
+  {
+   "formula": "=IMARGUMENT(\"3+4i\")",
+   "numero": 0.9272952180016122
+  },
+  {
+   "formula": "=IMARGUMENT(\"-1\")",
+   "numero": 3.141592653589793
+  },
+  {
+   "formula": "=IMARGUMENT(\"0\")",
+   "errore": "#DIV/0!"
+  },
+  {
+   "formula": "=IMARGUMENT(\"-i\")",
+   "numero": -1.5707963267948966
+  },
+  {
+   "formula": "=COMPLEX(3,4)",
+   "testo": "3+4i"
+  },
+  {
+   "formula": "=COMPLEX(3,4,\"j\")",
+   "testo": "3+4j"
+  },
+  {
+   "formula": "=COMPLEX(0,1)",
+   "testo": "i"
+  },
+  {
+   "formula": "=COMPLEX(0,-1)",
+   "testo": "-i"
+  },
+  {
+   "formula": "=COMPLEX(2,0)",
+   "testo": "2"
+  },
+  {
+   "formula": "=COMPLEX(0,0)",
+   "testo": "0"
+  },
+  {
+   "formula": "=COMPLEX(1.5,-2.25)",
+   "testo": "1,5-2,25i"
+  },
+  {
+   "formula": "=COMPLEX(3,4,\"k\")",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=COMPLEX(1/3,2/3)",
+   "testo": "0,333333333333333+0,666666666666667i"
+  },
+  {
+   "formula": "=COMPLEX(1E+20,1E-20)",
+   "testo": "100000000000000000000+1E-20i"
+  },
+  {
+   "formula": "=COMPLEX(123456789012,5)",
+   "testo": "123456789012+5i"
+  },
+  {
+   "formula": "=IMSUM(\"3+4i\",\"1-2i\")",
+   "testo": "4+2i"
+  },
+  {
+   "formula": "=IMSUM(A1:A4)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMSUM(\"1+j\",\"2-3j\")",
+   "testo": "3-2j"
+  },
+  {
+   "formula": "=IMSUM(\"1+i\",\"2-3j\")",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=IMSUB(\"3+4i\",\"1-2i\")",
+   "testo": "2+6i"
+  },
+  {
+   "formula": "=IMPRODUCT(\"3+4i\",\"1-2i\")",
+   "testo": "11-2i"
+  },
+  {
+   "formula": "=IMPRODUCT(A1:A3,2)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMDIV(\"3+4i\",\"1-2i\")",
+   "testo": "-1+2i"
+  },
+  {
+   "formula": "=IMDIV(\"1\",\"0\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMDIV(\"-238+240i\",\"10+24i\")",
+   "testo": "5+12i"
+  },
+  {
+   "formula": "=IMSQRT(\"3+4i\")",
+   "testo": "2+i"
+  },
+  {
+   "formula": "=IMEXP(\"3+4i\")",
+   "testo": "-13,1287830814622-15,200784463068i"
+  },
+  {
+   "formula": "=IMLN(\"3+4i\")",
+   "testo": "1,6094379124341+0,927295218001612i"
+  },
+  {
+   "formula": "=IMLOG10(\"3+4i\")",
+   "testo": "0,698970004336019+0,402719196273373i"
+  },
+  {
+   "formula": "=IMLOG2(\"3+4i\")",
+   "testo": "2,32192809488736+1,33780421245098i"
+  },
+  {
+   "formula": "=IMSIN(\"3+4i\")",
+   "testo": "3,85373803791938-27,0168132580039i"
+  },
+  {
+   "formula": "=IMCOS(\"3+4i\")",
+   "testo": "-27,0349456030742-3,85115333481178i"
+  },
+  {
+   "formula": "=IMTAN(\"3+4i\")",
+   "testo": "-0,000187346204629478+0,999355987381473i"
+  },
+  {
+   "formula": "=IMSEC(\"3+4i\")",
+   "testo": "-0,0362534969158689+0,00516434460775318i"
+  },
+  {
+   "formula": "=IMCSC(\"3+4i\")",
+   "testo": "0,0051744731840194+0,036275889628626i"
+  },
+  {
+   "formula": "=IMCOT(\"3+4i\")",
+   "testo": "-0,000187587737983659-1,00064439247156i"
+  },
+  {
+   "formula": "=IMSINH(\"3+4i\")",
+   "testo": "-6,548120040911-7,61923172032141i"
+  },
+  {
+   "formula": "=IMCOSH(\"3+4i\")",
+   "testo": "-6,58066304055116-7,58155274274654i"
+  },
+  {
+   "formula": "=IMSECH(\"3+4i\")",
+   "testo": "-0,065294027857947+0,0752249603027732i"
+  },
+  {
+   "formula": "=IMCSCH(\"3+4i\")",
+   "testo": "-0,0648774713706355+0,0754898329158637i"
+  },
+  {
+   "formula": "=IMSQRT(\"-4\")",
+   "testo": "1,22514845490862E-16+2i"
+  },
+  {
+   "formula": "=IMEXP(\"-4\")",
+   "testo": "0,0183156388887342"
+  },
+  {
+   "formula": "=IMLN(\"-4\")",
+   "testo": "1,38629436111989+3,14159265358979i"
+  },
+  {
+   "formula": "=IMLOG10(\"-4\")",
+   "testo": "0,602059991327962+1,36437635384184i"
+  },
+  {
+   "formula": "=IMLOG2(\"-4\")",
+   "testo": "2+4,53236014182719i"
+  },
+  {
+   "formula": "=IMSIN(\"-4\")",
+   "testo": "0,756802495307928"
+  },
+  {
+   "formula": "=IMCOS(\"-4\")",
+   "testo": "-0,653643620863612"
+  },
+  {
+   "formula": "=IMTAN(\"-4\")",
+   "testo": "-1,15782128234958"
+  },
+  {
+   "formula": "=IMSEC(\"-4\")",
+   "testo": "-1,5298856564664"
+  },
+  {
+   "formula": "=IMCSC(\"-4\")",
+   "testo": "1,3213487088109"
+  },
+  {
+   "formula": "=IMCOT(\"-4\")",
+   "testo": "-0,863691154450617"
+  },
+  {
+   "formula": "=IMSINH(\"-4\")",
+   "testo": "-27,2899171971277"
+  },
+  {
+   "formula": "=IMCOSH(\"-4\")",
+   "testo": "27,3082328360165"
+  },
+  {
+   "formula": "=IMSECH(\"-4\")",
+   "testo": "0,0366189934736865"
+  },
+  {
+   "formula": "=IMCSCH(\"-4\")",
+   "testo": "-0,0366435703258656"
+  },
+  {
+   "formula": "=IMSQRT(\"1-2i\")",
+   "testo": "1,27201964951407-0,786151377757423i"
+  },
+  {
+   "formula": "=IMEXP(\"1-2i\")",
+   "testo": "-1,13120438375681-2,47172667200482i"
+  },
+  {
+   "formula": "=IMLN(\"1-2i\")",
+   "testo": "0,80471895621705-1,10714871779409i"
+  },
+  {
+   "formula": "=IMLOG10(\"1-2i\")",
+   "testo": "0,349485002168009-0,480828578784234i"
+  },
+  {
+   "formula": "=IMLOG2(\"1-2i\")",
+   "testo": "1,16096404744368-1,59727796468811i"
+  },
+  {
+   "formula": "=IMSIN(\"1-2i\")",
+   "testo": "3,16577851321617-1,95960104142161i"
+  },
+  {
+   "formula": "=IMCOS(\"1-2i\")",
+   "testo": "2,03272300701967+3,0518977991518i"
+  },
+  {
+   "formula": "=IMTAN(\"1-2i\")",
+   "testo": "0,0338128260798967-1,01479361614663i"
+  },
+  {
+   "formula": "=IMSEC(\"1-2i\")",
+   "testo": "0,151176298265577-0,226973675393722i"
+  },
+  {
+   "formula": "=IMCSC(\"1-2i\")",
+   "testo": "0,228375065599687+0,141363021612408i"
+  },
+  {
+   "formula": "=IMCOT(\"1-2i\")",
+   "testo": "0,0327977555337526+0,984329226458191i"
+  },
+  {
+   "formula": "=IMSINH(\"1-2i\")",
+   "testo": "-0,489056259041294-1,40311925062204i"
+  },
+  {
+   "formula": "=IMCOSH(\"1-2i\")",
+   "testo": "-0,64214812471552-1,06860742138278i"
+  },
+  {
+   "formula": "=IMSECH(\"1-2i\")",
+   "testo": "-0,41314934426694+0,687527438655479i"
+  },
+  {
+   "formula": "=IMCSCH(\"1-2i\")",
+   "testo": "-0,221500930850509+0,6354937992539i"
+  },
+  {
+   "formula": "=IMSQRT(\"i\")",
+   "testo": "0,707106781186548+0,707106781186547i"
+  },
+  {
+   "formula": "=IMEXP(\"i\")",
+   "testo": "0,54030230586814+0,841470984807897i"
+  },
+  {
+   "formula": "=IMLN(\"i\")",
+   "testo": "1,5707963267949i"
+  },
+  {
+   "formula": "=IMLOG10(\"i\")",
+   "testo": "0,682188176920921i"
+  },
+  {
+   "formula": "=IMLOG2(\"i\")",
+   "testo": "2,2661800709136i"
+  },
+  {
+   "formula": "=IMSIN(\"i\")",
+   "testo": "1,1752011936438i"
+  },
+  {
+   "formula": "=IMCOS(\"i\")",
+   "testo": "1,54308063481524"
+  },
+  {
+   "formula": "=IMTAN(\"i\")",
+   "testo": "0,761594155955765i"
+  },
+  {
+   "formula": "=IMSEC(\"i\")",
+   "testo": "0,648054273663885"
+  },
+  {
+   "formula": "=IMCSC(\"i\")",
+   "testo": "-0,850918128239322i"
+  },
+  {
+   "formula": "=IMCOT(\"i\")",
+   "testo": "-1,31303528549933i"
+  },
+  {
+   "formula": "=IMSINH(\"i\")",
+   "testo": "0,841470984807897i"
+  },
+  {
+   "formula": "=IMCOSH(\"i\")",
+   "testo": "0,54030230586814"
+  },
+  {
+   "formula": "=IMSECH(\"i\")",
+   "testo": "1,85081571768093"
+  },
+  {
+   "formula": "=IMCSCH(\"i\")",
+   "testo": "-1,18839510577812i"
+  },
+  {
+   "formula": "=IMSQRT(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMEXP(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMLN(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMLOG10(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMLOG2(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMSIN(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCOS(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMTAN(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMSEC(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCSC(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCOT(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMSINH(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCOSH(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMSECH(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMCSCH(\"0.5+0.25i\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMPOWER(\"2+3i\",3)",
+   "testo": "-46+9,00000000000001i"
+  },
+  {
+   "formula": "=IMPOWER(\"2+3i\",0.5)",
+   "testo": "1,67414922803554+0,895977476129838i"
+  },
+  {
+   "formula": "=IMPOWER(\"-1\",0.5)",
+   "testo": "6,1257422745431E-17+i"
+  },
+  {
+   "formula": "=IMPOWER(\"i\",2)",
+   "testo": "-1+1,22514845490862E-16i"
+  },
+  {
+   "formula": "=IMPOWER(\"0\",2)",
+   "testo": "0"
+  },
+  {
+   "formula": "=IMPOWER(\"3+4i\",-1)",
+   "testo": "0,12-0,16i"
+  },
+  {
+   "formula": "=IMLN(\"0\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMABS(\"abc\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMABS(\"3+4\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMABS(\"3+4ii\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMSUM(\"1+i\",\"\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=IMREAL(TRUE)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=BESSELJ(1.5,1)",
+   "numero": 0.5579365078908043
+  },
+  {
+   "formula": "=BESSELI(1.5,1)",
+   "numero": 0.981666428475166
+  },
+  {
+   "formula": "=BESSELJ(0,0)",
+   "numero": 1.00000000283141
+  },
+  {
+   "formula": "=BESSELI(0,0)",
+   "numero": 1.0
+  },
+  {
+   "formula": "=BESSELJ(2.5,0)",
+   "numero": -0.04838377582675685
+  },
+  {
+   "formula": "=BESSELI(2.5,0)",
+   "numero": 3.2898391723912908
+  },
+  {
+   "formula": "=BESSELJ(10,3)",
+   "numero": 0.05837983609644603
+  },
+  {
+   "formula": "=BESSELI(10,3)",
+   "numero": 1758.3807393034283
+  },
+  {
+   "formula": "=BESSELJ(-1.5,2)",
+   "numero": 0.23208767901744795
+  },
+  {
+   "formula": "=BESSELI(-1.5,2)",
+   "numero": 0.33783462087443816
+  },
+  {
+   "formula": "=BESSELJ(25,5)",
+   "numero": -0.06600799095352837
+  },
+  {
+   "formula": "=BESSELI(25,5)",
+   "numero": 3472466454.5048757
+  },
+  {
+   "formula": "=BESSELJ(0.1,4)",
+   "numero": 2.6028648545684036e-07
+  },
+  {
+   "formula": "=BESSELI(0.1,4)",
+   "numero": 2.605469017467739e-07
+  },
+  {
+   "formula": "=BESSELY(1.5,1)",
+   "numero": -0.41230862689590375
+  },
+  {
+   "formula": "=BESSELK(1.5,1)",
+   "numero": 0.2773878036322587
+  },
+  {
+   "formula": "=BESSELY(2.5,0)",
+   "numero": 0.4980703584466886
+  },
+  {
+   "formula": "=BESSELK(2.5,0)",
+   "numero": 0.06234755419101918
+  },
+  {
+   "formula": "=BESSELY(10,3)",
+   "numero": -0.251362657105735
+  },
+  {
+   "formula": "=BESSELK(10,3)",
+   "numero": 2.725270063584765e-05
+  },
+  {
+   "formula": "=BESSELY(0.1,2)",
+   "numero": -127.64478315847245
+  },
+  {
+   "formula": "=BESSELK(0.1,2)",
+   "numero": 199.50396469687627
+  },
+  {
+   "formula": "=BESSELY(25,5)",
+   "numero": -0.14705799300498473
+  },
+  {
+   "formula": "=BESSELK(25,5)",
+   "numero": 5.648591793451737e-12
+  },
+  {
+   "formula": "=BESSELJ(1.5,-1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BESSELY(0,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BESSELK(-1,1)",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=BESSELJ(1.5,2.9)",
+   "numero": 0.23208767901744795
+  },
+  {
+   "formula": "=BESSELI(1.5,\"a\")",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=HEX2OCT(\"F\",3)",
+   "testo": "017"
+  },
+  {
+   "formula": "=HEX2OCT(\"3B4E\")",
+   "testo": "35516"
+  },
+  {
+   "formula": "=HEX2OCT(\"FFFFFFFF00\")",
+   "testo": "7777777400"
+  },
+  {
+   "formula": "=HEX2OCT(\"1FFFFFFF\")",
+   "testo": "3777777777"
+  },
+  {
+   "formula": "=HEX2OCT(\"FFDFFFFFFF\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=HEX2OCT(\"G\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=OCT2HEX(\"100\",4)",
+   "testo": "0040"
+  },
+  {
+   "formula": "=OCT2HEX(\"7777777533\")",
+   "testo": "FFFFFFFF5B"
+  },
+  {
+   "formula": "=OCT2HEX(\"3777777777\")",
+   "testo": "1FFFFFFF"
+  },
+  {
+   "formula": "=OCT2HEX(\"8\")",
+   "errore": "#NUM!"
+  },
+  {
+   "formula": "=OCT2HEX(\"17\",1)",
+   "testo": "F"
+  },
+  {
+   "formula": "=ENCODEURL(\"http://contoso.sharepoint.com/Finance/Profit and Loss Statement.xlsx\")",
+   "testo": "http%3A%2F%2Fcontoso.sharepoint.com%2FFinance%2FProfit%20and%20Loss%20Statement.xlsx"
+  },
+  {
+   "formula": "=ENCODEURL(C1)",
+   "testo": "Citt%C3%A0%20e%20prezzi"
+  },
+  {
+   "formula": "=ENCODEURL(C2)",
+   "testo": "a%20b%26c%3Dd%2F%E2%82%AC%3F"
+  },
+  {
+   "formula": "=ENCODEURL(\"-_.~!*'()\")",
+   "testo": "-_.%7E%21%2A%27%28%29"
+  },
+  {
+   "formula": "=ENCODEURL(12.5)",
+   "testo": "12%2C5"
+  },
+  {
+   "formula": "=FINDB(\"e\",C1)",
+   "numero": 7.0
+  },
+  {
+   "formula": "=SEARCHB(\"PREZZI\",C1)",
+   "numero": 9.0
+  },
+  {
+   "formula": "=REPLACEB(C1,1,5,\"Paese\")",
+   "testo": "Paese e prezzi"
+  },
+  {
+   "formula": "=FINDB(\"x\",C1)",
+   "errore": "#VALORE!"
+  },
+  {
+   "formula": "=ISREF(A1)",
+   "logico": true
+  },
+  {
+   "formula": "=ISREF(A1:B2)",
+   "logico": true
+  },
+  {
+   "formula": "=ISREF(5)",
+   "logico": false
+  },
+  {
+   "formula": "=ISREF(\"A1\")",
+   "logico": false
+  },
+  {
+   "formula": "=ISREF(INDIRECT(\"A1\"))",
+   "logico": true
+  },
+  {
+   "formula": "=ISREF(OFFSET(A1,1,1))",
+   "logico": true
+  },
+  {
+   "formula": "=ISREF(Z99)",
+   "logico": true
+  },
+  {
+   "formula": "=ISREF(1/0)",
+   "logico": false
+  }
+ ]
+}

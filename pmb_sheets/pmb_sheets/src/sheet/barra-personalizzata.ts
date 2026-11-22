@@ -4,6 +4,7 @@
 
 import { sheetToolbar } from '../registry/toolbars';
 import { menuRegistry } from '../registry/menu';
+import { iconaFunzione } from '@comune/icone-funzioni';
 
 export const SEPARATORE = 'separatore';
 
@@ -55,6 +56,8 @@ export function catalogo(): Funzione[] {
             etichetta: `${item.label} › ${sub.label}`,
             gruppo: `Menu ${cat.label}`,
             azione: sub.action,
+            // anche le voci dei menu sono icone nella barra, come in pmb_docs (comune/src/icone-funzioni.ts): prima erano testo (2026-11-19)
+            icona: iconaFunzione(`${item.label} › ${sub.label}`),
           });
         }
       } else if (item.action) {
@@ -63,6 +66,7 @@ export function catalogo(): Funzione[] {
           etichetta: item.label,
           gruppo: `Menu ${cat.label}`,
           azione: item.action,
+          icona: iconaFunzione(item.label),
         });
       }
     }

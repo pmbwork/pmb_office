@@ -2,7 +2,7 @@ import { t } from '../i18n/lingua';
 // Schede ("Tab") di un documento: più testi nello stesso file, ognuno col suo titolo. Nel formato .fdoc restano separate;
 // negli altri formati (docx, odt, pdf, txt) si salvano una dopo l'altra, ciascuna con il titolo come intestazione e su un foglio nuovo.
 
-import { conParagrafi, deserializza, serializza, type Documento, type Paragrafo } from './documento';
+import { commentiUsati, conParagrafi, deserializza, serializza, stiliUsati, type Commento, type Documento, type Paragrafo, type StilePersonale } from './documento';
 
 export interface Scheda { titolo: string; doc: Documento }
 export const SCHEDE_MASSIME = 20;
@@ -34,18 +34,47 @@ export function unisciSchede(schede: Scheda[]): Documento {
     nomiSegnalibri.add(n.toLowerCase());
     return n;
   };
+  // i commenti di ogni scheda prendono un identificativo nuovo (numero della scheda e il loro): nel documento unito devono essere unici
+  const commenti: Commento[] = [];
+  let revisioni = false;
+  // stili personali: uno stile uguale (stesso nome e stesso aspetto) in più schede resta uno; altrimenti prende identificativo e nome nuovi
+  const stili: StilePersonale[] = [];
+  const firma = (x: StilePersonale): string => JSON.stringify({ ...x, id: '' });
+  const stileUnito = (x: StilePersonale, k: number): string => {
+    const uguale = stili.find((y) => firma(y) === firma(x));
+    if (uguale) return uguale.id;
+    let id = x.id;
+    for (let n = 2; stili.some((y) => y.id === id); n++) id = `${x.id.slice(0, 30)}_${k + 1}_${n}`;
+    let nome = x.nome;
+    for (let n = 2; stili.some((y) => y.nome.toLowerCase() === nome.toLowerCase()); n++) nome = `${x.nome.slice(0, 50)} (${n})`;
+    stili.push({ ...x, id, nome });
+    return id;
+  };
   schede.forEach((s, k) => {
+    const nuoviStili = new Map(stiliUsati(s.doc).map((x) => [x.id, stileUnito(x, k)] as const));
     paragrafi.push({ st: '1', ...(k > 0 ? { sp: true } : {}), runs: [{ t: s.titolo, g: false, c: false, s: false }] });
     const nuoveTabelle = new Map<number, number>();
-    for (const q of s.doc.paragrafi) {
-      const p: Paragrafo = q.sg !== undefined ? { ...q, sg: nomeUnico(q.sg) } : q;
+    const idNuovo = (id: string): string => `${k + 1}_${id}`.slice(0, 40);
+    for (const c of commentiUsati(s.doc)) commenti.push({ ...c, id: idNuovo(c.id) });
+    if (s.doc.revisioni) revisioni = true;
+    for (const q0 of s.doc.paragrafi) {
+      const q: Paragrafo = q0.runs.some((r) => r.cm !== undefined) ? { ...q0, runs: q0.runs.map((r) => (r.cm !== undefined ? { ...r, cm: idNuovo(r.cm) } : r)) } : q0;
+      const q2: Paragrafo = q.su !== undefined && nuoviStili.has(q.su) ? { ...q, su: nuoviStili.get(q.su)! } : q;
+      const p: Paragrafo = q2.sg !== undefined ? { ...q2, sg: nomeUnico(q2.sg) } : q2;
       if (!p.tb) { paragrafi.push(p); continue; }
       if (!nuoveTabelle.has(p.tb.i)) nuoveTabelle.set(p.tb.i, prossimaTabella++);
       paragrafi.push({ ...p, tb: { ...p.tb, i: nuoveTabelle.get(p.tb.i)! } });
     }
   });
   const primo = schede[0].doc;
-  return { ...conParagrafi(primo, paragrafi), ...(primo.intestazione !== undefined ? { intestazione: primo.intestazione } : {}), ...(primo.piede !== undefined ? { piede: primo.piede } : {}) };
+  const unito: Documento = { ...conParagrafi(primo, paragrafi), ...(primo.intestazione !== undefined ? { intestazione: primo.intestazione } : {}), ...(primo.piede !== undefined ? { piede: primo.piede } : {}) };
+  delete unito.commenti;
+  delete unito.revisioni;
+  delete unito.stili;
+  if (stili.length > 0) unito.stili = stili;
+  if (commenti.length > 0) unito.commenti = commenti;
+  if (revisioni) unito.revisioni = true;
+  return unito;
 }
 
 /** Il file .fdoc con più schede: ogni scheda è un documento .fdoc scritto come testo, col suo titolo. */

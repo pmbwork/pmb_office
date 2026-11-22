@@ -16,12 +16,12 @@ export class DocsConteggio extends LinguaElement {
   };
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
     .dialogo {
       width: 380px;
       box-sizing: border-box;
       padding: 24px;
-      background: #ffffff;
+      background: var(--pmb-superficie, #ffffff);
       border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
     }
@@ -29,7 +29,7 @@ export class DocsConteggio extends LinguaElement {
       margin: 0 0 16px;
       font-size: 18px;
       font-weight: 500;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     table {
       width: 100%;
@@ -38,13 +38,13 @@ export class DocsConteggio extends LinguaElement {
     }
     td {
       padding: 8px 0;
-      border-bottom: 1px solid #f1f3f4;
+      border-bottom: 1px solid var(--pmb-bordo, #f1f3f4);
       font-size: 14px;
     }
     td.valore {
       text-align: right;
       font-weight: 500;
-      color: #444746;
+      color: var(--pmb-testo-2, #444746);
     }
     .pulsanti {
       display: flex;

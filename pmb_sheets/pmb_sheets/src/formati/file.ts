@@ -1,6 +1,7 @@
 // Formati di file di pmb_sheets: nomi, riconoscimento, apertura e salvataggio (.xlsx, .ods, .csv, .fsheet).
 // Tutto puro (nessun accesso al disco o al browser): la finestra legge e scrive i byte, questo file li interpreta.
 // Il CSV contiene solo il foglio attivo, coi valori calcolati (numeri interi e per esteso, senza formattazione), in UTF-8 con BOM per Excel.
+import { CifraturaNonSupportata, cifraFile, decifraSeServe } from '@comune/protezione/password-file';
 import { leggiCsv, rilevaDelimitatore, scriviCsv } from '@comune/formati/csv';
 import { leggiZip } from '@comune/formati/zip';
 import { createWorkbook } from '../engine/workbook';
@@ -13,6 +14,12 @@ import type { Scambio, ValoreCalcolato } from './scambio';
 import { NOME_FOGLIO_PREDEFINITO, avvisiDiConversione, documentoDaScambio, foglioVuoto, indirizzoCella, scambioDaDocumento } from './scambio';
 import { avvisiScritturaXlsx, scriviXlsx } from './xlsx-scrivi';
 import { leggiXlsx } from './xlsx-leggi';
+import { leggiFods } from './ods-leggi';
+import { leggiXlsb } from './xlsb-leggi';
+import { eFoglioExcelVecchio, leggiXls } from './xls-leggi';
+import { leggiHtml } from './html-leggi';
+import { leggiDif, leggiSlk } from './dif-slk-leggi';
+import { leggiXml2003 } from './xml2003-leggi';
 import { TIPO_ODS, avvisiScritturaOds, scriviOds } from './ods-scrivi';
 import { leggiOds } from './ods-leggi';
 import { esportaPdf } from './pdf';
@@ -28,7 +35,7 @@ export const FORMATI: FormatoFile[] = [
 ];
 export const TITOLO_PREDEFINITO = 'Foglio di calcolo senza titolo';
 /** Estensioni da mostrare nella finestra "Apri" */
-export const ESTENSIONI_APRI = '.xlsx,.ods,.csv,.tsv,.txt,.psheet,.fsheet';
+export const ESTENSIONI_APRI = '.xlsx,.xlsm,.xltx,.xltm,.xlsb,.xls,.xlt,.ods,.ots,.fods,.csv,.tsv,.txt,.html,.htm,.dif,.slk,.xml,.psheet,.fsheet';
 export const DIMENSIONE_MASSIMA = 50 * 1024 * 1024;
 
 const RISERVATI = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
@@ -56,17 +63,30 @@ export function formatoDaNome(nome: string): FormatoId | null {
   const m = /\.([A-Za-z0-9]+)$/.exec(nome);
   if (!m) return null;
   const e = m[1].toLowerCase();
-  if (e === 'xlsx') return 'xlsx';
-  if (e === 'ods') return 'ods';
+  if (['xlsx', 'xlsm', 'xltx', 'xltm'].includes(e)) return 'xlsx'; // stesso formato: modelli e file con macro (le macro non si caricano)
+  if (e === 'ods' || e === 'ots') return 'ods';
   if (e === 'psheet' || e === 'fsheet') return 'fsheet'; // .fsheet è l'estensione di quando il programma si chiamava free_sheets: si apre ancora
   if (ALIAS_CSV.includes(e)) return 'csv';
   return null;
 }
 
+/** Formati che si aprono soltanto: il file originale non si sovrascrive mai («Salva» chiede un nome nuovo). */
+export type FormatoSoloLettura = 'xlsm' | 'xlsb' | 'xls' | 'fods' | 'html' | 'dif' | 'slk' | 'xml2003' | 'modello';
+const SOLO_LETTURA: Record<string, FormatoSoloLettura> = { xlsm: 'xlsm', xltm: 'xlsm', xltx: 'modello', xlsb: 'xlsb', xls: 'xls', xlt: 'xls', ots: 'modello', fods: 'fods', html: 'html', htm: 'html', dif: 'dif', slk: 'slk', xml: 'xml2003' };
+
+/** Estensione (minuscola) di un nome di file, oppure ''. */
+export function estensioneDi(nome: string): string {
+  const m = /\.([A-Za-z0-9]+)$/.exec(nome);
+  return m ? m[1].toLowerCase() : '';
+}
+
+/** Vero se il file si apre ma non si riscrive nello stesso formato (macro, formati di sola lettura, modelli). */
+export function eSoloLettura(nome: string): boolean { return Object.prototype.hasOwnProperty.call(SOLO_LETTURA, estensioneDi(nome)); }
+
 /** Titolo del documento ricavato dal nome del file (senza estensione nota). */
 export function titoloDaNome(nome: string): string {
   const senzaPercorso = nome.split(/[\\/]/).pop() ?? nome;
-  const t = formatoDaNome(senzaPercorso) !== null ? senzaPercorso.replace(/\.[A-Za-z0-9]+$/, '') : senzaPercorso;
+  const t = formatoDaNome(senzaPercorso) !== null || eSoloLettura(senzaPercorso) ? senzaPercorso.replace(/\.[A-Za-z0-9]+$/, '') : senzaPercorso;
   return t.trim() === '' ? TITOLO_PREDEFINITO : t.trim(); // (qui `t` è il testo, non la traduzione)
 }
 
@@ -178,8 +198,9 @@ function conRisultatiMemorizzati(s: Scambio, dati: SheetDocumentData): Scambio {
   return s;
 }
 
-/** Dal documento ai byte del file nel formato scelto. */
-export async function esporta(dati: SheetDocumentData, formato: FormatoId): Promise<Uint8Array> {
+/** Dal documento ai byte del file nel formato scelto; con la password, i .xlsx e .ods si salvano cifrati (password per aprire). */
+export async function esporta(dati: SheetDocumentData, formato: FormatoId, password?: string): Promise<Uint8Array> {
+  if (password && (formato === 'xlsx' || formato === 'ods')) return cifraFile(await esporta(dati, formato), formato === 'xlsx' ? 'ooxml' : 'odf', password);
   if (formato === 'xlsx') return scriviXlsx(conRisultatiMemorizzati(scambioDaDocumento(dati), dati));
   if (formato === 'ods') return scriviOds(scambioDaDocumento(dati));
   if (formato === 'pdf') return esportaPdf(scambioConValoriCalcolati(dati));
@@ -189,15 +210,16 @@ export async function esporta(dati: SheetDocumentData, formato: FormatoId): Prom
 }
 
 /** Ciò che solo il formato nativo conserva e che questo documento contiene: un avviso per ogni cosa che andrebbe persa.
- *  Il formato Excel conserva commenti, convalide, formattazioni condizionali, nomi e righe/colonne nascoste: per lui si avvisa solo di filtri, grafici e pivot. */
+ *  I formati Excel e OpenDocument conservano commenti, convalide, formattazioni condizionali, nomi e righe/colonne nascoste. */
 function avvisiSoloNativo(dati: SheetDocumentData, formato?: FormatoId): string[] {
   const perso: string[] = [];
   if (formato !== 'xlsx') {
-    // OpenDocument conserva commenti, convalide, nomi e righe/colonne nascoste (non le formattazioni condizionali)
+    // OpenDocument conserva commenti, convalide, nomi, righe/colonne nascoste e formattazioni condizionali (le regole sulle date
+    // no: lo dice avvisiScritturaOds)
     const odf = formato === 'ods';
     if (!odf && (dati.comments?.length ?? 0) > 0) perso.push(t("i commenti sulle celle"));
     if (!odf && Object.keys(dati.dataValidations ?? {}).length > 0) perso.push(t("le convalide dei dati"));
-    if ((dati.conditionalFormats?.length ?? 0) > 0) perso.push(t("le formattazioni condizionali"));
+    if (!odf && (dati.conditionalFormats?.length ?? 0) > 0) perso.push(t("le formattazioni condizionali"));
     if (!odf && (dati.namedRanges?.length ?? 0) > 0) perso.push(t("gli intervalli denominati (le formule che li usano non funzioneranno altrove)"));
     if (!odf && (dati.hiddenRows?.length ?? 0) + (dati.hiddenCols?.length ?? 0) > 0) perso.push(t("le righe e colonne nascoste"));
     if (dati.styles?.some((st) => typeof st.link === 'string' && st.link !== '')) perso.push(t("i link delle celle"));
@@ -216,7 +238,8 @@ function avvisiSoloNativo(dati: SheetDocumentData, formato?: FormatoId): string[
 }
 
 /** Avvisi da mostrare prima di salvare: che cosa il formato scelto non conserva. */
-export function avvisiEsportazione(dati: SheetDocumentData, formato: FormatoId): string[] {
+export function avvisiEsportazione(dati: SheetDocumentData, formato: FormatoId, password?: string): string[] {
+  if (password && formato !== 'xlsx' && formato !== 'ods') return [t("La password per aprire si conserva solo nei file .xlsx e .ods: questo file non è protetto."), ...avvisiEsportazione(dati, formato)];
   if (formato === 'fsheet') return [];
   const s = scambioDaDocumento(dati);
   const avvisoCommenti = avvisiSoloNativo(dati, formato);
@@ -232,7 +255,7 @@ export function avvisiEsportazione(dati: SheetDocumentData, formato: FormatoId):
   return avvisi;
 }
 
-export interface RisultatoApertura { dati: SheetDocumentData; formato: FormatoId; avvisi: string[] }
+export interface RisultatoApertura { dati: SheetDocumentData; formato: FormatoId; avvisi: string[]; soloLettura?: boolean; /** il file aveva la password per aprire: si riusa per salvarlo */ password?: string }
 
 /** Un archivio ZIP è Excel o OpenDocument: lo dice il contenuto, non il nome. Se non si riesce a leggerlo decide il nome (Excel se il nome non dice niente). */
 async function tipoArchivio(bytes: Uint8Array, daNome: FormatoId | null): Promise<FormatoId> {
@@ -247,21 +270,62 @@ async function tipoArchivio(bytes: Uint8Array, daNome: FormatoId | null): Promis
 }
 
 /** Apre un file: il formato si ricava dal nome o, se manca, dal contenuto. Gli errori hanno un testo adatto all'utente. */
-export async function importa(bytes: Uint8Array, nome: string): Promise<RisultatoApertura> {
+/** Estensioni dei formati che sono sempre un archivio zip. */
+const ARCHIVI = new Set(['xlsx', 'xlsm', 'xltx', 'xltm', 'xlsb', 'ods', 'ots']);
+
+export async function importa(bytes: Uint8Array, nome: string, password?: string): Promise<RisultatoApertura> {
   if (bytes.length > DIMENSIONE_MASSIMA) throw new Error(t("File troppo grande (massimo 50 MB)"));
+  // un .xlsx o .ods con la password per aprire: senza password (o con quella sbagliata) l'errore PasswordRichiesta fa chiedere la password
+  let chiaro: { bytes: Uint8Array; cifrato: boolean };
+  try { chiaro = await decifraSeServe(bytes, password); } catch (e) {
+    if (e instanceof CifraturaNonSupportata) throw new Error(t("Il file è protetto da una password con un tipo di cifratura che pmb_sheets non legge ({}).", e.message));
+    throw e;
+  }
+  if (chiaro.cifrato) {
+    const r = await importa(chiaro.bytes, nome);
+    return { ...r, password };
+  }
+  const ext = estensioneDi(nome);
   let formato = formatoDaNome(nome);
   const zip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
-  if (zip) formato = await tipoArchivio(bytes, formato);
-  if (formato === 'xlsx') {
-    const { scambio, avvisi } = await leggiXlsx(bytes);
-    return { dati: documentoDaScambio(scambio), formato, avvisi: [...avvisi, ...avvisiDiConversione(scambio)] };
+  const ole = bytes.length >= 8 && bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0;
+  // i file di Office 97-2003 (e di Excel 5/95) sono «file composti»: il lettore dei .xls dice anche se è un documento di Word o un file cifrato;
+  // i fogli di Excel 2.x, 3.0 e 4.0 sono una fila di record senza contenitore
+  if (ole || eFoglioExcelVecchio(bytes)) {
+    const { scambio, avvisi } = leggiXls(bytes, nome, password);
+    return { dati: documentoDaScambio(scambio), formato: 'xlsx', avvisi: [...avvisi, ...avvisiDiConversione(scambio)], soloLettura: true };
   }
-  if (formato === 'ods') {
+  let soloLettura = eSoloLettura(nome);
+  if (zip) {
+    // l'archivio può essere un .xlsb (parti binarie) oppure Excel/OpenDocument: lo dice il contenuto
+    let voci: Map<string, Uint8Array> | null = null;
+    try { voci = await leggiZip(bytes); } catch { voci = null; }
+    if (voci?.has('xl/workbook.bin')) {
+      const { scambio, avvisi } = await leggiXlsb(bytes);
+      return { dati: documentoDaScambio(scambio), formato: 'xlsx', avvisi: [...avvisi, ...avvisiDiConversione(scambio)], soloLettura: true };
+    }
+    formato = await tipoArchivio(bytes, formato);
+    const conMacro = voci?.has('xl/vbaProject.bin') === true;
+    if (conMacro) soloLettura = true;
+    if (formato === 'xlsx') {
+      const { scambio, avvisi } = await leggiXlsx(bytes);
+      const extra = conMacro ? [t("Le macro e i controlli del file non vengono caricati; Salva chiede un nome nuovo e non cambia il file originale.")] : [];
+      return { dati: documentoDaScambio(scambio), formato, avvisi: [...avvisi, ...avvisiDiConversione(scambio), ...extra], ...(soloLettura ? { soloLettura } : {}) };
+    }
     const { scambio, avvisi } = await leggiOds(bytes);
-    return { dati: documentoDaScambio(scambio), formato, avvisi: [...avvisi, ...avvisiDiConversione(scambio)] };
+    return { dati: documentoDaScambio(scambio), formato: 'ods', avvisi: [...avvisi, ...avvisiDiConversione(scambio)], ...(soloLettura ? { soloLettura } : {}) };
   }
-  if (eBinario(bytes) || zip) throw new Error(t("Formato di file non riconosciuto"));
+  // un .xlsx (o .ods...) è sempre un archivio: se non lo è, il file è rovinato o ha l'estensione sbagliata (prima si apriva come un CSV con dentro il testo del file)
+  if (ARCHIVI.has(ext)) throw new Error(t("Il file «{}» non è un file .{} valido: è rovinato o ha un'estensione sbagliata", nome, ext));
+  if (eBinario(bytes)) throw new Error(t("Formato di file non riconosciuto"));
   const testo = decodificaTesto(bytes).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+  const inizio = testo.slice(0, 2000).trimStart();
+  const comeOds = (r: { scambio: Scambio; avvisi: string[] }): RisultatoApertura => ({ dati: documentoDaScambio(r.scambio), formato: 'xlsx', avvisi: [...r.avvisi, ...avvisiDiConversione(r.scambio)], soloLettura: true });
+  if (ext === 'fods' || /^<\?xml[^>]*\?>\s*<office:document[\s>]/.test(inizio) || /^<office:document[\s>]/.test(inizio)) return comeOds(leggiFods(new TextEncoder().encode(testo)));
+  if (ext === 'dif' || /^TABLE\s*\r?\n\s*0\s*,\s*1/i.test(inizio)) return comeOds(leggiDif(testo));
+  if (ext === 'slk' || /^ID;P/i.test(inizio)) return comeOds(leggiSlk(testo));
+  if (ext === 'html' || ext === 'htm' || /^<!doctype html|^<html[\s>]/i.test(inizio)) return comeOds(leggiHtml(testo));
+  if (ext === 'xml' || /^<\?xml[^>]*\?>\s*(<\?mso-application[^>]*\?>\s*)?<Workbook[\s>]/.test(inizio)) return comeOds(leggiXml2003(testo));
   if (formato === 'fsheet' || (formato === null && /^\s*\{\s*"version"\s*:/.test(testo))) {
     try { return { dati: deserializeSheetDocumentData(testo), formato: 'fsheet', avvisi: [] }; } catch (e) {
       if (formato === 'fsheet') throw new Error(t("File .psheet non valido: {}", e instanceof Error ? e.message : String(e)));

@@ -3,6 +3,8 @@
  * Definisce gerarchicamente le voci, scorciatoie e mnemonici del programma Fogli.
  */
 
+import { STILI_CELLA } from '../sheet/stili-cella';
+
 export interface MenuItem {
   id: string;
   label: string;
@@ -37,7 +39,18 @@ export const menuRegistry: MenuCategory[] = [
       { id: "download-fsheet", label: "Scarica come pmb_sheets (.psheet)", action: "download-fsheet" },
       { id: "download-ods", label: "Scarica come OpenDocument (.ods)", action: "download-ods" },
       { id: "download-pdf", label: "Scarica come Documento PDF (.pdf)", action: "download-pdf" },
+      { id: "file-password", label: "Password per aprire...", action: "file-password" },
       { id: "sep-2", label: "", separator: true },
+      { id: "page-setup", label: "Imposta pagina...", action: "page-setup" },
+      { id: "print-preview", label: "Anteprima di stampa", action: "print-preview" },
+      {
+        id: "print-area-menu",
+        label: "Area di stampa",
+        subitems: [
+          { id: "print-area-set", label: "Imposta area di stampa", action: "print-area-set" },
+          { id: "print-area-clear", label: "Cancella area di stampa", action: "print-area-clear" },
+        ],
+      },
       { id: "print", label: "Stampa", shortcut: "Ctrl+P", action: "print" },
       { id: "sep-3", label: "", separator: true },
       { id: "exit", label: "Esci", shortcut: "Alt+F4", action: "exit-app" },
@@ -64,6 +77,7 @@ export const menuRegistry: MenuCategory[] = [
           { id: "paste-transposed", label: "Trasposto", action: "paste-special-transposed" },
         ],
       },
+      { id: "fill-series", label: "Riempi serie...", action: "fill-series" },
       { id: "sep-edit-struct", label: "", separator: true },
       { id: "delete-row", label: "Elimina riga", action: "delete-row" },
       { id: "delete-col", label: "Elimina colonna", action: "delete-col" },
@@ -100,6 +114,7 @@ export const menuRegistry: MenuCategory[] = [
       },
       { id: "sep-view-freeze", label: "", separator: true },
       { id: "toggle-sidebar", label: "Mostra pannello laterale", shortcut: "Ctrl+Alt+S", action: "toggle-sidebar" },
+      { id: "show-formulas", label: "Mostra formule", shortcut: "Ctrl+`", action: "show-formulas" },
       { id: "personalizza-barra", label: "Personalizza barra degli strumenti…", action: "personalizza-barra" },
       { id: "toggle-fullscreen", label: "Schermo intero", shortcut: "F11", action: "toggle-fullscreen" },
       { id: "nascondi-menu", label: "Nascondi i menu", shortcut: "Ctrl+Maiusc+F", action: "nascondi-menu" },
@@ -129,10 +144,21 @@ export const menuRegistry: MenuCategory[] = [
       { id: "insert-sheet", label: "Nuovo foglio", action: "insert-sheet" },
       { id: "sep-ins-struct", label: "", separator: true },
       { id: "insert-image", label: "Immagine", action: "insert-image" },
+      { id: "insert-qr", label: "Codice QR...", action: "insert-qr" },
+      { id: "insert-sparkline", label: "Minigrafico", action: "insert-sparkline" },
       { id: "insert-table", label: "Tabella", action: "insert-table" },
       { id: "insert-chart", label: "Grafico...", action: "insert-chart" },
       { id: "insert-pivot", label: "Tabella pivot...", action: "insert-pivot" },
       { id: "insert-link", label: "Link", shortcut: "Ctrl+K", action: "insert-link" },
+      {
+        id: "page-break-menu",
+        label: "Interruzione di pagina",
+        subitems: [
+          { id: "page-break-row", label: "Sopra la riga", action: "page-break-row" },
+          { id: "page-break-col", label: "A sinistra della colonna", action: "page-break-col" },
+          { id: "page-breaks-clear", label: "Togli tutte le interruzioni", action: "page-breaks-clear" },
+        ],
+      },
       { id: "sep-1", label: "", separator: true },
       { id: "insert-comment", label: "Commento", shortcut: "Ctrl+Alt+M", action: "insert-comment" },
     ],
@@ -186,6 +212,32 @@ export const menuRegistry: MenuCategory[] = [
         ],
       },
       { id: "sep-fmt-2", label: "", separator: true },
+      {
+        id: "cell-styles",
+        label: "Stili di cella",
+        subitems: STILI_CELLA.map((s) => ({ id: `cell-style-${s.id}`, label: s.nome, action: `cell-style-${s.id}` })),
+      },
+      {
+        id: "change-case",
+        label: "Maiuscole e minuscole",
+        subitems: [
+          { id: "case-upper", label: "MAIUSCOLO", action: "case-upper" },
+          { id: "case-lower", label: "minuscolo", action: "case-lower" },
+          { id: "case-title", label: "Iniziali Maiuscole", action: "case-title" },
+          { id: "case-sentence", label: "Frase", action: "case-sentence" },
+          { id: "case-toggle", label: "iNVERTI", action: "case-toggle" },
+        ],
+      },
+      {
+        id: "cell-protection",
+        label: "Protezione celle",
+        subitems: [
+          { id: "cell-unlock", label: "Sblocca le celle (si scrivono con il foglio protetto)", action: "cell-unlock" },
+          { id: "cell-lock", label: "Blocca le celle", action: "cell-lock" },
+          { id: "cell-hide-formula", label: "Nascondi la formula", action: "cell-hide-formula" },
+          { id: "cell-show-formula", label: "Mostra la formula", action: "cell-show-formula" },
+        ],
+      },
       { id: "clear-formatting", label: "Cancella formattazione", shortcut: "Ctrl+\\", action: "clear-formatting" },
     ],
   },
@@ -197,6 +249,22 @@ export const menuRegistry: MenuCategory[] = [
       { id: "sort-asc", label: "Ordina intervallo per colonna A -> Z", action: "sort-asc" },
       { id: "sort-desc", label: "Ordina intervallo per colonna Z -> A", action: "sort-desc" },
       { id: "sep-sort", label: "", separator: true },
+      { id: "remove-duplicates", label: "Rimuovi duplicati...", action: "remove-duplicates" },
+      { id: "split-text", label: "Testo in colonne...", action: "split-text" },
+      { id: "goal-seek", label: "Ricerca obiettivo...", action: "goal-seek" },
+      { id: "subtotals", label: "Subtotali...", action: "subtotals" },
+      {
+        id: "outline",
+        label: "Raggruppa e struttura",
+        subitems: [
+          { id: "group-rows", label: "Raggruppa", shortcut: "Alt+Maiusc+→", action: "group" },
+          { id: "ungroup-rows", label: "Separa", shortcut: "Alt+Maiusc+←", action: "ungroup" },
+          { id: "group-collapse", label: "Comprimi il gruppo", action: "group-collapse" },
+          { id: "group-expand", label: "Espandi il gruppo", action: "group-expand" },
+          { id: "outline-clear", label: "Cancella la struttura", action: "outline-clear" },
+        ],
+      },
+      { id: "sep-dati", label: "", separator: true },
       { id: "create-filter", label: "Crea un filtro", action: "create-filter" },
       { id: "clear-filter", label: "Rimuovi filtri", action: "clear-filter" },
       { id: "filter-views", label: "Viste filtro...", action: "filter-views" },
@@ -229,6 +297,16 @@ export const menuRegistry: MenuCategory[] = [
       { id: "spelling", label: "Controllo ortografico", shortcut: "F7", action: "spelling" },
       { id: "menu-search", label: "Cerca nei menu", shortcut: "Alt+/", action: "open-menu-search" },
       { id: "sep-1", label: "", separator: true },
+      { id: "read-aloud", label: "Leggi le celle ad alta voce", action: "read-aloud" },
+      { id: "trace-precedents", label: "Mostra precedenti", action: "trace-precedents" },
+      { id: "trace-dependents", label: "Mostra dipendenti", action: "trace-dependents" },
+      { id: "trace-clear", label: "Togli le evidenziazioni", action: "trace-clear" },
+      { id: "evaluate-formula", label: "Valuta formula...", action: "evaluate-formula" },
+      { id: "watch-window", label: "Finestra controllo", action: "watch-window" },
+      { id: "sep-tracce", label: "", separator: true },
+      { id: "protect-sheet", label: "Proteggi foglio...", action: "protect-sheet" },
+      { id: "protect-workbook", label: "Proteggi la struttura della cartella...", action: "protect-workbook" },
+      { id: "sep-2", label: "", separator: true },
       { id: "preferences", label: "Preferenze", action: "open-preferences" },
     ],
   },

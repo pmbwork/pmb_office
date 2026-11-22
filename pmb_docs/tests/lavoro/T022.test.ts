@@ -31,7 +31,7 @@ describe('T022: docs-menubar', () => {
     }
   });
 
-  it('un clic su Formato apre il suo pannello con le 14 voci', async () => {
+  it('un clic su Formato apre il suo pannello con le 15 voci (dal 0.4.15 anche Filigrana)', async () => {
     const el = await monta();
     titolo(el, 'formato').click();
     await el.updateComplete;
@@ -40,7 +40,7 @@ describe('T022: docs-menubar', () => {
     expect(p.getAttribute('role')).toBe('menu');
     expect(p.dataset.menu).toBe('formato');
     const voci = Array.from(p.querySelectorAll('.voce'));
-    expect(voci.length).toBe(14);
+    expect(voci.length).toBe(15);
     expect(titolo(el, 'formato').getAttribute('aria-expanded')).toBe('true');
   });
 

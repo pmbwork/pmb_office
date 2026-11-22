@@ -8,8 +8,9 @@ describe('T465: menu in tema scuro', () => {
     const host = /:host\s*\{([^}]*)\}/.exec(css)![1];
     expect(host).toMatch(/color:\s*inherit/);
   });
-  it('i pannelli bianchi dei menu tengono il testo scuro, anche in tema scuro', () => {
-    expect(css).toMatch(/\.pannello,\s*\.sottopannello\s*\{\s*color:\s*#[0-9a-f]{3,6}/i);
+  it('i pannelli dei menu seguono il tema: fondo e testo sono variabili (chiari nel tema chiaro, scuri nel tema scuro)', () => {
+    expect(css).toMatch(/\.pannello,\s*\.sottopannello\s*\{\s*color:\s*var\(--pmb-testo,\s*#1F1F1F\)/i);
+    expect(css).toMatch(/\.pannello\s*\{[^}]*background:\s*var\(--pmb-superficie,\s*#FFFFFF\)/i);
   });
   it('in tema scuro il titolo sotto il mouse ha uno sfondo scuro, non quello chiaro del tema chiaro', () => {
     expect(css).toMatch(/docs-guscio\[tema="scuro"\]\)\s*\.titolo-menu:hover\s*\{\s*background:\s*#3c4043/);
@@ -24,8 +25,8 @@ describe('T466: aspetto dei menu', () => {
     expect(/\.pannello,\s*\.sottopannello\s*\{[^}]*cursor:\s*default[^}]*user-select:\s*none/.test(css)).toBe(true);
   });
   it('titoli, voci e sottovoci si evidenziano con lo stesso grigio al passaggio', () => {
-    const grigio = (sel: string): string => css.split('}').map((r) => r.trim()).find((r) => r.startsWith(sel + ' {') || r.startsWith(sel + '{'))?.match(/background:\s*(#[0-9a-f]{6})/i)?.[1] ?? '';
-    const titolo = css.split('}').map((r) => r.trim()).find((r) => r.startsWith(".titolo-menu[aria-expanded='true'], .titolo-menu:hover"))?.match(/background:\s*(#[0-9a-f]{6})/i)?.[1];
+    const grigio = (sel: string): string => css.split('}').map((r) => r.trim()).find((r) => r.startsWith(sel + ' {') || r.startsWith(sel + '{'))?.match(/background:\s*(?:var\(--pmb-hover,\s*)?(#[0-9a-f]{6})/i)?.[1] ?? '';
+    const titolo = css.split('}').map((r) => r.trim()).find((r) => r.startsWith(".titolo-menu[aria-expanded='true'], .titolo-menu:hover"))?.match(/background:\s*(?:var\(--pmb-hover,\s*)?(#[0-9a-f]{6})/i)?.[1];
     expect(titolo).toBe('#e8eaed');
     expect(grigio('.voce:hover')).toBe(titolo);
     expect(grigio('.figlio:hover')).toBe(titolo);

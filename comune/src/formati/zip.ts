@@ -50,6 +50,16 @@ async function comprimi(dati: Uint8Array): Promise<Uint8Array | null> {
   if (typeof CompressionStream === 'undefined' || dati.length === 0) return null;
   return passa(dati, new CompressionStream('deflate-raw') as unknown as { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> });
 }
+/** Deflate «grezzo» (senza intestazione), come dentro gli zip: serve anche alle parti cifrate dei file OpenDocument. */
+export async function deflateGrezzo(dati: Uint8Array): Promise<Uint8Array> {
+  if (dati.length === 0) return Uint8Array.from([0x03, 0x00]);
+  const c = await comprimi(dati);
+  if (!c) throw new Error('ZIP: questo ambiente non sa comprimere');
+  return c;
+}
+/** Il contrario di deflateGrezzo, con un limite alla dimensione del risultato. */
+export async function inflateGrezzo(dati: Uint8Array, limite = 256 * 1024 * 1024): Promise<Uint8Array> { return decomprimi(dati, limite); }
+
 async function decomprimi(dati: Uint8Array, limite: number): Promise<Uint8Array> {
   if (typeof DecompressionStream === 'undefined') throw new Error('ZIP: questo ambiente non sa decomprimere');
   try {

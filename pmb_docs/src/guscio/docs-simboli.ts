@@ -96,12 +96,12 @@ export class DocsSimboli extends LinguaElement {
     :host-context([alto-contrasto]) button.attivo, :host-context([alto-contrasto]) button[aria-checked="true"], :host-context([alto-contrasto]) button[aria-pressed="true"] { background: #000000; color: #ffffff; }
     :host-context([riduci-animazioni]) * { transition: none !important; animation: none !important; }
 
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
     .dialogo {
       width: 480px;
       box-sizing: border-box;
       padding: 20px;
-      background: #ffffff;
+      background: var(--pmb-superficie, #ffffff);
       border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
     }
@@ -115,18 +115,18 @@ export class DocsSimboli extends LinguaElement {
       margin: 0;
       font-size: 18px;
       font-weight: 500;
-      color: #1f1f1f;
+      color: var(--pmb-testo, #1f1f1f);
     }
     .chiudi-x {
       background: none;
       border: 0;
       font-size: 18px;
-      color: #5f6368;
+      color: var(--pmb-testo-2, #5f6368);
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
     }
-    .chiudi-x:hover { background: #f1f3f4; }
+    .chiudi-x:hover { background: var(--pmb-superficie-2, #f1f3f4); }
     .barra-filtri {
       display: flex;
       gap: 12px;
@@ -138,7 +138,7 @@ export class DocsSimboli extends LinguaElement {
       height: 32px;
       box-sizing: border-box;
       padding: 0 10px;
-      border: 1px solid #dadce0;
+      border: 1px solid var(--pmb-bordo, #dadce0);
       border-radius: 4px;
       font: inherit;
       outline: none;
@@ -153,18 +153,18 @@ export class DocsSimboli extends LinguaElement {
     }
     .cat-btn {
       padding: 4px 10px;
-      border: 1px solid #dadce0;
+      border: 1px solid var(--pmb-bordo, #dadce0);
       border-radius: 14px;
-      background: #ffffff;
-      color: #444746;
+      background: var(--pmb-superficie, #ffffff);
+      color: var(--pmb-testo-2, #444746);
       font-size: 12px;
       cursor: pointer;
       white-space: nowrap;
     }
-    .cat-btn:hover { background: #f8f9fa; }
+    .cat-btn:hover { background: var(--pmb-superficie-2, #f8f9fa); }
     .cat-btn.attivo {
-      background: #e8f0fe;
-      color: #0b57d0;
+      background: var(--pmb-selezione, #e8f0fe);
+      color: var(--pmb-accento, #0b57d0);
       border-color: #d2e3fc;
       font-weight: 500;
     }
@@ -175,7 +175,7 @@ export class DocsSimboli extends LinguaElement {
       max-height: 240px;
       overflow-y: auto;
       padding: 4px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--pmb-bordo, #e0e0e0);
       border-radius: 4px;
       margin-bottom: 16px;
     }
@@ -185,17 +185,17 @@ export class DocsSimboli extends LinguaElement {
       align-items: center;
       justify-content: center;
       font-size: 18px;
-      border: 1px solid #e8eaed;
+      border: 1px solid var(--pmb-bordo, #e8eaed);
       border-radius: 4px;
-      background: #ffffff;
-      color: #1f1f1f;
+      background: var(--pmb-superficie, #ffffff);
+      color: var(--pmb-testo, #1f1f1f);
       cursor: pointer;
       user-select: none;
       transition: background-color 0.1s, transform 0.05s;
     }
     .tasto-simbolo:hover {
-      background: #f1f3f4;
-      border-color: #dadce0;
+      background: var(--pmb-superficie-2, #f1f3f4);
+      border-color: var(--pmb-bordo, #dadce0);
       transform: scale(1.08);
     }
     .tasto-simbolo:focus {
@@ -206,7 +206,7 @@ export class DocsSimboli extends LinguaElement {
       grid-column: 1 / -1;
       padding: 32px 0;
       text-align: center;
-      color: #70757a;
+      color: var(--pmb-testo-2, #70757a);
       font-size: 13px;
     }
     .piede {

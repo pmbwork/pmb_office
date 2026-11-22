@@ -14,6 +14,8 @@ import { LIMITE_IMMAGINI, immaginiDaDati, misureIniziali, nuovoIdImmagine, type 
 import { COLORE_LINK } from "../sheet/link";
 import { localeNumeri } from "../sheet/locale-numeri";
 import { regioneDati, ritocchiTabella } from "../sheet/tabella";
+import { chiaveRiga, compatta, trovaDuplicati } from "../sheet/duplicati";
+import { colonneNecessarie, dividiRighe, type OpzioniDivisione } from "../sheet/testo-in-colonne";
 import {
   SheetDocument,
   defaultDocumentStore,
@@ -95,17 +97,28 @@ import { FORMATI_PREIMPOSTATI, FORMATI_PREIMPOSTATI_PER_ID } from "../sheet/form
 import "./chart-overlay";
 import { InlineEngineClient } from "../sheet/engine-client";
 import { GeometriaRighe } from "../sheet/geometria";
-import { coloreSchedaDi, impostaColoreScheda } from "../sheet/stato-fogli";
+import { coloreSchedaDi, impostaColoreScheda, impostaNascosto, impostaPaginaFoglio, impostaProtezioneFoglio, nascostoDi } from "../sheet/stato-fogli";
+import { cellaProtetta, formulaNascosta, intervalloProtetto, motivoPasso, MOTIVO_CARTELLA, MOTIVO_CELLA, MOTIVO_FOGLIO } from "../sheet/protezione";
+import { impronteNuove, verificaPassword } from "@comune/protezione/impronte";
+import { alternaInterruzione, copiaPagina, paginaPredefinita, scriviAreaStampa, type ImpostaPagina } from "../sheet/pagina";
 import { elencaConvalide, firmaConvalida, type ConvalidaElencata } from "../sheet/regole-dialogo";
 import { cambiaRiferimento } from "../sheet/riferimenti-assoluti";
 import { contestoNavigazione } from "../sheet/contesto-navigazione";
 import { daInputUtente, perInputUtente, interpretaInput } from "../sheet/input-locale";
+import { ricercaObiettivo as ricercaObiettivoPura } from "../sheet/ricerca-obiettivo";
+import { dipendenti, formuleDellaCartella, riferimentiFormula } from "../sheet/precedenti";
+import { pianoSubtotali } from "../sheet/subtotali";
+import { trasforma as trasformaMaiuscole, type ModoMaiuscole } from "@comune/maiuscole";
 import { nomiPerMotore } from '../sheet/nomi-dialogo';
-import { parseCellAddress, parseRangeAddress } from '../engine/address';
+import { MAX_COLS, MAX_ROWS, parseCellAddress, parseRangeAddress } from '../engine/address';
 import { dividiPerRiempimento } from '../engine/format-testo';
 import { aggiornaPerSpostamento, type BloccoSpostato } from '../engine/sposta-riferimenti';
 import { applicaStato, clonaStato, statoDelFoglio, duplicaStatoFoglio, eliminaStatoFoglio, passaAlFoglio, rinominaStatoFoglio, scartaStatoCorrente, statoADati, statoCorrente } from '../sheet/stato-fogli';
 import { spostaDatiAccessori, type OperazioneStruttura } from '../sheet/sposta-struttura';
+import { disegnaMinigrafico, leggiMinigrafico } from './minigrafico';
+import { CELLE_MASSIME_SERIE, valoriSerie, type ParametriSerie, type TipoSerie, type UnitaData } from '../sheet/serie';
+import { testoADataSeriale } from '../engine/functions/date';
+import { LIVELLO_MASSIMO as LIVELLO_MASSIMO_GRUPPI, copiaGruppi, gruppoDi, raggruppa as raggruppaGruppi, separa as separaGruppi } from '../sheet/gruppi';
 import { NamedRangeRegistry, type NamedRange } from '../sheet/named-ranges';
 import { commentoDi, chiaveCommento, impostaCommento, rinominaFoglioCommenti, togliCommentiFoglio, copiaCommentiFoglio, type Commento } from '../sheet/commenti';
 import { t } from '../i18n/lingua';
@@ -136,6 +149,10 @@ export class FreeSheetGrid extends LinguaElement {
   @state() private activeCellAddress = "A1";
   @state() private nameBoxValue = "A1";
   @state() private formulaBarValue = "";
+  /** Visualizza › Mostra formule: nelle celle le formule invece dei risultati */
+  @state() private mostraFormule = false;
+  /** con Mostra formule: le formule delle celle visibili (la copia per disegnare ha solo i valori) */
+  private formuleMostrate = new Map<string, string>();
   @state() private isEditing = false;
   /** Controllo ortografico mentre si scrive nelle celle e nella barra della formula (lo fa il correttore del sistema); si ricorda tra una sessione e l'altra. */
   @state() private ortografia = (() => { try { return window.localStorage.getItem('pmb_sheets.ortografia') === '1'; } catch { return false; } })();
@@ -408,6 +425,18 @@ export class FreeSheetGrid extends LinguaElement {
       cursor: pointer;
     }
 
+    /* Raggruppa e struttura: una barra per livello sul bordo dell'intestazione e il pulsante +/− dopo il gruppo */
+    .segno-gruppo { position: absolute; background: var(--color-accent); opacity: 0.55; pointer-events: none; }
+    .segno-gruppo.riga { left: 0; top: 0; bottom: 0; }
+    .segno-gruppo.colonna { left: 0; right: 0; top: 0; }
+    .pulsante-gruppo {
+      position: absolute; left: 1px; top: 50%; transform: translateY(-50%);
+      width: 12px; height: 12px; line-height: 10px; font-size: 11px; font-weight: 700; text-align: center;
+      border: 1px solid var(--color-text-secondary); border-radius: 2px; background: var(--color-sheet-header-bg); color: var(--color-text-primary, inherit);
+      cursor: pointer; box-sizing: border-box; z-index: 1;
+    }
+    th.col-header .pulsante-gruppo { left: 2px; top: 2px; transform: none; }
+
     th.row-header.selected-header {
       background-color: var(--color-accent-subtle);
       color: var(--color-accent);
@@ -432,6 +461,10 @@ export class FreeSheetGrid extends LinguaElement {
       box-sizing: border-box;
       vertical-align: middle;
     }
+
+    /* interruzioni di pagina a mano (Inserisci › Interruzione di pagina): linea blu tratteggiata, come in Calc */
+    td.sheet-cell.interruzione-r { border-top: 2px dashed #1a73e8 !important; }
+    td.sheet-cell.interruzione-c { border-left: 2px dashed #1a73e8 !important; }
 
     /* piccolo triangolo ambra nell'angolo in alto a destra delle celle con un commento */
     td.sheet-cell.has-comment {
@@ -791,9 +824,28 @@ export class FreeSheetGrid extends LinguaElement {
     window.removeEventListener("resize", this.handleResize);
     window.removeEventListener("mousemove", this.handleWindowMouseMove);
     window.removeEventListener("mouseup", this.handleWindowMouseUp);
+    window.removeEventListener("pointerdown", this.fuoriDalMenuContestuale, true);
+    window.removeEventListener("keydown", this.escMenuContestuale, true);
   }
 
+  /** Il menu del tasto destro si chiude con un clic fuori da lui (anche sulla barra dei menu: prima restava aperto sopra le tendine) o con Esc. */
+  private fuoriDalMenuContestuale = (e: PointerEvent): void => {
+    if (!this.contextMenu) return;
+    if (e.composedPath().some((n) => n instanceof HTMLElement && n.classList.contains('sheet-context-menu'))) return;
+    this.closeContextMenu();
+  };
+  private escMenuContestuale = (e: KeyboardEvent): void => { if (e.key === 'Escape' && this.contextMenu) this.closeContextMenu(); };
+
   protected updated(changedProperties: PropertyValues) {
+    if (changedProperties.has("contextMenu" as keyof this)) {
+      if (this.contextMenu) {
+        window.addEventListener("pointerdown", this.fuoriDalMenuContestuale, true);
+        window.addEventListener("keydown", this.escMenuContestuale, true);
+      } else {
+        window.removeEventListener("pointerdown", this.fuoriDalMenuContestuale, true);
+        window.removeEventListener("keydown", this.escMenuContestuale, true);
+      }
+    }
     this._geomCache = undefined;
     this._largCache = undefined;
     // dopo ogni disegno: se le righe nascoste del foglio sono cambiate (a mano, da un filtro, con Annulla...) il motore ricalcola SUBTOTAL e AGGREGATE
@@ -814,8 +866,270 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   private getDoc(): SheetDocument {
-    if (this.document) return this.document;
-    return defaultDocumentStore.getOrCreateDocument(this.tabId);
+    const doc = this.document ?? defaultDocumentStore.getOrCreateDocument(this.tabId);
+    // la protezione dei fogli controlla ogni passo della cronologia (la cronologia si rifà aprendo un file: si ricollega qui)
+    if (!doc.history.guardiano) {
+      doc.history.guardiano = (passo) => motivoPasso(doc, passo);
+      doc.history.rifiutato = (motivo) => { void this.respingi(motivo); };
+    }
+    return doc;
+  }
+
+  // ---- strumenti: mostra formule, ricerca obiettivo ----
+  public alternaMostraFormule(): boolean {
+    this.mostraFormule = !this.mostraFormule;
+    this.formuleMostrate = new Map();
+    void this.fetchVisibleCells(this.visibleRange).then(() => this.requestUpdate());
+    this.avvisaStato(this.mostraFormule ? t('Formule visibili nelle celle (Ctrl+` per i risultati)') : t('Risultati visibili nelle celle'));
+    this.requestUpdate();
+    return this.mostraFormule;
+  }
+  public formuleVisibili(): boolean { return this.mostraFormule; }
+
+  /** Dati › Ricerca obiettivo: cambia la cella «variabile» perché la formula di «obiettivo» dia «valore». Il risultato si tiene (un passo
+   *  di annulla); se non si trova, la cella torna com'era. Restituisce il messaggio per l'utente (già tradotto) e se ha trovato. */
+  public async ricercaObiettivo(obiettivo: string, valoreTesto: string, variabile: string): Promise<{ ok: boolean; messaggio: string }> {
+    const doc = this.getDoc();
+    const foglio = doc.activeSheetName;
+    const o = parseCellAddress(obiettivo.trim().toUpperCase());
+    const v = parseCellAddress(variabile.trim().toUpperCase());
+    // il numero come lo si scrive in una cella (virgola decimale, punti delle migliaia, percentuale...)
+    const valore = Number(interpretaInput(valoreTesto.trim()).raw);
+    if (!o) return { ok: false, messaggio: t('La cella con la formula non è un indirizzo valido (per esempio B5)') };
+    if (!v) return { ok: false, messaggio: t('La cella da cambiare non è un indirizzo valido (per esempio A1)') };
+    if (!Number.isFinite(valore)) return { ok: false, messaggio: t('Il valore da raggiungere deve essere un numero') };
+    const cellaO = await doc.client.getCell(foglio, o.row, o.col);
+    if (!cellaO.raw.startsWith('=')) return { ok: false, messaggio: t('La cella con la formula deve contenere una formula') };
+    const cellaV = await doc.client.getCell(foglio, v.row, v.col);
+    if (cellaV.raw.startsWith('=')) return { ok: false, messaggio: t('La cella da cambiare deve contenere un valore, non una formula') };
+    if (cellaProtetta(doc, foglio, v.row, v.col)) return { ok: false, messaggio: t(MOTIVO_CELLA) };
+    const prima = cellaV.raw;
+    const x0 = cellaV.value.kind === 'number' ? cellaV.value.value : 0;
+    const esito = await ricercaObiettivoPura(async (x) => {
+      await doc.client.setCell(foglio, v.row, v.col, String(x));
+      const r = await doc.client.getCell(foglio, o.row, o.col);
+      return r.value.kind === 'number' ? r.value.value : null;
+    }, valore, x0);
+    if (!esito.trovato) {
+      if (prima === '') await doc.client.clearCell(foglio, v.row, v.col); else await doc.client.setCell(foglio, v.row, v.col, prima);
+      return { ok: false, messaggio: t('Nessuna soluzione trovata: la formula non arriva a {}', valoreTesto) };
+    }
+    const nuovo = String(Number(esito.x.toPrecision(15)));
+    await doc.client.setCell(foglio, v.row, v.col, nuovo);
+    doc.history.pushStep({ description: t('Ricerca obiettivo'), changes: [{ sheet: foglio, row: v.row, col: v.col, oldRaw: prima, newRaw: nuovo }] });
+    this.updateFormulaBarValue();
+    this.requestUpdate();
+    return { ok: true, messaggio: t('Ricerca obiettivo: {} = {} dà {} = {}', variabile.toUpperCase(), nuovo.replace('.', ','), obiettivo.toUpperCase(), String(Number((esito.valore ?? 0).toPrecision(12))).replace('.', ',')) };
+  }
+  /** Strumenti › Mostra precedenti / dipendenti: evidenzia (con i bordi colorati delle formule) le celle che la formula della cella attiva
+   *  usa, o le formule che usano la cella attiva; il messaggio elenca gli indirizzi (anche di altri fogli). */
+  public async mostraTracce(tipo: 'precedenti' | 'dipendenti'): Promise<string> {
+    const doc = this.getDoc();
+    const a = doc.selection.anchor;
+    const foglio = doc.activeSheetName;
+    const nome = (f: string, r: number, c: number, r2 = r, c2 = c): string => `${f !== foglio ? `${f}!` : ''}${columnIndexToLetters(c)}${r}${r2 !== r || c2 !== c ? `:${columnIndexToLetters(c2)}${r2}` : ''}`;
+    let trovati: Array<{ foglio: string; r1: number; c1: number; r2: number; c2: number }>;
+    if (tipo === 'precedenti') {
+      const raw = (await doc.client.getCell(foglio, a.row, a.col)).raw;
+      if (!raw.startsWith('=')) { this.formulaRefHighlights = []; return t('La cella attiva non contiene una formula'); }
+      trovati = riferimentiFormula(raw, foglio);
+    } else {
+      const formule = formuleDellaCartella(String(await doc.client.serialize()));
+      trovati = dipendenti(formule, foglio, a.row, a.col).map((d) => ({ foglio: d.foglio, r1: d.riga, c1: d.colonna, r2: d.riga, c2: d.colonna }));
+    }
+    const colore = tipo === 'precedenti' ? '#2563eb' : '#dc2626';
+    // si disegnano quelli del foglio attivo (righe e colonne intere tagliate, per non disegnare un milione di righe)
+    this.formulaRefHighlights = trovati.filter((x) => x.foglio.toLowerCase() === foglio.toLowerCase())
+      .map((x) => ({ r1: x.r1, c1: x.c1, r2: Math.min(x.r2, x.r1 + 2000), c2: Math.min(x.c2, x.c1 + 200), color: colore }));
+    this.requestUpdate();
+    if (trovati.length === 0) return tipo === 'precedenti' ? t('La formula non usa altre celle') : t('Nessuna formula usa {}', nome(foglio, a.row, a.col));
+    const elenco = trovati.slice(0, 12).map((x) => nome(x.foglio, x.r1, x.c1, x.r2, x.c2)).join(', ') + (trovati.length > 12 ? ', …' : '');
+    return tipo === 'precedenti' ? t('Precedenti di {}: {}', nome(foglio, a.row, a.col), elenco) : t('Dipendenti di {}: {}', nome(foglio, a.row, a.col), elenco);
+  }
+  public togliTracce(): void { this.formulaRefHighlights = []; this.requestUpdate(); }
+
+  /** Le colonne della tabella selezionata con il nome dell'intestazione (prima riga della selezione), per la finestra dei subtotali;
+   *  null se la selezione non è una tabella (almeno l'intestazione e una riga di dati). */
+  public async colonneTabellaSelezionata(): Promise<Array<{ col: number; nome: string }> | null> {
+    const doc = this.getDoc();
+    const r = doc.selection.range;
+    if (r.endRow - r.startRow < 1 || r.endCol - r.startCol > 200) return null;
+    const out: Array<{ col: number; nome: string }> = [];
+    for (let c = r.startCol; c <= r.endCol; c++) {
+      const v = (await doc.client.getCell(doc.activeSheetName, r.startRow, c)).value;
+      const testo = formatDisplayValue(v).text;
+      out.push({ col: c, nome: testo !== '' ? testo : t('Colonna {}', columnIndexToLetters(c)) });
+    }
+    return out;
+  }
+
+  /** Dati › Subtotali: le righe dei totali a ogni cambio della colonna del gruppo e il totale complessivo, come Excel (sheet/subtotali.ts).
+   *  Un solo passo di annulla. Restituisce il messaggio per l'utente. */
+  public async subtotali(colonnaGruppo: number, colonne: number[], funzione: number): Promise<string> {
+    const doc = this.getDoc();
+    const foglio = doc.activeSheetName;
+    const r = doc.selection.range;
+    if (colonne.length === 0) return t('Scegli almeno una colonna a cui aggiungere il subtotale');
+    if (this.selezioneProtetta() || this.strutturaFoglioProtetta()) return t(MOTIVO_FOGLIO);
+    const valori: string[] = [];
+    for (let riga = r.startRow + 1; riga <= r.endRow; riga++) valori.push(formatDisplayValue((await doc.client.getCell(foglio, riga, colonnaGruppo)).value).text);
+    const piano = pianoSubtotali(valori, r.startRow + 1, colonnaGruppo, colonne, funzione, (v) => t('{} Totale', v), t('Totale complessivo'));
+    const prima = await this.istantaneaStruttura();
+    for (const riga of piano.inserisci) await this.applicaStruttura({ tipo: 'insert_rows', indice: riga, conta: 1 });
+    await doc.client.applyBatch(piano.celle.map((x) => ({ type: 'set' as const, sheet: foglio, row: x.riga, col: x.colonna, raw: x.raw })));
+    const dopo = await this.istantaneaStruttura();
+    doc.history.pushStep({ description: t('Subtotali'), undoAction: () => this.ripristinaIstantanea(prima), redoAction: () => this.ripristinaIstantanea(dopo) });
+    this.cellsCache.clear();
+    this.updateViewport();
+    this.requestUpdate();
+    return t('Subtotali aggiunti: {} gruppi', String(piano.inserisci.length - 1));
+  }
+  private strutturaFoglioProtetta(): boolean { return !!this.getDoc().protezione; }
+
+  /** Formato › Maiuscole e minuscole: cambia il testo delle celle di testo della selezione (le formule e i numeri restano), un passo di annulla. */
+  public async cambiaMaiuscole(modo: Exclude<ModoMaiuscole, 'giro'>): Promise<string> {
+    const doc = this.getDoc();
+    const foglio = doc.activeSheetName;
+    const r = doc.selection.range;
+    if ((r.endRow - r.startRow + 1) * (r.endCol - r.startCol + 1) > 100000) return t('Selezione troppo grande: al massimo 100.000 celle');
+    if (this.selezioneProtetta()) return t(MOTIVO_CELLA);
+    const changes: Array<{ sheet: string; row: number; col: number; oldRaw: string; newRaw: string }> = [];
+    for (let riga = r.startRow; riga <= r.endRow; riga++) {
+      for (let col = r.startCol; col <= r.endCol; col++) {
+        const c = await doc.client.getCell(foglio, riga, col);
+        if (c.raw === '' || c.raw.startsWith('=') || c.value.kind !== 'text') continue;
+        const nuovo = trasformaMaiuscole(c.raw, modo);
+        if (nuovo !== c.raw) changes.push({ sheet: foglio, row: riga, col, oldRaw: c.raw, newRaw: nuovo });
+      }
+    }
+    if (changes.length === 0) return t('Nessuna cella di testo da cambiare');
+    await doc.client.applyBatch(changes.map((x) => ({ type: 'set' as const, sheet: foglio, row: x.row, col: x.col, raw: x.newRaw })));
+    doc.history.pushStep({ description: t('Maiuscole e minuscole'), changes });
+    this.updateFormulaBarValue();
+    this.requestUpdate();
+    return changes.length === 1 ? t('1 cella cambiata') : t('{} celle cambiate', String(changes.length));
+  }
+
+  /** I testi delle celle della selezione come si vedono (con il formato), riga per riga, per leggerli ad alta voce (al massimo 2000). */
+  public async testiDaLeggere(): Promise<string[]> {
+    const doc = this.getDoc();
+    const r = doc.selection.range;
+    const out: string[] = [];
+    for (let riga = r.startRow; riga <= r.endRow && out.length < 2000; riga++) {
+      for (let col = r.startCol; col <= r.endCol && out.length < 2000; col++) {
+        const c = await doc.client.getCell(doc.activeSheetName, riga, col);
+        if (c.value.kind === 'empty') continue;
+        const st = resolveCellStyle(riga, col, doc.styles);
+        out.push(st.numFmt ? formatCellValue(c.value, st.numFmt) : formatDisplayValue(c.value).text);
+      }
+    }
+    return out;
+  }
+
+  /** Valuta formula: la formula della cella attiva (come la si scrive) e i suoi pezzi con il valore, dal più interno. */
+  public async passiValutazione(): Promise<{ cella: string; formula: string; passi: Array<{ testo: string; valore: string }> }> {
+    const doc = this.getDoc();
+    const a = doc.selection.anchor;
+    const cella = `${columnIndexToLetters(a.col)}${a.row}`;
+    const raw = (await doc.client.getCell(doc.activeSheetName, a.row, a.col)).raw;
+    if (!raw.startsWith('=') || formulaNascosta(doc, a.row, a.col)) return { cella, formula: formulaNascosta(doc, a.row, a.col) ? '' : raw, passi: [] };
+    const passi = await doc.client.valutaPassi(doc.activeSheetName, a.row, a.col, raw);
+    const testo = (v: CellValue | null): string => {
+      if (v === null) return '…';
+      if (v.kind === 'array') return `{${v.values.slice(0, 3).map((r) => r.slice(0, 6).map((x) => formatDisplayValue(x).text).join('; ')).join(' | ')}${v.values.length > 3 || (v.values[0]?.length ?? 0) > 6 ? ' …' : ''}}`;
+      return formatDisplayValue(v).text;
+    };
+    return { cella, formula: perInputUtente(raw), passi: passi.map((p) => ({ testo: perInputUtente(`=${p.testo}`).slice(1), valore: testo(p.valore) })) };
+  }
+
+  /** Finestra controllo: valore e formula delle celle date (anche di altri fogli). */
+  public async valoriOsservati(celle: Array<{ foglio: string; riga: number; colonna: number }>): Promise<Array<{ foglio: string; cella: string; valore: string; formula: string }>> {
+    const doc = this.getDoc();
+    const fogli = await doc.client.listSheets();
+    const out: Array<{ foglio: string; cella: string; valore: string; formula: string }> = [];
+    for (const c of celle) {
+      const cella = `${columnIndexToLetters(c.colonna)}${c.riga}`;
+      if (!fogli.includes(c.foglio)) { out.push({ foglio: c.foglio, cella, valore: '#RIF!', formula: '' }); continue; }
+      const d = await doc.client.getCell(c.foglio, c.riga, c.colonna);
+      out.push({ foglio: c.foglio, cella, valore: formatDisplayValue(d.value).text, formula: d.raw.startsWith('=') ? perInputUtente(d.raw) : '' });
+    }
+    return out;
+  }
+  /** La cella attiva con il suo foglio (per aggiungerla alla finestra controllo). */
+  public cellaAttivaConFoglio(): { foglio: string; riga: number; colonna: number } {
+    const doc = this.getDoc();
+    return { foglio: doc.activeSheetName, riga: doc.selection.anchor.row, colonna: doc.selection.anchor.col };
+  }
+
+  /** La cella attiva, per proporla nella finestra della ricerca obiettivo. */
+  public cellaAttiva(): string { return this.activeCellAddress.split(':')[0]; }
+
+  // ---- protezione del foglio e della cartella (vedi sheet/protezione.ts) ----
+  /** Un'operazione che la protezione non permette è appena stata fatta: la si annulla subito, senza poterla ripetere, e si avvisa. */
+  private respingendo = false;
+  private async respingi(motivo: string): Promise<void> {
+    if (this.respingendo) return;
+    this.respingendo = true;
+    try {
+      const doc = this.getDoc();
+      await this.undo();
+      doc.history.scartaUltimoRipeti();
+      this.avvisaStato(t(motivo));
+    } finally { this.respingendo = false; }
+  }
+  /** true (e avvisa) se la cella attiva, o una cella della selezione, non si può cambiare. */
+  private selezioneProtetta(): boolean {
+    const doc = this.getDoc();
+    if (!doc.protezione) return false;
+    const r = doc.selection.range;
+    if (intervalloProtetto(doc, doc.activeSheetName, r.startRow, r.startCol, r.endRow, r.endCol)) {
+      this.avvisaStato(t(MOTIVO_CELLA));
+      return true;
+    }
+    return false;
+  }
+  /** true (e avvisa) se la struttura della cartella è protetta. */
+  private strutturaProtetta(): boolean {
+    if (!this.getDoc().protezioneCartella) return false;
+    this.avvisaStato(t(MOTIVO_CARTELLA));
+    return true;
+  }
+  /** Lo stato della protezione del foglio attivo e della cartella (per i menu e le finestre). */
+  public statoProtezione(): { foglio: boolean; foglioConPassword: boolean; cartella: boolean; cartellaConPassword: boolean; nome: string } {
+    const doc = this.getDoc();
+    return { foglio: !!doc.protezione, foglioConPassword: !!doc.protezione?.impronte, cartella: !!doc.protezioneCartella, cartellaConPassword: !!doc.protezioneCartella?.impronte, nome: doc.activeSheetName };
+  }
+  /** Protegge il foglio attivo (password vuota: senza password). Non è un passo di annulla, come in Excel. */
+  public async proteggiFoglio(password: string): Promise<void> {
+    const doc = this.getDoc();
+    impostaProtezioneFoglio(doc, doc.activeSheetName, password === '' ? {} : { impronte: await impronteNuove(password) });
+    this.updateFormulaBarValue();
+    this.requestUpdate();
+  }
+  /** Toglie la protezione del foglio attivo: false se la password non è quella giusta. */
+  public async togliProtezioneFoglio(password: string): Promise<boolean> {
+    const doc = this.getDoc();
+    if (!doc.protezione) return true;
+    if (!(await verificaPassword(password, doc.protezione.impronte))) return false;
+    impostaProtezioneFoglio(doc, doc.activeSheetName, undefined);
+    this.updateFormulaBarValue();
+    this.requestUpdate();
+    return true;
+  }
+  public async proteggiCartella(password: string): Promise<void> {
+    const doc = this.getDoc();
+    doc.protezioneCartella = password === '' ? {} : { impronte: await impronteNuove(password) };
+    this.emitSheets();
+    this.requestUpdate();
+  }
+  public async togliProtezioneCartella(password: string): Promise<boolean> {
+    const doc = this.getDoc();
+    if (!doc.protezioneCartella) return true;
+    if (!(await verificaPassword(password, doc.protezioneCartella.impronte))) return false;
+    doc.protezioneCartella = undefined;
+    this.emitSheets();
+    this.requestUpdate();
+    return true;
   }
 
   private initDocument() {
@@ -839,7 +1153,8 @@ export class FreeSheetGrid extends LinguaElement {
     const doc = this.getDoc();
     const active = doc.selection.anchor;
     const cellData = await doc.client.getCell(doc.activeSheetName, active.row, active.col);
-    this.formulaBarValue = perInputUtente(cellData.raw);
+    // con il foglio protetto una formula nascosta non si mostra (come in Excel: la barra resta vuota)
+    this.formulaBarValue = formulaNascosta(doc, active.row, active.col) ? '' : perInputUtente(cellData.raw);
   }
 
   private handleEngineChanges(changes: CellChange[]) {
@@ -945,6 +1260,17 @@ export class FreeSheetGrid extends LinguaElement {
         if (colonneBloccate > 0) scrivi(da, 1, await doc.client.getRange(doc.activeSheetName, da, 1, a, colonneBloccate));
       }
       this.cellsCache = newMap;
+      if (this.mostraFormule) {
+        const formule = new Map<string, string>();
+        for (const [k, x] of newMap) {
+          if (x.value.kind === 'empty') continue;
+          const [rr, cc] = k.split(':').map(Number);
+          if (rr < v.startRow || rr > v.endRow) continue;
+          const raw = (await doc.client.getCell(doc.activeSheetName, rr, cc)).raw;
+          if (raw.startsWith('=')) formule.set(k, raw);
+        }
+        this.formuleMostrate = formule;
+      }
     } catch {
       // Ignora errori temporanei durante batch
     }
@@ -1521,6 +1847,7 @@ export class FreeSheetGrid extends LinguaElement {
     if (this.isEditing) return;
     const doc = this.getDoc();
     const active = doc.selection.anchor;
+    if (cellaProtetta(doc, doc.activeSheetName, active.row, active.col)) { this.avvisaStato(t(MOTIVO_CELLA)); return; }
     let raw = this.getCellData(active.row, active.col).raw;
 
     if (!replace) { // si legge sempre quello che è scritto davvero: la copia per la vista ha il valore calcolato, non la formula
@@ -1596,6 +1923,7 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   public async commitEdit() {
+    this.elencoCompletamento = null; // la colonna cambia: il completamento automatico rilegge i testi alla prossima modifica
     if (!this.isEditing) { this.editValue = daInputUtente(this.editValue); return; }
     this.isEditing = false;
     this.formulaRefHighlights = [];
@@ -1682,7 +2010,45 @@ export class FreeSheetGrid extends LinguaElement {
     this.editValue = val;
     this.formulaBarValue = val;
     this.parseFormulaHighlights(val);
+    // completamento automatico (come Excel): scrivendo un testo si propone il resto di un testo già presente nella colonna
+    const ie = e as InputEvent;
+    if (typeof ie.inputType === 'string' && ie.inputType.startsWith('insert') && !ie.isComposing) void this.completaDallaColonna(e.target as HTMLInputElement, val);
   };
+
+  /** I testi della colonna attorno alla cella in modifica (le celle piene attaccate sopra e sotto), presi una volta per ogni modifica. */
+  private elencoCompletamento: { chiave: string; voci: string[] } | null = null;
+  private async testiDellaColonna(): Promise<string[]> {
+    const doc = this.getDoc();
+    const a = doc.selection.anchor;
+    const chiave = `${doc.activeSheetName}:${a.row}:${a.col}`;
+    if (this.elencoCompletamento?.chiave === chiave) return this.elencoCompletamento.voci;
+    const da = Math.max(1, a.row - 2000), a2 = Math.min(MAX_ROWS, a.row + 2000);
+    const valori = await doc.client.getRange(doc.activeSheetName, da, a.col, a2, a.col);
+    const testo = (i: number): string | null => { const v = valori[i]?.[0]; return v && v.kind === 'text' && v.value !== '' ? v.value : null; };
+    const pieno = (i: number): boolean => { const v = valori[i]?.[0]; return !!v && v.kind !== 'empty' && !(v.kind === 'text' && v.value === ''); };
+    const voci: string[] = [];
+    const qui = a.row - da;
+    for (let i = qui - 1; i >= 0 && pieno(i); i--) { const t = testo(i); if (t !== null) voci.push(t); }
+    for (let i = qui + 1; i < valori.length && pieno(i); i++) { const t = testo(i); if (t !== null) voci.push(t); }
+    this.elencoCompletamento = { chiave, voci };
+    return voci;
+  }
+  private async completaDallaColonna(campo: HTMLInputElement, scritto: string): Promise<void> {
+    if (scritto === '' || scritto.startsWith('=') || /^[\d\s.,:+\-/%€$]*$/.test(scritto)) return;
+    if (campo.selectionStart !== scritto.length || campo.selectionEnd !== scritto.length) return;
+    const voci = await this.testiDellaColonna();
+    if (!this.isEditing || campo.value !== scritto) return; // nel frattempo si è scritto altro
+    const minuscolo = scritto.toLocaleLowerCase();
+    const adatte = [...new Set(voci.filter((v) => v.length > scritto.length && v.toLocaleLowerCase().startsWith(minuscolo)).map((v) => v.toLocaleLowerCase()))];
+    // come Excel: si propone solo se c'è un testo solo che comincia così
+    if (adatte.length !== 1) return;
+    const voce = voci.find((v) => v.toLocaleLowerCase() === adatte[0])!;
+    const completo = scritto + voce.slice(scritto.length);
+    campo.value = completo;
+    campo.setSelectionRange(scritto.length, completo.length);
+    this.editValue = completo;
+    this.formulaBarValue = completo;
+  }
 
   private handleFormulaBarInput = (e: Event) => {
     const val = (e.target as HTMLInputElement).value;
@@ -1901,9 +2267,17 @@ export class FreeSheetGrid extends LinguaElement {
       }
     }
 
+    // Ctrl+` (il tasto sotto Esc): Mostra formule, come in Excel
+    if (e.ctrlKey && !e.altKey && (e.code === 'Backquote' || e.key === '`')) {
+      e.preventDefault();
+      this.alternaMostraFormule();
+      return;
+    }
+
     // Delete / Backspace: cancellazione contenuto intervallo selezionato
     if (e.key === "Delete" || e.key === "Backspace") {
       e.preventDefault();
+      if (this.selezioneProtetta()) return;
       await this.clearSelection();
       return;
     }
@@ -2792,6 +3166,18 @@ export class FreeSheetGrid extends LinguaElement {
       case 'format-strike':
         this.applyFormat({ strike: !currentStyle.strike }, 'Barrato');
         break;
+      case 'cell-unlock':
+        this.applyFormat({ sbloccata: true }, t('Sblocca le celle'));
+        break;
+      case 'cell-lock':
+        this.applyFormat({ sbloccata: undefined }, t('Blocca le celle'));
+        break;
+      case 'cell-hide-formula':
+        this.applyFormat({ formulaNascosta: true }, t('Nascondi la formula'));
+        break;
+      case 'cell-show-formula':
+        this.applyFormat({ formulaNascosta: undefined }, t('Mostra la formula'));
+        break;
       case 'change-font':
         if (value) this.applyFormat({ fontFamily: value }, t("Carattere {}", value));
         break;
@@ -3431,6 +3817,200 @@ export class FreeSheetGrid extends LinguaElement {
     await this.operazioneStruttura(t("Elimina {} colonne", conta), { tipo: 'delete_cols', indice: sel.startCol, conta });
   }
 
+  /** Inserisci › Minigrafico: con i numeri selezionati (una riga o una colonna) scrive =SPARKLINE(...) nella cella libera subito dopo. */
+  public async inserisciMinigrafico(): Promise<string> {
+    const doc = this.getDoc();
+    const s = doc.selection.range;
+    if (s.startRow === s.endRow && s.startCol === s.endCol) return t("Seleziona i numeri del minigrafico (una riga o una colonna), poi Inserisci › Minigrafico");
+    const inRiga = s.startRow === s.endRow || (s.endCol - s.startCol >= s.endRow - s.startRow && s.startRow === s.endRow);
+    const verticale = !inRiga && s.startCol === s.endCol;
+    const r = verticale ? s.endRow + 1 : s.startRow, c = verticale ? s.startCol : s.endCol + 1;
+    if (r > MAX_ROWS || c > MAX_COLS) return t("Non c'è posto dopo la selezione per il minigrafico");
+    const intervallo = `${columnIndexToLetters(s.startCol)}${s.startRow}:${columnIndexToLetters(s.endCol)}${s.endRow}`;
+    const raw = `=SPARKLINE(${intervallo})`;
+    const vecchio = (await doc.client.getCell(doc.activeSheetName, r, c)).raw;
+    if (vecchio !== '' && typeof window.confirm === 'function' && !window.confirm(t("La cella {} non è vuota: sostituirla con il minigrafico?", `${columnIndexToLetters(c)}${r}`))) return t("Minigrafico non inserito");
+    const changes = [{ sheet: doc.activeSheetName, row: r, col: c, oldRaw: vecchio, newRaw: raw }];
+    const ops = [{ type: 'set' as const, sheet: doc.activeSheetName, row: r, col: c, raw }];
+    this.applicaConvalidaInBlocco(t("Minigrafico"), changes, ops);
+    if (ops.length === 0) return t("Minigrafico non inserito");
+    doc.history.pushStep({ description: 'Inserisci minigrafico', changes });
+    await doc.client.applyBatch(ops);
+    this.cellsCache.clear();
+    this.updateViewport();
+    this.requestUpdate();
+    return t("Minigrafico inserito in {}: {}", `${columnIndexToLetters(c)}${r}`, raw);
+  }
+
+  // ---- Riempi serie (Modifica › Riempi serie...): vedi sheet/serie.ts ----
+  /** Per la finestra: la direzione proposta (colonne se la selezione è più alta che larga) e se la cella di partenza è una data. */
+  public async propostaSerie(): Promise<{ direzione: 'colonne' | 'righe'; data: boolean }> {
+    const doc = this.getDoc();
+    const s = doc.selection.range;
+    const fmt = resolveCellStyle(s.startRow, s.startCol, doc.styles).numFmt ?? '';
+    return { direzione: s.endRow - s.startRow >= s.endCol - s.startCol ? 'colonne' : 'righe', data: /[dmy]/i.test(fmt.replace(/"[^"]*"|\[.]/g, '')) && !/^0|#/.test(fmt) };
+  }
+
+  /** Riempie la selezione con una serie: il primo valore di ogni colonna (o riga) è la partenza. Con una cella sola e il limite
+   *  la serie va avanti fino al limite. Il formato della cella di partenza passa alle altre. Un solo passo di annulla. */
+  public async riempiSerie(direzione: 'colonne' | 'righe', tipo: TipoSerie, unita: UnitaData, passoTesto: string, limiteTesto: string): Promise<{ ok: boolean; messaggio: string }> {
+    const doc = this.getDoc();
+    const numero = (x: string): number | null => {
+      const s = x.trim();
+      if (s === '') return null;
+      const n = Number(daInputUtente(s));
+      if (Number.isFinite(n) && /^[-+]?[\d.,]+(e[-+]?\d+)?$/i.test(s)) return n;
+      return testoADataSeriale(s);
+    };
+    const passo = numero(passoTesto);
+    if (passo === null) return { ok: false, messaggio: t("Il passo non è un numero") };
+    const limite = limiteTesto.trim() === '' ? undefined : numero(limiteTesto);
+    if (limite === null) return { ok: false, messaggio: t("Il valore limite non è un numero o una data") };
+    if (tipo === 'crescita' && passo <= 0) return { ok: false, messaggio: t("Per la crescita il passo deve essere maggiore di zero") };
+    if (tipo === 'data' && unita !== 'giorno' && !Number.isInteger(passo)) return { ok: false, messaggio: t("Per mesi, anni e giorni feriali il passo deve essere un numero intero") };
+    const p: ParametriSerie = { tipo, unita, passo, ...(limite !== undefined ? { limite } : {}) };
+    const s = doc.selection.range;
+    const colonne = direzione === 'colonne';
+    const unaSola = colonne ? s.startRow === s.endRow : s.startCol === s.endCol;
+    if (unaSola && limite === undefined) return { ok: false, messaggio: t("Seleziona le celle da riempire (la prima è quella di partenza) o scrivi il valore limite") };
+    const changes: Array<{ sheet: string; row: number; col: number; oldRaw: string; newRaw: string }> = [];
+    const ops: Array<{ type: 'set'; sheet: string; row: number; col: number; raw: string }> = [];
+    const stili: StyleChangeRecord[] = [];
+    let senzaNumero = 0;
+    const [daL, aL] = colonne ? [s.startCol, s.endCol] : [s.startRow, s.endRow];
+    for (let l = daL; l <= aL; l++) {
+      const r0 = colonne ? s.startRow : l, c0 = colonne ? l : s.startCol;
+      const v = (await doc.client.getCell(doc.activeSheetName, r0, c0)).value;
+      if (v.kind !== 'number') { senzaNumero++; continue; }
+      const quanti = unaSola ? CELLE_MASSIME_SERIE : (colonne ? s.endRow - s.startRow : s.endCol - s.startCol);
+      const valori = valoriSerie(v.value, Math.min(quanti, colonne ? MAX_ROWS - r0 : MAX_COLS - c0), p);
+      const stile = doc.styles.cellStyles.get(cellKey(r0, c0));
+      for (let k = 0; k < valori.length && ops.length < CELLE_MASSIME_SERIE; k++) {
+        const r = colonne ? r0 + k + 1 : r0, c = colonne ? c0 : c0 + k + 1;
+        const vecchio = (await doc.client.getCell(doc.activeSheetName, r, c)).raw;
+        const raw = String(valori[k]);
+        changes.push({ sheet: doc.activeSheetName, row: r, col: c, oldRaw: vecchio, newRaw: raw });
+        ops.push({ type: 'set', sheet: doc.activeSheetName, row: r, col: c, raw });
+        const kk = cellKey(r, c);
+        const prima = doc.styles.cellStyles.get(kk);
+        if (prima !== stile) {
+          if (stile === undefined) doc.styles.cellStyles.delete(kk); else doc.styles.cellStyles.set(kk, stile);
+          stili.push({ type: 'cell', target: kk, oldStyleId: prima, newStyleId: stile });
+        }
+      }
+    }
+    if (ops.length === 0) return { ok: false, messaggio: senzaNumero > 0 ? t("La cella di partenza deve contenere un numero o una data") : t("Nessuna cella da riempire: il limite è già raggiunto") };
+    this.applicaConvalidaInBlocco(t("Riempi serie"), changes, ops);
+    doc.history.pushStep({ description: 'Riempi serie', changes, styleChanges: stili.length > 0 ? stili : undefined });
+    await doc.client.applyBatch(ops);
+    this.cellsCache.clear();
+    this.updateViewport();
+    this.updateFormulaBarValue();
+    this.requestUpdate();
+    return { ok: true, messaggio: t("Serie: {} celle riempite", ops.length) };
+  }
+
+  // ---- Raggruppa e struttura (Dati › Raggruppa e struttura): vedi sheet/gruppi.ts ----
+  /** L'asse su cui lavorare: colonne se sono selezionate colonne intere, altrimenti righe. */
+  private asseGruppo(asse?: 'righe' | 'colonne'): 'righe' | 'colonne' {
+    const s = this.getDoc().selection;
+    return asse ?? (s.isFullCol && !s.isFullRow ? 'colonne' : 'righe');
+  }
+  private nomeIntervalloGruppo(asse: 'righe' | 'colonne', da: number, a: number): string {
+    const n = (i: number): string => (asse === 'righe' ? String(i) : columnIndexToLetters(i));
+    return da === a ? n(da) : `${n(da)}-${n(a)}`;
+  }
+  /** Raggruppa le righe (o colonne) selezionate: un livello in più, al massimo 7. */
+  public raggruppaSelezione(asse?: 'righe' | 'colonne'): string {
+    const doc = this.getDoc();
+    const ax = this.asseGruppo(asse);
+    const s = doc.selection.range;
+    const [da, a] = ax === 'righe' ? [s.startRow, s.endRow] : [s.startCol, s.endCol];
+    if (a - da + 1 > 100000) return t("Troppe righe o colonne da raggruppare (al massimo 100000)");
+    for (let i = da; i <= a; i++) if ((doc.gruppi?.[ax][i] ?? 0) >= LIVELLO_MASSIMO_GRUPPI) return t("La struttura ha già {} livelli: il massimo", LIVELLO_MASSIMO_GRUPPI);
+    this.conAnnulla(t("Raggruppa"), () => { doc.gruppi = raggruppaGruppi(doc.gruppi, ax, da, a); this.requestUpdate(); });
+    return ax === 'righe' ? t("Righe {} raggruppate", this.nomeIntervalloGruppo(ax, da, a)) : t("Colonne {} raggruppate", this.nomeIntervalloGruppo(ax, da, a));
+  }
+  /** Separa le righe (o colonne) selezionate: un livello in meno. */
+  public separaSelezione(asse?: 'righe' | 'colonne'): string {
+    const doc = this.getDoc();
+    const ax = this.asseGruppo(asse);
+    const s = doc.selection.range;
+    const [da, a] = ax === 'righe' ? [s.startRow, s.endRow] : [s.startCol, s.endCol];
+    const nuovi = separaGruppi(doc.gruppi, ax, da, a);
+    if (!nuovi) return ax === 'righe' ? t("Nessuna riga raggruppata nella selezione") : t("Nessuna colonna raggruppata nella selezione");
+    this.conAnnulla(t("Separa"), () => { doc.gruppi = copiaGruppi(nuovi); this.requestUpdate(); });
+    return ax === 'righe' ? t("Righe {} separate", this.nomeIntervalloGruppo(ax, da, a)) : t("Colonne {} separate", this.nomeIntervalloGruppo(ax, da, a));
+  }
+  /** Il gruppo della cella attiva (prima le righe, poi le colonne). */
+  private gruppoAttivo(): { asse: 'righe' | 'colonne'; da: number; a: number; livello: number } | null {
+    const doc = this.getDoc();
+    const c = doc.selection.anchor;
+    const r = gruppoDi(doc.gruppi, 'righe', c.row);
+    if (r) return { asse: 'righe', ...r };
+    const k = gruppoDi(doc.gruppi, 'colonne', c.col);
+    return k ? { asse: 'colonne', ...k } : null;
+  }
+  /** Comprime (nasconde) o espande (mostra) un gruppo di righe o colonne. */
+  private impostaGruppoCompresso(asse: 'righe' | 'colonne', da: number, a: number, compresso: boolean): void {
+    const doc = this.getDoc();
+    this.conAnnulla(compresso ? t("Comprimi il gruppo") : t("Espandi il gruppo"), () => {
+      const insieme = asse === 'righe' ? (doc.hiddenRows ??= new Set<number>()) : (doc.hiddenCols ??= new Set<number>());
+      for (let i = da; i <= a; i++) { if (compresso) insieme.add(i); else insieme.delete(i); }
+      this.cellsCache.clear();
+      this.updateViewport();
+      this.requestUpdate();
+    });
+  }
+  public comprimiGruppo(): string {
+    const g = this.gruppoAttivo();
+    if (!g) return t("La cella attiva non è in un gruppo");
+    this.impostaGruppoCompresso(g.asse, g.da, g.a, true);
+    return t("Gruppo {} compresso", this.nomeIntervalloGruppo(g.asse, g.da, g.a));
+  }
+  public espandiGruppo(): string {
+    const doc = this.getDoc();
+    // la cella attiva può essere dentro il gruppo nascosto o sulla riga (colonna) del riepilogo subito dopo
+    const c = doc.selection.anchor;
+    const g = this.gruppoAttivo()
+      ?? (gruppoDi(doc.gruppi, 'righe', c.row - 1) ? { asse: 'righe' as const, ...gruppoDi(doc.gruppi, 'righe', c.row - 1)! } : null)
+      ?? (gruppoDi(doc.gruppi, 'colonne', c.col - 1) ? { asse: 'colonne' as const, ...gruppoDi(doc.gruppi, 'colonne', c.col - 1)! } : null);
+    if (!g) return t("La cella attiva non è in un gruppo");
+    this.impostaGruppoCompresso(g.asse, g.da, g.a, false);
+    return t("Gruppo {} espanso", this.nomeIntervalloGruppo(g.asse, g.da, g.a));
+  }
+  /** Il pulsante +/− nell'intestazione della riga (o colonna) subito dopo un gruppo. */
+  private alternaGruppo(asse: 'righe' | 'colonne', i: number): void {
+    const doc = this.getDoc();
+    const g = gruppoDi(doc.gruppi, asse, i);
+    if (!g) return;
+    const nascoste = asse === 'righe' ? doc.hiddenRows : doc.hiddenCols;
+    this.impostaGruppoCompresso(asse, g.da, g.a, !(nascoste?.has(g.da) ?? false));
+  }
+  /** Lo stato del pulsante del gruppo che finisce subito prima della riga (o colonna) i: null se lì non finisce un gruppo. */
+  private pulsanteGruppo(asse: 'righe' | 'colonne', i: number): { compresso: boolean } | null {
+    const doc = this.getDoc();
+    const prima = doc.gruppi?.[asse][i - 1] ?? 0;
+    if (!prima || (doc.gruppi?.[asse][i] ?? 0) >= prima) return null;
+    const g = gruppoDi(doc.gruppi, asse, i - 1)!;
+    const nascoste = asse === 'righe' ? doc.hiddenRows : doc.hiddenCols;
+    return { compresso: nascoste?.has(g.da) ?? false };
+  }
+  /** Cancella la struttura del foglio: niente più gruppi, e le righe e colonne dei gruppi tornano visibili. */
+  public cancellaStruttura(): string {
+    const doc = this.getDoc();
+    if (!doc.gruppi) return t("Il foglio non ha una struttura");
+    this.conAnnulla(t("Cancella la struttura"), () => {
+      for (const k of Object.keys(doc.gruppi?.righe ?? {})) doc.hiddenRows?.delete(Number(k));
+      for (const k of Object.keys(doc.gruppi?.colonne ?? {})) doc.hiddenCols?.delete(Number(k));
+      doc.gruppi = undefined;
+      this.cellsCache.clear();
+      this.updateViewport();
+      this.requestUpdate();
+    });
+    return t("Struttura cancellata");
+  }
+
   public hideRow(r: number) { this.conAnnulla('Nascondi riga', () => this.hideRowImpl(r)); }
   private hideRowImpl(r: number) {
     const doc = this.getDoc();
@@ -3720,7 +4300,8 @@ export class FreeSheetGrid extends LinguaElement {
     const doc = this.getDoc();
     this.sheetList = await doc.client.listSheets();
     if (!this.sheetList.includes(doc.activeSheetName) && this.sheetList.length > 0) {
-      doc.activeSheetName = this.sheetList[0];
+      // il primo foglio visibile (un foglio nascosto non diventa mai quello attivo)
+      doc.activeSheetName = this.sheetList.find((n) => !nascostoDi(doc, n)) ?? this.sheetList[0];
     }
     this.requestUpdate();
     this.emitSheets();
@@ -3731,7 +4312,55 @@ export class FreeSheetGrid extends LinguaElement {
     const doc = this.getDoc();
     const colori: Record<string, string> = {};
     for (const nome of this.sheetList) { const c = coloreSchedaDi(doc, nome); if (c) colori[nome] = c; }
-    this.dispatchEvent(new CustomEvent('sheets-changed', { detail: { fogli: [...this.sheetList], attivo: doc.activeSheetName, colori }, bubbles: true, composed: true }));
+    // le schede mostrano solo i fogli visibili; i nascosti si rimostrano dal menu della scheda
+    const fogli = this.sheetList.filter((n) => !nascostoDi(doc, n));
+    const nascosti = this.sheetList.filter((n) => nascostoDi(doc, n));
+    this.dispatchEvent(new CustomEvent('sheets-changed', { detail: { fogli, nascosti, attivo: doc.activeSheetName, colori }, bubbles: true, composed: true }));
+  }
+
+  /** I fogli nascosti, nell'ordine della cartella. */
+  public fogliNascosti(): string[] {
+    const doc = this.getDoc();
+    return this.sheetList.filter((n) => nascostoDi(doc, n));
+  }
+
+  /** Nasconde un foglio (come Excel e Calc): deve restarne almeno uno visibile; se è quello attivo si passa al foglio visibile vicino. */
+  public async nascondiFoglio(nome: string): Promise<string> {
+    if (this.strutturaProtetta()) return t(MOTIVO_CARTELLA);
+    const doc = this.getDoc();
+    const visibili = this.sheetList.filter((n) => !nascostoDi(doc, n));
+    if (!visibili.includes(nome)) return '';
+    if (visibili.length <= 1) return t("Una cartella deve avere almeno un foglio visibile: il foglio non si può nascondere");
+    const applica = async (nascondi: boolean): Promise<void> => {
+      if (nascondi && doc.activeSheetName === nome) {
+        const i = visibili.indexOf(nome);
+        await this.switchSheet(visibili[i + 1] ?? visibili[i - 1]);
+      }
+      impostaNascosto(doc, nome, nascondi);
+      if (!nascondi) await this.switchSheet(nome);
+      this.emitSheets();
+      this.requestUpdate();
+    };
+    await applica(true);
+    doc.history.pushStep({ description: 'Nascondi foglio', sheet: '', undoAction: async () => applica(false), redoAction: async () => applica(true) });
+    return t("Foglio «{}» nascosto: si rimostra dal menu della scheda (tasto destro › Mostra)", nome);
+  }
+
+  /** Rimostra un foglio nascosto e ci va. */
+  public async mostraFoglio(nome: string): Promise<string> {
+    if (this.strutturaProtetta()) return t(MOTIVO_CARTELLA);
+    const doc = this.getDoc();
+    if (!nascostoDi(doc, nome)) return '';
+    const daDove = doc.activeSheetName;
+    const applica = async (mostra: boolean): Promise<void> => {
+      if (mostra) { impostaNascosto(doc, nome, false); await this.switchSheet(nome); }
+      else { if (doc.activeSheetName === nome) await this.switchSheet(daDove); impostaNascosto(doc, nome, true); }
+      this.emitSheets();
+      this.requestUpdate();
+    };
+    await applica(true);
+    doc.history.pushStep({ description: 'Mostra foglio', sheet: '', undoAction: async () => applica(false), redoAction: async () => applica(true) });
+    return t("Foglio «{}» di nuovo visibile", nome);
   }
 
   /** Dopo che il contenuto del documento è stato sostituito (Apri, Nuovo, Ripristina): rilegge fogli, selezione e cache. */
@@ -3766,6 +4395,7 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   public async handleAddSheet(name?: string) {
+    if (this.strutturaProtetta()) return;
     const doc = this.getDoc();
     const newName = name || `Foglio${this.sheetList.length + 1}`;
     await doc.client.addSheet(newName);
@@ -3784,6 +4414,7 @@ export class FreeSheetGrid extends LinguaElement {
 
   /** Dà un colore alla scheda di un foglio (stringa vuota = nessun colore). Si annulla e si ripete. */
   public impostaColoreSchedaFoglio(nome: string, colore: string): void {
+    if (this.strutturaProtetta()) return;
     const doc = this.getDoc();
     const nuovo = /^#[0-9a-fA-F]{6}$/.test(colore) ? colore.toLowerCase() : undefined;
     const prima = coloreSchedaDi(doc, nome);
@@ -3825,6 +4456,7 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   public async reorderSheet(fromIndex: number, toIndex: number): Promise<boolean> {
+    if (this.strutturaProtetta()) return false;
     const doc = this.getDoc();
     const res = await doc.client.moveSheet(fromIndex, toIndex);
     if (res) {
@@ -4070,6 +4702,7 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   public async renameCurrentSheet(newName: string) {
+    if (this.strutturaProtetta()) return;
     const doc = this.getDoc();
     const cleanName = newName.trim();
     if (!cleanName || cleanName === doc.activeSheetName || this.sheetList.includes(cleanName)) return;
@@ -4083,8 +4716,11 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   public async deleteCurrentSheet() {
+    if (this.strutturaProtetta()) return;
     const doc = this.getDoc();
     if (this.sheetList.length <= 1) return;
+    // deve restare almeno un foglio visibile
+    if (this.sheetList.filter((n) => !nascostoDi(doc, n)).length <= 1) { this.avvisaStato(t("Una cartella deve avere almeno un foglio visibile: prima mostra un foglio nascosto")); return; }
     const toRemove = doc.activeSheetName;
     // l'eliminazione di un foglio con dati chiede conferma (si può comunque annullare subito dopo)
     const stato = JSON.parse((await doc.client.serialize()) as string) as { sheets: Array<{ name: string; cells: Record<string, string> }> };
@@ -4166,6 +4802,7 @@ export class FreeSheetGrid extends LinguaElement {
 
   /** Duplica il foglio attivo con TUTTE le sue celle (non solo quelle in un'area fissa). Il nome è "Copia di X", reso unico se esiste già. */
   public async duplicateCurrentSheet() {
+    if (this.strutturaProtetta()) return;
     const doc = this.getDoc();
     const origine = doc.activeSheetName;
     const esistenti = new Set((await doc.client.listSheets()).map((n) => n.toLowerCase()));
@@ -4504,6 +5141,205 @@ export class FreeSheetGrid extends LinguaElement {
       this.updateViewport();
       this.requestUpdate();
     }
+  }
+
+  // ---- Dati › Rimuovi duplicati e Dati › Testo in colonne (lotto 2 del piano delle funzioni, scritti per pmb_office) ----
+
+  /** L'area su cui lavorano Rimuovi duplicati e Testo in colonne: la selezione, o il blocco di dati attorno alla cella attiva. */
+  public areaDatiSelezionata(): AreaFiltro | null {
+    return this.areaPerNuovoFiltro() ?? null;
+  }
+
+  /** Il testo che si vede in una cella, come lo scrive l'utente (formule: il risultato). */
+  private testoCella(cell: { raw: string; value: CellValue }): string {
+    if (cell.raw.startsWith('=')) return formatDisplayValue(cell.value).text;
+    return perInputUtente(cell.raw);
+  }
+
+  /** Per la finestra Rimuovi duplicati: l'area e il testo della sua prima riga (le intestazioni, se ci sono). */
+  public async preparaDuplicati(): Promise<{ area: AreaFiltro; intestazioni: string[] } | { errore: string }> {
+    const doc = this.getDoc();
+    const area = this.areaDatiSelezionata();
+    if (!area) return { errore: t("Seleziona i dati in cui cercare i duplicati") };
+    if (area.endRow <= area.startRow) return { errore: t("Servono almeno due righe per cercare i duplicati") };
+    const intestazioni: string[] = [];
+    for (let c = area.startCol; c <= area.endCol; c++) intestazioni.push(this.testoCella(await doc.client.getCell(doc.activeSheetName, area.startRow, c)));
+    return { area, intestazioni };
+  }
+
+  /**
+   * Toglie dall'area le righe che nelle colonne scelte ripetono una riga precedente; le righe che restano salgono con valori, formati e formule.
+   * Con l'intestazione la prima riga non si tocca. Un solo passo di Annulla.
+   */
+  public async rimuoviDuplicati(area: AreaFiltro, colonne: readonly number[], conIntestazione: boolean): Promise<{ tolte: number; restano: number }> {
+    const doc = this.getDoc();
+    const foglio = doc.activeSheetName;
+    const prima = conIntestazione ? area.startRow + 1 : area.startRow;
+    const scelte = colonne.filter((c) => c >= area.startCol && c <= area.endCol);
+    if (prima > area.endRow || scelte.length === 0) return { tolte: 0, restano: Math.max(0, area.endRow - prima + 1) };
+    const celle = new Map<string, { raw: string; value: CellValue }>();
+    for (let r = prima; r <= area.endRow; r++) for (let c = area.startCol; c <= area.endCol; c++) {
+      const x = await doc.client.getCell(foglio, r, c);
+      celle.set(cellKey(r, c), { raw: x.raw, value: x.value });
+    }
+    const righe: number[] = [];
+    for (let r = prima; r <= area.endRow; r++) righe.push(r);
+    const esito = trovaDuplicati(righe, (r) => chiaveRiga(scelte.map((c) => celle.get(cellKey(r, c))?.value)));
+    if (esito.tolte.length === 0) return { tolte: 0, restano: righe.length };
+    const { spostamenti, daSvuotare } = compatta(prima, area.endRow, esito.tenute);
+    const mappa = new Map(spostamenti.map((m) => [m.da, m.a] as [number, number]));
+    const stiliPrima = new Map<string, number | undefined>();
+    for (let r = prima; r <= area.endRow; r++) for (let c = area.startCol; c <= area.endCol; c++) stiliPrima.set(cellKey(r, c), doc.styles.cellStyles.get(cellKey(r, c)));
+    const changes: Array<{ sheet: string; row: number; col: number; oldRaw: string; newRaw: string }> = [];
+    const styleChanges: StyleChangeRecord[] = [];
+    const ops: Array<{ type: 'set'; sheet: string; row: number; col: number; raw: string }> = [];
+    const scrivi = (r: number, c: number, raw: string, stile: number | undefined): void => {
+      const k = cellKey(r, c);
+      const vecchio = celle.get(k)?.raw ?? '';
+      if (vecchio !== raw) { changes.push({ sheet: foglio, row: r, col: c, oldRaw: vecchio, newRaw: raw }); ops.push({ type: 'set', sheet: foglio, row: r, col: c, raw }); }
+      const idVecchio = stiliPrima.get(k);
+      if (idVecchio !== stile) {
+        if (stile === undefined) doc.styles.cellStyles.delete(k); else doc.styles.cellStyles.set(k, stile);
+        styleChanges.push({ type: 'cell', target: k, oldStyleId: idVecchio, newStyleId: stile });
+      }
+    };
+    for (const m of spostamenti) {
+      if (m.da === m.a) continue;
+      for (let c = area.startCol; c <= area.endCol; c++) {
+        const src = celle.get(cellKey(m.da, c))?.raw ?? '';
+        scrivi(m.a, c, src.startsWith('=') ? rewriteFormulaOnSort(src, m.da, m.a, mappa) : src, stiliPrima.get(cellKey(m.da, c)));
+      }
+    }
+    for (const r of daSvuotare) for (let c = area.startCol; c <= area.endCol; c++) scrivi(r, c, '', undefined);
+    doc.history.pushStep({ description: t("Rimuovi duplicati"), changes, ...(styleChanges.length > 0 ? { styleChanges } : {}) });
+    if (ops.length > 0) await doc.client.applyBatch(ops);
+    this.cellsCache.clear();
+    this.updateViewport();
+    this.requestUpdate();
+    this.ultimoAvviso = Date.now();
+    return { tolte: esito.tolte.length, restano: esito.tenute.length };
+  }
+
+  /** Per la finestra Testo in colonne: l'area (una sola colonna) e il testo delle sue celle. */
+  public async preparaTestoInColonne(): Promise<{ area: AreaFiltro; testi: string[] } | { errore: string }> {
+    const doc = this.getDoc();
+    const area = this.areaDatiSelezionata();
+    if (!area) return { errore: t("Seleziona le celle con il testo da dividere") };
+    if (area.endCol !== area.startCol) return { errore: t("Testo in colonne lavora su una colonna alla volta: seleziona una sola colonna") };
+    const testi: string[] = [];
+    for (let r = area.startRow; r <= area.endRow; r++) testi.push(this.testoCella(await doc.client.getCell(doc.activeSheetName, r, area.startCol)));
+    return { area, testi };
+  }
+
+  /** Quante celle piene a destra della colonna verrebbero sostituite dividendo i testi così. */
+  public async celleSovrascritte(area: AreaFiltro, divise: readonly string[][]): Promise<number> {
+    const doc = this.getDoc();
+    let n = 0;
+    for (let i = 0; i < divise.length; i++) {
+      for (let k = 1; k < divise[i].length; k++) {
+        const x = await doc.client.getCell(doc.activeSheetName, area.startRow + i, area.startCol + k);
+        if (x.raw !== '') n++;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * Divide i testi della colonna nelle celle a destra. Ogni pezzo si legge come se l'utente lo scrivesse nella cella
+   * (numeri all'italiana, date, percentuali). Un solo passo di Annulla. Restituisce righe e colonne toccate.
+   */
+  public async testoInColonne(area: AreaFiltro, opz: OpzioniDivisione): Promise<{ righe: number; colonne: number }> {
+    const doc = this.getDoc();
+    const foglio = doc.activeSheetName;
+    const testi: string[] = [];
+    for (let r = area.startRow; r <= area.endRow; r++) testi.push(this.testoCella(await doc.client.getCell(foglio, r, area.startCol)));
+    const divise = dividiRighe(testi, opz);
+    const changes: Array<{ sheet: string; row: number; col: number; oldRaw: string; newRaw: string }> = [];
+    const styleChanges: StyleChangeRecord[] = [];
+    const ops: Array<{ type: 'set'; sheet: string; row: number; col: number; raw: string }> = [];
+    let toccate = 0;
+    for (let i = 0; i < divise.length; i++) {
+      const r = area.startRow + i;
+      const pezzi = divise[i];
+      if (pezzi.length === 1 && pezzi[0] === testi[i]) continue; // niente da dividere
+      toccate++;
+      for (let k = 0; k < pezzi.length; k++) {
+        const c = area.startCol + k;
+        const vecchio = (await doc.client.getCell(foglio, r, c)).raw;
+        const interp: { raw: string; formato?: string } = pezzi[k] === '' ? { raw: '' } : this.interpretaPerCella(pezzi[k], r, c);
+        if (vecchio !== interp.raw) { changes.push({ sheet: foglio, row: r, col: c, oldRaw: vecchio, newRaw: interp.raw }); ops.push({ type: 'set', sheet: foglio, row: r, col: c, raw: interp.raw }); }
+        if (interp.formato) styleChanges.push(this.formatoDaInput(r, c, interp.formato));
+      }
+    }
+    if (changes.length === 0 && styleChanges.length === 0) return { righe: 0, colonne: 0 };
+    doc.history.pushStep({ description: t("Testo in colonne"), changes, ...(styleChanges.length > 0 ? { styleChanges } : {}) });
+    if (ops.length > 0) await doc.client.applyBatch(ops);
+    this.cellsCache.clear();
+    this.updateViewport();
+    this.requestUpdate();
+    this.ultimoAvviso = Date.now();
+    return { righe: toccate, colonne: colonneNecessarie(divise) };
+  }
+
+  // ---- impostazione di pagina (File › Imposta pagina, area di stampa, interruzioni): lotto 3, scritto per pmb_office ----
+
+  /** L'impostazione di pagina del foglio attivo (una copia). */
+  public paginaAttiva(): ImpostaPagina {
+    return copiaPagina(this.getDoc().impostaPagina ?? paginaPredefinita());
+  }
+
+  /** Cambia l'impostazione di pagina del foglio attivo. Si può annullare. */
+  public impostaPaginaAttiva(p: ImpostaPagina, descrizione = t("Imposta pagina")): void {
+    const doc = this.getDoc();
+    this.conAnnulla(descrizione, () => impostaPaginaFoglio(doc, doc.activeSheetName, p));
+    // il messaggio che il guscio mostra non va coperto subito dalle statistiche della selezione
+    this.ultimoAvviso = Date.now();
+    this.requestUpdate();
+  }
+
+  /** File › Area di stampa › Imposta area di stampa: la selezione diventa l'area di stampa del foglio. Restituisce il messaggio per la barra di stato. */
+  public impostaAreaStampaDallaSelezione(): string {
+    const doc = this.getDoc();
+    const sel = doc.selection;
+    if (sel.isAll) { this.cancellaAreaStampa(); return t("Area di stampa: tutto il foglio"); }
+    const R = sel.range;
+    const area = { startRow: R.startRow, endRow: R.endRow, startCol: R.startCol, endCol: R.endCol };
+    this.impostaPaginaAttiva({ ...this.paginaAttiva(), area }, t("Imposta area di stampa"));
+    return t("Area di stampa: {}", scriviAreaStampa(area));
+  }
+
+  /** File › Area di stampa › Cancella area di stampa: si torna a stampare tutto ciò che il foglio usa. */
+  public cancellaAreaStampa(): string {
+    const p = this.paginaAttiva();
+    delete p.area;
+    this.impostaPaginaAttiva(p, t("Cancella area di stampa"));
+    return t("Area di stampa tolta: si stampa tutto il foglio");
+  }
+
+  /** Inserisci › Interruzione di pagina: sopra la riga attiva (o a sinistra della colonna attiva); se c'è già, si toglie. */
+  public alternaInterruzionePagina(dove: 'riga' | 'colonna'): string {
+    const doc = this.getDoc();
+    const a = doc.selection.anchor;
+    const n = dove === 'riga' ? a.row : a.col;
+    if (n < 2) return dove === 'riga' ? t("Sopra la riga 1 non si può mettere un'interruzione di pagina") : t("A sinistra della colonna A non si può mettere un'interruzione di pagina");
+    const p = this.paginaAttiva();
+    const prima = dove === 'riga' ? p.interruzioniRighe : p.interruzioniColonne;
+    const dopo = alternaInterruzione(prima, n);
+    const messa = dopo.length > prima.length;
+    if (dove === 'riga') p.interruzioniRighe = dopo; else p.interruzioniColonne = dopo;
+    this.impostaPaginaAttiva(p, messa ? t("Inserisci interruzione di pagina") : t("Togli interruzione di pagina"));
+    if (dove === 'riga') return messa ? t("Interruzione di pagina sopra la riga {}", n) : t("Tolta l'interruzione di pagina sopra la riga {}", n);
+    return messa ? t("Interruzione di pagina a sinistra della colonna {}", columnIndexToLetters(n)) : t("Tolta l'interruzione di pagina a sinistra della colonna {}", columnIndexToLetters(n));
+  }
+
+  /** Toglie tutte le interruzioni di pagina a mano del foglio attivo. */
+  public togliInterruzioniPagina(): string {
+    const p = this.paginaAttiva();
+    if (p.interruzioniRighe.length + p.interruzioniColonne.length === 0) return t("Il foglio non ha interruzioni di pagina a mano");
+    p.interruzioniRighe = [];
+    p.interruzioniColonne = [];
+    this.impostaPaginaAttiva(p, t("Togli le interruzioni di pagina"));
+    return t("Interruzioni di pagina tolte");
   }
 
   public sortAsc() {
@@ -5134,6 +5970,8 @@ export class FreeSheetGrid extends LinguaElement {
           <div class="sheet-menu-item" @click=${() => { this.handlePromptRenameSheet(sheetName || ''); this.closeContextMenu(); }}>Rinomina</div>
           <div class="sheet-menu-item" @click=${() => { this.duplicateCurrentSheet(); this.closeContextMenu(); }}>Duplica</div>
           <div class="sheet-menu-item" @click=${() => { this.deleteCurrentSheet(); this.closeContextMenu(); }}>Elimina</div>
+          <div class="sheet-menu-item" data-azione="nascondi-foglio" @click=${() => { const n = sheetName || this.getDoc().activeSheetName; this.closeContextMenu(); void this.nascondiFoglio(n).then((m) => { if (m) this.avvisaStato(m); this.focusGriglia(); }); }}>Nascondi</div>
+          ${this.fogliNascosti().map((n) => html`<div class="sheet-menu-item" data-azione="mostra-foglio" data-foglio=${n} @click=${() => { this.closeContextMenu(); void this.mostraFoglio(n).then((m) => { if (m) this.avvisaStato(m); this.focusGriglia(); }); }}>${t("Mostra «{}»", n)}</div>`)}
           <div class="sheet-menu-separator"></div>
           <div class="colori-scheda" role="group" aria-label="Colore della scheda">
             ${COLORI_SCHEDA.map((c) => html`<span class="campione-colore" role="button" tabindex="0" title="Colore scheda ${t(c.nome)}" aria-label="Colore scheda ${t(c.nome)}" style=${styleMap({ backgroundColor: c.valore })}
@@ -5154,6 +5992,9 @@ export class FreeSheetGrid extends LinguaElement {
     const zoomFactor = this.zoom / 100;
     const zF = zoomFactor;
     const headerHeight = this.altezzaIntestazione;
+    // interruzioni di pagina a mano: una linea tratteggiata sopra la riga o a sinistra della colonna che comincia la pagina
+    const interruzioniR = new Set(doc.impostaPagina?.interruzioniRighe ?? []);
+    const interruzioniC = new Set(doc.impostaPagina?.interruzioniColonne ?? []);
 
     // il foglio del motore: serve a sapere se una cella è una formula (la copia delle celle disegnate ha solo i valori)
     const foglioDisegno = doc.client instanceof InlineEngineClient ? doc.client.getWorkbookInternal().getSheet(doc.activeSheetName) : undefined;
@@ -5293,6 +6134,11 @@ export class FreeSheetGrid extends LinguaElement {
                         @contextmenu=${(e: MouseEvent) => this.handleColContextMenu(c, e)}
                       >
                         ${columnIndexToLetters(c)}
+                        ${(doc.gruppi?.colonne[c] ?? 0) > 0 ? html`<span class="segno-gruppo colonna" style=${styleMap({ height: `${Math.min(7, doc.gruppi!.colonne[c]) * 2}px` })}></span>` : ''}
+                        ${this.pulsanteGruppo('colonne', c) ? html`<span class="pulsante-gruppo" role="button"
+                            title=${this.pulsanteGruppo('colonne', c)!.compresso ? t("Espandi il gruppo") : t("Comprimi il gruppo")}
+                            @mousedown=${(e: MouseEvent) => e.stopPropagation()}
+                            @click=${(e: MouseEvent) => { e.stopPropagation(); this.alternaGruppo('colonne', c - 1); }}>${this.pulsanteGruppo('colonne', c)!.compresso ? '+' : '−'}</span>` : ''}
                         ${doc.isFilterActive && (!doc.filterArea || (c >= doc.filterArea.startCol && c <= doc.filterArea.endCol)) ? html`
                           <span
                             class="col-filter-btn ${doc.activeFilters.has(c) ? 'active' : ''}"
@@ -5324,6 +6170,11 @@ export class FreeSheetGrid extends LinguaElement {
                         @contextmenu=${(e: MouseEvent) => this.handleRowContextMenu(r, e)}
                       >
                         ${r}
+                        ${(doc.gruppi?.righe[r] ?? 0) > 0 ? html`<span class="segno-gruppo riga" style=${styleMap({ width: `${Math.min(7, doc.gruppi!.righe[r]) * 2}px` })}></span>` : ''}
+                        ${this.pulsanteGruppo('righe', r) ? html`<span class="pulsante-gruppo" role="button"
+                            title=${this.pulsanteGruppo('righe', r)!.compresso ? t("Espandi il gruppo") : t("Comprimi il gruppo")}
+                            @mousedown=${(e: MouseEvent) => e.stopPropagation()}
+                            @click=${(e: MouseEvent) => { e.stopPropagation(); this.alternaGruppo('righe', r - 1); }}>${this.pulsanteGruppo('righe', r)!.compresso ? '+' : '−'}</span>` : ''}
                         <div
                           class="row-resizer"
                           @mousedown=${(e: MouseEvent) => this.handleRowResizerMouseDown(r, e)}
@@ -5337,7 +6188,10 @@ export class FreeSheetGrid extends LinguaElement {
                         const disp = formatDisplayValue(cellData.value);
                         const cellStyle = resolveCellStyle(r, c, doc.styles);
 
-                        const formattedText = cellStyle.numFmt
+                        const formula = this.mostraFormule && !(doc.protezione && cellStyle.formulaNascosta) ? this.formuleMostrate.get(`${r}:${c}`) : undefined;
+                        // minigrafico (SPARKLINE): il motore dà «SPARKLINE:tipo:valori», qui si disegna
+                        const minigrafico = formula === undefined && cellData.value.kind === 'text' ? leggiMinigrafico(cellData.value.value) : null;
+                        const formattedText = minigrafico ? t("Minigrafico") : formula !== undefined ? perInputUtente(formula) : cellStyle.numFmt
                           ? formatCellValue(cellData.value, cellStyle.numFmt)
                           : disp.text;
 
@@ -5395,7 +6249,7 @@ export class FreeSheetGrid extends LinguaElement {
                         const effectiveColor = condStyle?.textColor || coloreDelNumero || (cellStyle.link && (!cellStyle.color || cellStyle.color === 'auto') ? COLORE_LINK : resolveEffectiveTextColor(cellStyle.color, effectiveBg));
                         const effectiveBold = condStyle?.bold !== undefined ? condStyle.bold : cellStyle.bold;
 
-                        const lasciaSpazio = cellData.value.kind === 'text' && cellData.value.value !== '' && !cellStyle.wrap && (cellStyle.hAlign || 'left') === 'left'
+                        const lasciaSpazio = !minigrafico && cellData.value.kind === 'text' && cellData.value.value !== '' && !cellStyle.wrap && (cellStyle.hAlign || 'left') === 'left'
                           && !isChk && colSpan === 1 && !(isAct && this.isEditing);
                         const extraPx = lasciaSpazio ? this.spazioLiberoADestra(r, c, cols[cols.length - 1] ?? c, zoomFactor) : 0;
                         const larghezzaTesto = getColWidth(c, this.larghezzeEffettive()) * zoomFactor + extraPx - 8;
@@ -5407,7 +6261,7 @@ export class FreeSheetGrid extends LinguaElement {
                             aria-selected="${isSel ? "true" : "false"}"
                             aria-label="${columnIndexToLetters(c)}${r}${formattedText ? ": " + formattedText : ""}"
                             @contextmenu=${(e: MouseEvent) => this.handleCellContextMenu(r, c, e)}
-                            class="sheet-cell ${r === fr && fr > 0 ? "congela-fondo" : ""} ${c === fc && fc > 0 ? "congela-lato" : ""} ${isAct ? "active" : ""} ${extraPx > 0 ? "trabocca" : ""} ${isSel ? "selected" : ""} ${disp.isError ? "cell-error" : ""} ${commentoCella ? "has-comment" : ""}"
+                            class="sheet-cell ${interruzioniR.has(r) ? "interruzione-r" : ""} ${interruzioniC.has(c) ? "interruzione-c" : ""} ${r === fr && fr > 0 ? "congela-fondo" : ""} ${c === fc && fc > 0 ? "congela-lato" : ""} ${isAct ? "active" : ""} ${extraPx > 0 ? "trabocca" : ""} ${isSel ? "selected" : ""} ${disp.isError ? "cell-error" : ""} ${commentoCella ? "has-comment" : ""}"
                             title="${[commentoCella?.testo, cellStyle.link ? t("{} (Alt+clic per aprire)", cellStyle.link) : ''].filter(Boolean).join(' · ')}"
                             rowspan="${rowSpan > 1 ? rowSpan : 1}"
                             colspan="${colSpan > 1 ? colSpan : 1}"
@@ -5441,7 +6295,7 @@ export class FreeSheetGrid extends LinguaElement {
                             @dblclick=${() => this.startEditing(false)}
                           >
                             ${condStyle?.icon && ICONE[condStyle.icon] && !(isAct && this.isEditing) ? html`<span class="icona-condizionale" role="img" aria-label=${t(ICONE[condStyle.icon].nome)} style=${styleMap({ color: ICONE[condStyle.icon].colore })}>${ICONE[condStyle.icon].glifo}</span>` : ""}
-                            ${isAct && this.isEditing ? "" : isChk ? html`
+                            ${isAct && this.isEditing ? "" : minigrafico ? disegnaMinigrafico(minigrafico, getColWidth(c, this.larghezzeEffettive()) * zoomFactor - 6, Math.max(8, (geom.top(r + rowSpan) - geom.top(r)) * zoomFactor - 6), effectiveColor) : isChk ? html`
                               <span class="checkbox-container" @click=${(e: MouseEvent) => { e.stopPropagation(); this.toggleCheckboxAt(r, c); }}>
                                 ${isChecked
                                   ? html`<svg class="sheet-checkbox checked" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`

@@ -8,7 +8,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 /// Un file oltre questa dimensione non si apre (i programmi non ne gestiscono di più grandi).
-const DIMENSIONE_MASSIMA: u64 = 100 * 1024 * 1024;
+pub(crate) const DIMENSIONE_MASSIMA: u64 = 100 * 1024 * 1024;
 /// Quante voci si mostrano al massimo in una cartella (una cartella enorme non deve bloccare la finestra).
 const VOCI_MASSIME: usize = 5000;
 
@@ -39,7 +39,7 @@ fn solo_portatile() -> Result<(), String> {
 }
 
 /// Un percorso accettato: completo (con l'unità), senza caratteri di controllo e non troppo lungo.
-fn percorso(p: &str) -> Result<PathBuf, String> {
+pub(crate) fn percorso(p: &str) -> Result<PathBuf, String> {
     if p.is_empty() || p.len() > 4000 || p.chars().any(|c| c.is_control()) { return Err("PERCORSO_NON_VALIDO".to_string()); }
     let pb = PathBuf::from(p);
     if !pb.is_absolute() { return Err("PERCORSO_NON_VALIDO".to_string()); }
@@ -89,10 +89,15 @@ pub fn portatile_elenca(cartella: String) -> Result<Elenco, String> {
 pub fn portatile_leggi(percorso_file: String) -> Result<tauri::ipc::Response, String> {
     solo_portatile()?;
     let p = percorso(&percorso_file)?;
-    let meta = std::fs::metadata(&p).map_err(|e| format!("FILE: {e}"))?;
+    leggi_limitato(&p).map(tauri::ipc::Response::new)
+}
+
+/// I byte di un file, fino a 100 MB (lo usa anche file_nativi.rs).
+pub(crate) fn leggi_limitato(p: &Path) -> Result<Vec<u8>, String> {
+    let meta = std::fs::metadata(p).map_err(|e| format!("FILE: {e}"))?;
     if !meta.is_file() { return Err("NON_E_UN_FILE".to_string()); }
     if meta.len() > DIMENSIONE_MASSIMA { return Err("TROPPO_GRANDE".to_string()); }
-    std::fs::read(&p).map(tauri::ipc::Response::new).map_err(|e| format!("FILE: {e}"))
+    std::fs::read(p).map_err(|e| format!("FILE: {e}"))
 }
 
 /// Scrive un file: i byte arrivano grezzi, il percorso nell'intestazione «percorso» (codificato come in un indirizzo web).
@@ -103,13 +108,26 @@ pub fn portatile_scrivi(richiesta: tauri::ipc::Request<'_>) -> Result<(), String
     let tauri::ipc::InvokeBody::Raw(byte) = richiesta.body() else { return Err("DATI_MANCANTI".to_string()) };
     let codificato = richiesta.headers().get("percorso").and_then(|v| v.to_str().ok()).ok_or_else(|| "PERCORSO_MANCANTE".to_string())?;
     let p = percorso(&decodifica(codificato)?)?;
+    scrivi_sicuro(&p, byte)
+}
+
+/// Scrive un file passando da un temporaneo accanto e poi rinominandolo: un errore a metà non rovina il file che c'era (lo usa anche file_nativi.rs).
+pub(crate) fn scrivi_sicuro(p: &Path, byte: &[u8]) -> Result<(), String> {
     if p.is_dir() { return Err("E_UNA_CARTELLA".to_string()); }
     let cartella = p.parent().ok_or_else(|| "PERCORSO_NON_VALIDO".to_string())?;
     if !cartella.is_dir() { return Err("CARTELLA_MANCANTE".to_string()); }
     let nome = p.file_name().ok_or_else(|| "PERCORSO_NON_VALIDO".to_string())?.to_string_lossy().into_owned();
     let temporaneo = cartella.join(format!(".{nome}.pmb-salvataggio"));
-    std::fs::write(&temporaneo, byte).map_err(|e| format!("SCRITTURA: {e}"))?;
-    std::fs::rename(&temporaneo, &p).map_err(|e| { let _ = std::fs::remove_file(&temporaneo); format!("SCRITTURA: {e}") })
+    // il temporaneo si forza sul disco (sync_all) prima di rinominarlo: con un'interruzione di corrente subito dopo il salvataggio
+    // il file non resta vuoto o a metà (non lo si nasconde: con la rinomina l'attributo passerebbe al documento salvato)
+    let scritto = (|| -> std::io::Result<()> {
+        use std::io::Write;
+        let mut f = std::fs::File::create(&temporaneo)?;
+        f.write_all(byte)?;
+        f.sync_all()
+    })();
+    if let Err(e) = scritto { let _ = std::fs::remove_file(&temporaneo); return Err(format!("SCRITTURA: {e}")); }
+    std::fs::rename(&temporaneo, p).map_err(|e| { let _ = std::fs::remove_file(&temporaneo); format!("SCRITTURA: {e}") })
 }
 
 /// Crea una cartella nuova dentro una cartella esistente.
@@ -151,7 +169,7 @@ pub fn portatile_ricorda_cartella(cartella: String) -> Result<(), String> {
 fn file_ultima_cartella() -> PathBuf { crate::get_portable_data_dir().join("ultima_cartella.txt") }
 
 /// Toglie la codifica %XX (UTF-8) di un percorso passato in un'intestazione.
-fn decodifica(s: &str) -> Result<String, String> {
+pub(crate) fn decodifica(s: &str) -> Result<String, String> {
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;

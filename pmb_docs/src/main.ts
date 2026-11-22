@@ -4,10 +4,13 @@ import "./assets/fonts/fonts.css";
 import "./assets/fonts/caratteri-extra.css";
 import "./guscio/docs-guscio";
 import { installaFinestraFilePortatile } from "@comune/file-portatile";
+import { installaFinestreNative } from "@comune/file-nativi";
 import { t, localeCorrente } from "./i18n/lingua";
 
 // versione pocket (device come AI_PRO): Apri e Salva con la finestra interna, così Windows non annota niente nel PC ospite
 installaFinestraFilePortatile({ t, locale: localeCorrente });
+// versione installata su Windows: Apri e Salva con le finestre di Windows, così «Salva» riscrive il file sul posto (file_nativi.rs)
+installaFinestreNative({ t });
 
 // Scheletro di pmb_docs: per ora una pagina A4 vuota. L'editor vero arriva in M5.
 @customElement("docs-app")

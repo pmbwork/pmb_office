@@ -48,9 +48,9 @@ with Banco(9626, '21 LAMBDA, MAP, REDUCE, T.TEST scritte a mano') as b:
     prova(b, 'Errori', errori)
 
     def ttest():
-        b.scrivi_os(1, 13, '=TEST.T(J1:J8;K1:K8;2;1)')
+        b.scrivi_os(1, 13, '=TESTT(J1:J8;K1:K8;2;1)')   # TESTT è T.TEST in Excel italiano (TEST.T è il vecchio TTEST)
         v = b.cella(1, 13)['v']
-        b.ok('=TEST.T(...; 2; 1) (a coppie) = 0,036951 come scipy', vicino(v, 0.03695147680230186, 1e-7), v)
+        b.ok('=TESTT(...; 2; 1) (a coppie) = 0,036951 come scipy', vicino(v, 0.03695147680230186, 1e-7), v)
         b.scrivi_os(2, 13, '=DISTRIB.T.N(1,5;10;VERO)')
         v = b.cella(2, 13)['v']
         b.ok('=DISTRIB.T.N(1,5;10;VERO) = 0,917746', vicino(v, 0.9177463367772799), v)

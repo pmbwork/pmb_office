@@ -24,18 +24,24 @@ export async function salvaSuDisco(nome: string, bytes: Uint8Array, mime: string
   const selettore = (window as unknown as { showSaveFilePicker?: SelettoreSalvataggio }).showSaveFilePicker;
   const punto = nome.lastIndexOf('.');
   if (typeof selettore === 'function') {
+    let maniglia: ManiglioFile | null = null;
     try {
-      const maniglia = await selettore.call(window, {
+      maniglia = await selettore.call(window, {
         suggestedName: nome,
         types: punto > 0 ? [{ description: nome.slice(punto + 1).toUpperCase(), accept: { [mime]: [nome.slice(punto)] } }] : undefined,
       });
+    } catch (e) {
+      if ((e as { name?: string }).name === 'AbortError') return false;
+      // la finestra non c'è o non si apre: si ripiega sullo scaricamento qui sotto
+    }
+    if (maniglia) {
+      // file scelto: se non si riesce a scriverlo (disco pieno, file aperto in un altro programma) l'errore arriva a chi salva,
+      // senza ripiegare in silenzio su uno scaricamento (il foglio risulterebbe salvato in un posto che l'utente non ha scelto)
       const file = await maniglia.createWritable();
       await file.write(bytes);
       await file.close();
       if (destinazione) destinazione.maniglia = maniglia;
       return true;
-    } catch (e) {
-      if ((e as { name?: string }).name === 'AbortError') return false;
     }
   }
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));

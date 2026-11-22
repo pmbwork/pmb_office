@@ -9,6 +9,9 @@ import type { SheetDocument } from './document-store';
 import type { MergeRange } from './cell-merge';
 import type { DataValidationRule } from './data-validation';
 import type { ConditionalFormatRule } from './conditional-format';
+import { copiaPagina, eDiPartenza, ripulisciPagina, type ImpostaPagina } from './pagina';
+import { copiaProtezione, protezioneValida, type ProtezioneFoglio } from './protezione';
+import { copiaGruppi, gruppiValidi, type Gruppi } from './gruppi';
 import { areaFiltroValida, copiaFiltro, filtriDaJson, filtroInJson, vistePulite, type AreaFiltro, type ColumnFilter, type FiltroInJson, type VistaFiltro } from './filter';
 
 export interface StatoFoglio {
@@ -28,10 +31,18 @@ export interface StatoFoglio {
   isFilterActive: boolean;
   /** colore della scheda del foglio, "#rrggbb" (senza colore se manca) */
   coloreScheda?: string;
+  /** il foglio è nascosto (Nascondi foglio) */
+  nascosto?: boolean;
   /** viste filtro salvate del foglio */
   visteFiltro?: VistaFiltro[];
   /** la tabella su cui lavora il filtro (senza: tutto il foglio, con l'intestazione in riga 1) */
   filterArea?: AreaFiltro;
+  /** impostazione di pagina per la stampa e il PDF (senza: quella di partenza) */
+  impostaPagina?: ImpostaPagina;
+  /** protezione del foglio (senza: non protetto) */
+  protezione?: ProtezioneFoglio;
+  /** righe e colonne raggruppate */
+  gruppi?: Gruppi;
 }
 
 /** Un filtro come si salva nel file: i valori scelti, i colori e i mesi sono elenchi (nel documento sono Set). */
@@ -53,7 +64,12 @@ export interface StatoFoglioDati {
   conditionalFormats: ConditionalFormatRule[];
   filters: { active: boolean; columns: FiltroSalvato[]; area?: AreaFiltro };
   coloreScheda?: string;
+  /** il foglio è nascosto (Nascondi foglio) */
+  nascosto?: boolean;
   visteFiltro?: VistaFiltro[];
+  impostaPagina?: ImpostaPagina;
+  protezione?: ProtezioneFoglio;
+  gruppi?: Gruppi;
 }
 
 export function statoVuoto(): StatoFoglio {
@@ -82,8 +98,12 @@ export function clonaStato(s: StatoFoglio): StatoFoglio {
     activeFilters: new Map([...s.activeFilters].map(([k, v]) => [k, copiaFiltro(v)] as const)),
     isFilterActive: s.isFilterActive,
     coloreScheda: s.coloreScheda,
+    nascosto: s.nascosto,
     ...(s.visteFiltro ? { visteFiltro: copiaJson(s.visteFiltro) } : {}),
     ...(s.filterArea ? { filterArea: { ...s.filterArea } } : {}),
+    ...(s.impostaPagina ? { impostaPagina: copiaPagina(s.impostaPagina) } : {}),
+    ...(s.protezione ? { protezione: copiaProtezione(s.protezione) } : {}),
+    ...(copiaGruppi(s.gruppi) ? { gruppi: copiaGruppi(s.gruppi) } : {}),
   };
 }
 
@@ -97,8 +117,12 @@ export function statoCorrente(doc: SheetDocument): StatoFoglio {
     merges: doc.merges, dataValidations: doc.dataValidations, conditionalFormats: doc.conditionalFormats,
     activeFilters: doc.activeFilters, isFilterActive: doc.isFilterActive,
     coloreScheda: doc.coloreScheda,
+    nascosto: doc.nascosto,
     visteFiltro: doc.visteFiltro,
     filterArea: doc.filterArea,
+    impostaPagina: doc.impostaPagina,
+    protezione: doc.protezione,
+    gruppi: doc.gruppi,
   };
 }
 
@@ -119,8 +143,12 @@ export function applicaStato(doc: SheetDocument, s: StatoFoglio): void {
   doc.activeFilters = s.activeFilters;
   doc.isFilterActive = s.isFilterActive;
   doc.coloreScheda = s.coloreScheda;
+  doc.nascosto = s.nascosto;
   doc.visteFiltro = s.visteFiltro;
   doc.filterArea = s.filterArea;
+  doc.impostaPagina = s.impostaPagina;
+  doc.protezione = s.protezione;
+  doc.gruppi = s.gruppi;
 }
 
 /** Il colore della scheda di un foglio (anche quello attivo), o undefined se non ne ha. */
@@ -133,6 +161,34 @@ export function impostaColoreScheda(doc: SheetDocument, nome: string, colore: st
   if (nome === doc.activeSheetName) { doc.coloreScheda = colore; return; }
   const s = doc.sheetStates.get(nome) ?? statoVuoto();
   s.coloreScheda = colore;
+  doc.sheetStates.set(nome, s);
+}
+
+/** Vero se il foglio (anche quello attivo) è nascosto. */
+export function nascostoDi(doc: SheetDocument, nome: string): boolean {
+  return (nome === doc.activeSheetName ? doc.nascosto : doc.sheetStates.get(nome)?.nascosto) === true;
+}
+
+/** Nasconde (true) o mostra (false) un foglio. */
+export function impostaNascosto(doc: SheetDocument, nome: string, nascosto: boolean): void {
+  const v = nascosto ? true : undefined;
+  if (nome === doc.activeSheetName) { doc.nascosto = v; return; }
+  const s = doc.sheetStates.get(nome) ?? statoVuoto();
+  s.nascosto = v;
+  doc.sheetStates.set(nome, s);
+}
+
+/** L'impostazione di pagina di un foglio (anche quello attivo), o undefined se ha quella di partenza. */
+export function paginaDi(doc: SheetDocument, nome: string): ImpostaPagina | undefined {
+  return nome === doc.activeSheetName ? doc.impostaPagina : doc.sheetStates.get(nome)?.impostaPagina;
+}
+
+/** Cambia l'impostazione di pagina di un foglio; quella di partenza non si tiene (undefined). */
+export function impostaPaginaFoglio(doc: SheetDocument, nome: string, p: ImpostaPagina | undefined): void {
+  const v = p && !eDiPartenza(p) ? copiaPagina(p) : undefined;
+  if (nome === doc.activeSheetName) { doc.impostaPagina = v; return; }
+  const s = doc.sheetStates.get(nome) ?? statoVuoto();
+  s.impostaPagina = v;
   doc.sheetStates.set(nome, s);
 }
 
@@ -199,7 +255,11 @@ export function statoADati(s: StatoFoglio): StatoFoglioDati {
       ...(s.filterArea ? { area: { ...s.filterArea } } : {}),
     },
     ...(s.coloreScheda ? { coloreScheda: s.coloreScheda } : {}),
+    ...(s.nascosto ? { nascosto: true } : {}),
     ...(s.visteFiltro && s.visteFiltro.length > 0 ? { visteFiltro: copiaJson(s.visteFiltro) } : {}),
+    ...(s.impostaPagina && !eDiPartenza(s.impostaPagina) ? { impostaPagina: copiaPagina(s.impostaPagina) } : {}),
+    ...(s.protezione ? { protezione: copiaProtezione(s.protezione) } : {}),
+    ...(copiaGruppi(s.gruppi) ? { gruppi: copiaGruppi(s.gruppi) } : {}),
   };
 }
 
@@ -223,6 +283,19 @@ export function datiAStato(d: Partial<StatoFoglioDati> | undefined): StatoFoglio
     isFilterActive: !!d.filters?.active,
     ...(areaFiltroValida(d.filters?.area) ? { filterArea: areaFiltroValida(d.filters?.area) } : {}),
     ...(typeof d.coloreScheda === 'string' && /^#[0-9a-fA-F]{6}$/.test(d.coloreScheda) ? { coloreScheda: d.coloreScheda } : {}),
+    ...(d.nascosto === true ? { nascosto: true } : {}),
     ...(vistePulite(d.visteFiltro).length > 0 ? { visteFiltro: vistePulite(d.visteFiltro) } : {}),
+    ...(d.impostaPagina && typeof d.impostaPagina === 'object' ? { impostaPagina: ripulisciPagina(d.impostaPagina) } : {}),
+    ...(protezioneValida(d.protezione) ? { protezione: protezioneValida(d.protezione) } : {}),
+    ...(gruppiValidi(d.gruppi) ? { gruppi: gruppiValidi(d.gruppi) } : {}),
   };
+}
+
+/** Protegge un foglio (con le impronte della password, se c'è) o ne toglie la protezione (undefined). */
+export function impostaProtezioneFoglio(doc: SheetDocument, nome: string, p: ProtezioneFoglio | undefined): void {
+  const v = copiaProtezione(p);
+  if (nome === doc.activeSheetName) { doc.protezione = v; return; }
+  const s = doc.sheetStates.get(nome) ?? statoVuoto();
+  s.protezione = v;
+  doc.sheetStates.set(nome, s);
 }

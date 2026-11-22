@@ -50,7 +50,8 @@ describe('T468: catalogo e regole della barra', () => {
 });
 
 describe('T468: la barra nel programma', () => {
-  it('una barra scelta si disegna in quell\'ordine, con i separatori e le voci di menu come pulsanti di testo', async () => {
+  // dal 2026-11-19 le voci di menu nella barra sono pulsanti a icona con il nome nel suggerimento, non più testo (T546)
+  it('una barra scelta si disegna in quell\'ordine, con i separatori e le voci di menu come pulsanti a icona', async () => {
     localStorage.setItem(CHIAVE_PREFERENZE, JSON.stringify({ barra: ['grassetto', SEPARATORE, 'menu:inserisci›Tabella', 'corsivo'] }));
     const g = await guscio();
     const t = tb(g);
@@ -58,7 +59,9 @@ describe('T468: la barra nel programma', () => {
     const elementi = Array.from(t.shadowRoot.querySelector('.barra-strumenti').children).map((e: any) => e.dataset?.id ?? (e.classList.contains('separatore') ? '|' : e.className));
     expect(elementi.slice(0, 4)).toEqual(['grassetto', '|', 'menu:inserisci›Tabella', 'corsivo']);
     const tabella = t.shadowRoot.querySelector('button[data-id="menu:inserisci›Tabella"]');
-    expect(tabella.textContent.trim()).toBe('Tabella');
+    expect(tabella.textContent.trim()).toBe('');
+    expect(tabella.querySelector('.icona svg')).not.toBeNull();
+    expect(tabella.getAttribute('title')).toContain('Tabella');
   });
 
   it('un pulsante che viene da un menu fa quello che fa la voce di menu (Visualizza › Tema scuro)', async () => {

@@ -70,7 +70,7 @@ describe('T469: spunte e interruttori', () => {
 
   it('spunte nei sottomenu: tema, colonne, lingua del correttore; numeri di riga', async () => {
     const g = await guscio();
-    expect(await spunte(g, 'visualizza', 'Modalità')).toEqual(['Tema chiaro']);
+    expect(await spunte(g, 'visualizza', 'Modalità')).toEqual(['Tema di sistema']); // predefinito: segue il tema del computer
     expect(await spunte(g, 'formato', 'Colonne')).toEqual(['1 colonna']);
     expect(await spunte(g, 'file', 'Correttore lingua')).toEqual(['Italiano']);
     voce(g, 'formato', '2 colonne', 'Colonne');

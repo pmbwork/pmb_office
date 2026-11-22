@@ -68,7 +68,7 @@ describe('T443: preferenze', () => {
   it('i valori non ammessi tornano quelli predefiniti e il dizionario si ripulisce', () => {
     expect(ripulisciPreferenze(null)).toEqual(PREFERENZE_PREDEFINITE);
     const p = ripulisciPreferenze({ tema: 'rosso', lingua: 'xx-XX', ortografia: 'sì', altoContrasto: true, dizionario: ['  Foo ', 'foo', 'bar baz', '', 7, 'a'.repeat(61), 'ok'] });
-    expect([p.tema, p.lingua, p.ortografia, p.altoContrasto]).toEqual(['chiaro', 'it-IT', true, true]);
+    expect([p.tema, p.lingua, p.ortografia, p.altoContrasto]).toEqual(['sistema', 'it-IT', true, true]);
     expect(p.dizionario).toEqual(['Foo', 'ok']);
   });
   it('si salvano e si rileggono; un deposito rotto non fa danni', () => {

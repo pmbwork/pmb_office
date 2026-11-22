@@ -28,7 +28,8 @@ describe('T020: misure del guscio di pmb_docs', () => {
     expect(MISURE.dialogo.raggio).toBe(28);
   });
   it('colori', () => {
-    expect(COLORI).toEqual({ sfondoApp: '#F8FAFD', barraStrumenti: '#F0F4F9', testo: '#1F1F1F', pannelloMenu: '#FFFFFF' });
+    // variabili del tema con il valore del tema chiaro come riserva (il tema scuro le ridefinisce in TEMA_SCURO)
+    expect(COLORI).toEqual({ sfondoApp: 'var(--pmb-sfondo-app, #F8FAFD)', barraStrumenti: 'var(--pmb-barra-strumenti, #F0F4F9)', testo: 'var(--pmb-testo, #1F1F1F)', pannelloMenu: 'var(--pmb-superficie, #FFFFFF)' });
   });
   it('stili dei pannelli', () => {
     expect(STILI.ombraPannelloMenu).toBe('0 2px 6px 2px rgba(0, 0, 0, 0.15)');

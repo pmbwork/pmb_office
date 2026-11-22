@@ -28,17 +28,26 @@ if (-not (Test-Path $icona)) { $icona = Join-Path $radice 'pmb_docs\src-tauri\ic
 $makensis = Join-Path $env:LOCALAPPDATA 'tauri\NSIS\makensis.exe'
 if (-not (Test-Path $makensis)) { throw "Non trovo makensis.exe in $makensis (si installa con la prima compilazione Tauri)" }
 
+# i testi delle licenze da accettare prima di installare (licenza di pmb_office e componenti di terze parti dei due programmi)
+$testi = Join-Path ([System.IO.Path]::GetTempPath()) "pmb_office-suite-licenze-$PID"
+& node (Join-Path $qui 'genera-testi-licenze.mjs') $testi
+if ($LASTEXITCODE -ne 0) { throw 'genera-testi-licenze.mjs non ha preparato i testi delle licenze' }
+$licenza = Join-Path $testi 'licenza-pmb_office.txt'
+$licenzeTerzi = Join-Path $testi 'licenze-terze-parti.txt'
+
 $cartella = Join-Path $rilasci "pmb_office\$Versione"
 New-Item -ItemType Directory -Force -Path $cartella | Out-Null
 $uscita = Join-Path $cartella "pmb_office_${Versione}_x64-setup.exe"
 $argomenti = @('/V2', '/INPUTCHARSET', 'UTF8',
   "/DVERSIONE_SUITE=$Versione", "/DVERSIONE_SUITE_NUMERICA=$numerica", "/DVERSIONE_DOCS=$vDocs", "/DVERSIONE_SHEETS=$vSheets",
-  "/DSETUP_DOCS=$setupDocs", "/DSETUP_SHEETS=$setupSheets", "/DICONA=$icona", "/DUSCITA=$uscita")
+  "/DSETUP_DOCS=$setupDocs", "/DSETUP_SHEETS=$setupSheets", "/DICONA=$icona", "/DUSCITA=$uscita", "/DLICENZA=$licenza", "/DLICENZE_TERZI=$licenzeTerzi")
 $laterale = Join-Path $media 'laterale.bmp'; if (Test-Path $laterale) { $argomenti += "/DIMMAGINE_LATERALE=$laterale" }
 $testata = Join-Path $media 'testata.bmp'; if (Test-Path $testata) { $argomenti += "/DIMMAGINE_TESTATA=$testata" }
 $argomenti += (Join-Path $qui 'pmb_office-suite.nsi')
 & $makensis @argomenti
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path $uscita)) { throw 'makensis non ha creato la suite' }
+$esito = $LASTEXITCODE
+Remove-Item -Recurse -Force $testi -ErrorAction SilentlyContinue
+if ($esito -ne 0 -or -not (Test-Path $uscita)) { throw 'makensis non ha creato la suite' }
 
 # che cosa c'è dentro, con le impronte: serve a chi scarica e a chi controlla
 $righe = @("pmb_office $Versione ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))", '',

@@ -1,0 +1,73 @@
+# agente-suite-office: licenze, provenienza e originalità di pmb_office, in automatico.
+# - a ogni invio di codice: verifica.mjs (licenze dei componenti, elenco aggiornato, avvisi e testi altrui nel codice, origine dei file,
+#   caratteri, marchi, restrizioni incompatibili con la GPL). Se trova un BLOCCO il controllo diventa rosso.
+# - ogni lunedì (e a mano): in più la scansione completa con ScanCode, che riconosce testi di licenza e avvisi di copyright anche parziali.
+# Il rapporto si legge nel riepilogo dell'esecuzione (scheda Actions) e come artefatto.
+name: originalita
+on:
+  push:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verifica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+      # le dipendenze delle due app servono a ricalcolare l'elenco dei componenti e a leggere i loro file di licenza
+      - run: npm ci --ignore-scripts
+        working-directory: pmb_docs
+      - run: npm ci --ignore-scripts
+        working-directory: pmb_sheets/pmb_sheets
+      - run: node agente-suite-office/verifica.mjs --rapporto rapporto-originalita.md
+      - if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: rapporto-originalita
+          path: rapporto-originalita.md
+          if-no-files-found: ignore
+
+  scancode:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      # ScanCode dal pacchetto ufficiale di rilascio (librerie alle versioni esatte, impronta controllata): installato con pip prendeva
+      # librerie più nuove che lo rompevano (pluggy 1.7, poi un falso conflitto --strip-root/--full-root, 22/11)
+      - run: |
+          curl -sSL -o ../sc.tgz https://github.com/aboutcode-org/scancode-toolkit/releases/download/v32.4.1/scancode-toolkit-v32.4.1_py3.12-linux.tar.gz
+          echo "856fec5d06c7701a8a77c9d9d92235495a71602be74a542d5836a1ab8a9cc420  ../sc.tgz" | sha256sum -c -
+          mkdir -p ../sc && tar -xzf ../sc.tgz -C ../sc --strip-components=1 && rm ../sc.tgz
+          cd ../sc && ./configure
+      # una sola cartella (la radice); i percorsi cominciano con il nome della cartella e analizza-scancode lo toglie (--togli-radice)
+      - run: >
+          ../sc/scancode --license --copyright --processes 4 --timeout 300 --json-pp ../scancode.json
+          --ignore "node_modules" --ignore ".git" --ignore ".github" --ignore "*.png" --ignore "*.ico" --ignore "*.icns"
+          --ignore "*.bmp" --ignore "*.woff2" --ignore "*.woff" --ignore "file-prova" --ignore "verifica" --ignore "verifiche-a-mano"
+          --ignore "LICENSE" --ignore "*licenze-terze.ts" --ignore "THIRD-PARTY-NOTICES.md" --ignore "package-lock.json" --ignore "Cargo.lock"
+          .
+      - run: mv ../scancode.json scancode.json
+      - run: node agente-suite-office/analizza-scancode.mjs scancode.json --togli-radice --rapporto rapporto-scancode.md
+      - if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: rapporto-scancode
+          path: |
+            rapporto-scancode.md
+            scancode.json
+          if-no-files-found: ignore

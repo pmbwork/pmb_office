@@ -35,7 +35,7 @@ if (-not $SenzaCompilare) {
     if (-not (Test-Path -LiteralPath $log)) { throw 'ARRESTO: l''installazione non è partita (nessun log nuovo): controlla i permessi di amministratore' }
     Select-String -Path $log -Pattern 'exit=' | ForEach-Object { $_.Line }
     # prova che l'installato è di questa compilazione: il file dell'eseguibile non può essere più vecchio dell'inizio della compilazione
-    $installato = 'C:\AI_system\pmb_office\pmb_sheets\pmb-sheets-shell.exe'
+    $installato = 'C:\Program Files\pmb_office\pmb_sheets\pmb-sheets-shell.exe'
     if ((Get-Item -LiteralPath $installato).LastWriteTime -lt $inizio) { throw 'ARRESTO: il programma installato è più vecchio della compilazione: l''installazione non è andata a buon fine' }
     Write-Output 'verificato: il programma installato è di questa compilazione'
     Start-Sleep -Seconds 5      # subito dopo l'installazione il mouse può non arrivare alla finestra: la prima prova falliva

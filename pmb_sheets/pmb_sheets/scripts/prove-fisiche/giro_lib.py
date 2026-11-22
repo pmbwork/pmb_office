@@ -2,9 +2,21 @@
 import os, subprocess, time, json, traceback
 from playwright.sync_api import sync_playwright
 
-EXE = r'C:\AI_system\pmb_office\pmb_sheets\pmb-sheets-shell.exe'
+# il programma da provare: di serie quello di costruisci-installa-e-prova.ps1; PMB_SHEETS_EXE per quello installato con la suite (Program Files)
+EXE = os.environ.get('PMB_SHEETS_EXE', r'C:\Program Files\pmb_office\pmb_sheets\pmb-sheets-shell.exe')
 # le impostazioni del programma installato sono quelle dell'utente (tema, dimensioni della finestra): ogni prova le rimette com'erano
-IMPOSTAZIONI = os.path.join(os.path.dirname(EXE), 'data', 'impostazioni.json')
+def cartella_dati(exe):
+    """La stessa scelta del programma (scegli_cartella_dati in src-tauri/src/lib.rs): «data» accanto all'eseguibile se lì si può
+    scrivere (copia portatile, C:\\AI_system...), altrimenti %APPDATA%\\com.pmb.sheets (installazione in Programmi)."""
+    accanto = os.path.join(os.path.dirname(exe), 'data')
+    try:
+        os.makedirs(accanto, exist_ok=True)
+        prova = os.path.join(accanto, '.prova-scrittura')
+        open(prova, 'wb').close(); os.remove(prova)
+        return accanto
+    except OSError:
+        return os.path.join(os.environ['APPDATA'], 'com.pmb.sheets')
+IMPOSTAZIONI = os.path.join(cartella_dati(EXE), 'impostazioni.json')
 GR = "document.querySelector('free-app').shadowRoot.querySelector('free-sheet-grid')"
 APP = "document.querySelector('free-app')"
 TMP = os.environ['TEMP']
@@ -18,7 +30,8 @@ class Banco:
         except OSError: self._impostazioni = None
         env = dict(os.environ)
         env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = f'--remote-debugging-port={self.porta}'
-        env['WEBVIEW2_USER_DATA_FOLDER'] = os.path.join(TMP, f'pmb_giro_{self.porta}')
+        # un profilo nuovo a ogni giro: una copia di emergenza lasciata da un giro interrotto fermerebbe i controlli del recupero (giro_13)
+        env['WEBVIEW2_USER_DATA_FOLDER'] = os.path.join(TMP, f'pmb_giro_{self.porta}_{int(time.time())}')
         self.p = subprocess.Popen([EXE], env=env)
         self.pw = sync_playwright().start()
         for _ in range(60):
@@ -26,6 +39,7 @@ class Banco:
             except Exception: time.sleep(0.5)
         self.pg = b.contexts[0].pages[0]; self.pg.set_default_timeout(8000)
         self.pg.wait_for_selector('free-sheet-grid'); self.pg.wait_for_timeout(1500)
+        _finestra_di_prova(self)
         # le prove guardano i colori del tema chiaro: lo si mette solo per questa sessione, SENZA salvarlo (secondo argomento false),
         # perché il programma installato e la sua cartella dati sono quelli dell'utente (impostazioni.json)
         self.pg.evaluate("() => { const a = document.querySelector('free-app'); if (a && typeof a.setTheme === 'function') return a.setTheme('light', false); }"); self.pg.wait_for_timeout(300)
@@ -185,6 +199,31 @@ def _hwnd_del_programma(pid):
     _u.EnumWindows(CB(cb), 0)
     return trovati[0] if trovati else None
 
+class _RECT(ctypes.Structure): _fields_ = [('l', wintypes.LONG), ('t', wintypes.LONG), ('r', wintypes.LONG), ('b', wintypes.LONG)]
+
+def _finestra_di_prova(self):
+    """Ogni prova parte con la stessa finestra (di serie 2032 x 1006 pixel, al centro dello schermo; PMB_GIRO_FINESTRA=«larghezza x altezza»
+    per un'altra misura), qualunque sia la grandezza salvata nelle impostazioni del programma su cui gira. Con la finestra normale da 1200
+    pixel metà della barra va nel menu «Altri strumenti» e le prove che cliccano i pulsanti della barra o le celle a destra non li trovano
+    (si è visto il 2026-11-19 sul programma installato in Programmi). La finestra stretta la prova giro_42."""
+    w, h = (int(x) for x in os.environ.get('PMB_GIRO_FINESTRA', '2032x1006').lower().split('x'))
+    hwnd = None
+    for _ in range(20):
+        hwnd = _hwnd_del_programma(self.p.pid)
+        if hwnd: break
+        time.sleep(0.25)
+    if not hwnd:
+        print('ATTENZIONE: finestra del programma non trovata, resta della grandezza salvata', flush=True); return
+    if _u.IsZoomed(hwnd) or _u.IsIconic(hwnd): _u.ShowWindow(hwnd, 9)   # SW_RESTORE: una finestra ingrandita non si ridimensiona
+    area = _RECT(); _u.SystemParametersInfoW(0x0030, 0, ctypes.byref(area), 0)   # SPI_GETWORKAREA: lo schermo senza la barra di Windows
+    w = min(w, area.r - area.l); h = min(h, area.b - area.t)
+    prima = self.pg.evaluate('() => [innerWidth, innerHeight]')
+    _u.SetWindowPos(hwnd, 0, area.l + (area.r - area.l - w) // 2, area.t + (area.b - area.t - h) // 2, w, h, 0x0004 | 0x0010)   # SWP_NOZORDER | SWP_NOACTIVATE
+    for _ in range(20):
+        time.sleep(0.15)
+        if self.pg.evaluate('() => [innerWidth, innerHeight]') != prima: break
+    self.pg.wait_for_timeout(500)
+
 def _porta_in_primo_piano(self):
     h = _hwnd_del_programma(self.p.pid)
     if not h: return False
@@ -319,6 +358,7 @@ def prova(b, nome, fn):
         b.in_cima(); fn()
     except Exception as e:
         b.esito('FAIL', nome, 'eccezione: ' + str(e)[:170])
+        if os.environ.get('PMB_TRACCIA'): traceback.print_exc()
         try: b.chiudi_dialoghi()
         except Exception: pass
 

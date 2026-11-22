@@ -11,7 +11,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { ChartConfig } from '../sheet/chart/chart-model';
 import { renderChartSvg } from '../sheet/chart/chart-renderer';
-import { portatile } from '@comune/piattaforma';
 import { salvaSuDisco } from '../formati/file-io';
 
 @customElement('free-chart-overlay')
@@ -206,15 +205,10 @@ export class FreeChartOverlay extends LinguaElement {
 
   private handleExportSvg(): void {
     const svgCode = renderChartSvg(this.config);
-    // versione pocket: si salva con la finestra interna (lo scaricamento finirebbe nella cartella Download del PC ospite)
-    if (portatile()) { void salvaSuDisco(`${this.config.title || 'grafico'}.svg`, new TextEncoder().encode(svgCode), 'image/svg+xml'); return; }
-    const blob = new Blob([svgCode], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${this.config.title || 'grafico'}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // come ogni salvataggio: finestra «Salva con nome» del sistema (Windows, Mac) o quella interna nella pocket. Prima, fuori dalla pocket, era uno
+    // scaricamento: su Windows finiva in Download senza chiedere dove, sul Mac (WKWebView, senza gestore degli scaricamenti) non faceva niente
+    void salvaSuDisco(`${this.config.title || 'grafico'}.svg`, new TextEncoder().encode(svgCode), 'image/svg+xml')
+      .catch((e) => console.warn('[grafico] esportazione SVG non riuscita:', e));
   }
 
   private handleDelete(): void {

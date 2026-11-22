@@ -255,6 +255,17 @@ export function esportaPdf(doc: Documento, imp?: ImpostazioniPagina): Uint8Array
     pagineFlussi.push(comandiPaginaCorrente.join('\n'));
   }
 
+  // filigrana: grigio chiaro, in grassetto, a 45 gradi al centro della pagina, prima di tutto il resto (così sta sotto)
+  if (doc.filigrana) {
+    const corpo = Math.min(80, Math.round(560 / Math.max(4, doc.filigrana.length) * 1.6));
+    const largo = doc.filigrana.length * corpo * 0.62;
+    const c = Math.SQRT1_2;
+    const x = cfg.larghezza / 2 - (largo / 2) * c + (corpo / 3) * c;
+    const y = cfg.altezza / 2 - (largo / 2) * c - (corpo / 3) * c;
+    const segno = `q BT /F2 ${corpo} Tf 0.85 0.85 0.85 rg ${c.toFixed(4)} ${c.toFixed(4)} ${(-c).toFixed(4)} ${c.toFixed(4)} ${x.toFixed(2)} ${y.toFixed(2)} Tm (${escapeTestoPdf(doc.filigrana)}) Tj ET Q`;
+    for (let i = 0; i < pagineFlussi.length; i++) pagineFlussi[i] = `${segno}\n${pagineFlussi[i]}`;
+  }
+
   // Costruiamo gli oggetti PDF
   const oggetti: OggettoPdf[] = [];
   const idPagine: number[] = [];

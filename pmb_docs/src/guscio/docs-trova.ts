@@ -23,18 +23,18 @@ export class DocsTrova extends LinguaElement {
   @state() private regex = false;
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .trova { width: 360px; box-sizing: border-box; padding: 8px 12px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .trova { width: 360px; box-sizing: border-box; padding: 8px 12px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
     .riga { display: flex; align-items: center; gap: 4px; margin: 4px 0; }
-    input { flex: 1; min-width: 0; height: 32px; box-sizing: border-box; padding: 0 8px; border: 0; border-bottom: 1px solid #c4c7c5; border-radius: 0; font: inherit; color: inherit; background: transparent; outline: none; }
+    input { flex: 1; min-width: 0; height: 32px; box-sizing: border-box; padding: 0 8px; border: 0; border-bottom: 1px solid var(--pmb-bordo, #c4c7c5); border-radius: 0; font: inherit; color: inherit; background: transparent; outline: none; }
     input:focus { border-bottom: 2px solid #0b57d0; }
-    .conteggio { min-width: 80px; text-align: right; color: #5f6368; white-space: nowrap; }
+    .conteggio { min-width: 80px; text-align: right; color: var(--pmb-testo-2, #5f6368); white-space: nowrap; }
     .conteggio.errore { color: #b3261e; }
     button { height: 28px; min-width: 28px; padding: 0 6px; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; cursor: default; }
-    button:hover { background: #f1f3f4; }
-    button[aria-pressed='true'] { background: #d3e3fd; }
-    .testo-pulsante { padding: 0 12px; border: 1px solid #c4c7c5; border-radius: 16px; height: 30px; }
+    button:hover { background: var(--pmb-superficie-2, #f1f3f4); }
+    button[aria-pressed='true'] { background: var(--pmb-selezione-forte, #d3e3fd); }
+    .testo-pulsante { padding: 0 12px; border: 1px solid var(--pmb-bordo, #c4c7c5); border-radius: 16px; height: 30px; }
     .opzioni { gap: 8px; }
   `;
 

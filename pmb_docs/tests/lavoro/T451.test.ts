@@ -78,7 +78,7 @@ describe('T451: Informazioni (docs)', () => {
   });
   it('«Segnalazione bug» è evidenziata con un azzurro chiaro (e un blu scuro nel tema scuro)', () => {
     const css = [(customElements.get('docs-menubar') as any).styles].flat(Infinity).map((x: any) => x.cssText).join('');
-    expect(css).toContain(".titolo-menu[data-menu='segnalazione'] { background: #e8f0fe; color: #0b57d0;");
+    expect(css).toContain(".titolo-menu[data-menu='segnalazione'] { background: var(--pmb-selezione, #e8f0fe); color: var(--pmb-accento, #0b57d0);");
     expect(css).toContain(`:host-context(docs-guscio[tema="scuro"]) .titolo-menu[data-menu='segnalazione'] { background: #1f3760; color: #a8c7fa; }`);
   });
 });

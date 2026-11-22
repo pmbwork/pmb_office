@@ -13,10 +13,12 @@ describe('T130: le icone sono quelle comuni della suite (come pmb_sheets)', () =
       expect(s.includes('scale(0.025)'), id).toBe(false); // niente più icone sottili di Material Symbols
     }
     const uguali: Array<[string, keyof typeof ICONE]> = [['annulla', 'undo'], ['ripeti', 'redo'], ['stampa', 'print'], ['grassetto', 'bold'], ['corsivo', 'italic'], ['sottolineato', 'underline'],
-      ['barrato', 'strike'], ['colore-testo', 'textColor'], ['evidenzia', 'fillColor'], ['copia-formato', 'formatPainter'], ['elenco-puntato', 'listBullets'], ['elenco-numerato', 'listNumbers'], ['cancella-formattazione', 'clearFormatting']];
+      ['barrato', 'strike'], ['colore-testo', 'textColor'], ['evidenzia', 'highlight'], ['copia-formato', 'formatPainter'], ['elenco-puntato', 'listBullets'], ['elenco-numerato', 'listNumbers'], ['cancella-formattazione', 'clearFormatting']];
     for (const [docs, sheets] of uguali) expect(ICONE_DOCS[docs], docs).toBe(iconaDiMisura(ICONE[sheets], 18));
     expect(ICONE_DOCS['colore-testo']).toContain('fill="#1d4ed8"'); // la riga blu della A, come in pmb_sheets
-    expect(ICONE_DOCS['evidenzia']).toContain('fill="#f59e0b"'); // la riga arancione del colore di sfondo, come in pmb_sheets
+    // evidenziare il testo non è colorare lo sfondo di una cella (segnalazione dell'utente, 2026-11-18): evidenziatore con la riga gialla
+    expect(ICONE_DOCS['evidenzia']).toContain('fill="#facc15"');
+    expect(ICONE_DOCS['evidenzia']).not.toBe(ICONE_DOCS['colore-testo']);
   });
 });
 
@@ -128,7 +130,7 @@ describe('T130: gli stili che portano il guscio a Google Documenti', () => {
     expect(guscio).toContain('margin-left: max(var(--sx-minimo, 301px), calc((100vw - var(--larghezza-foglio, 794px) - 38px) / 2));');
     expect(guscio).toContain('padding-left: max(calc(var(--sx-minimo, 301px) - 16px), calc((100vw - var(--larghezza-foglio, 794px) - 38px) / 2 - 16px));');
     expect(guscio).toContain('justify-content: flex-start; align-items: flex-start;');
-    expect(guscio).toContain('border-bottom: 1px solid #c4c7c5');
+    expect(guscio).toContain('border-bottom: 1px solid var(--pmb-bordo, #c4c7c5)');
   });
 
   it('intestazione come pmb_sheets (etichetta, logo, nome, stato; niente stella), barra di scorrimento sottile', () => {
@@ -144,11 +146,11 @@ describe('T130: gli stili che portano il guscio a Google Documenti', () => {
     expect(guscio.indexOf('@media (max-height:')).toBeGreaterThan(guscio.indexOf(':host([menu-nascosti]) docs-schede { top: 73px; }'));
     expect(guscio).not.toContain('.stella');
     expect(guscio).toContain('span.titolo-documento { cursor: text; }'); // il nome del documento si rinomina con un clic
-    for (const s of ['::-webkit-scrollbar-button { display: none; }', 'background: #e1e3e1', 'border-width: 0 4px 0 3px']) expect(guscio, s).toContain(s);
+    for (const s of ['::-webkit-scrollbar-button { display: none; }', 'background: var(--pmb-hover, #e1e3e1)', 'border-width: 0 4px 0 3px']) expect(guscio, s).toContain(s);
   });
 
   it('la barra: colori, triangolini disegnati; niente commento né «Modifica» finti; la freccia che nasconde i menu è un pulsante vero', () => {
-    expect(barra).toContain('.barra-strumenti, button { color: #0f172a; }');
+    expect(barra).toContain('.barra-strumenti, button { color: var(--pmb-testo, #0f172a); }');
     expect(barra).toContain("'FrecciaDocs', Roboto, Inter, Arial, sans-serif");
     for (const id of ['zoom', 'stile-paragrafo', 'carattere', 'allineamento', 'elenco-attivita', 'elenco-puntato', 'elenco-numerato']) {
       expect(barra, id).toContain(`button.comando[data-id='${id}']::after`);

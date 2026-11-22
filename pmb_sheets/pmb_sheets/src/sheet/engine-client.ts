@@ -52,6 +52,8 @@ export interface EngineClient {
   setHiddenRows(sheet: string, manuali: Iterable<number>, filtrate: Iterable<number>): Promise<void>;
   /** Ricalcola le celle con NOW e TODAY (e ciò che ne dipende); restituisce quante celle sono cambiate. 0 se non ce ne sono o non è cambiato niente. */
   ricalcolaTempo(): Promise<number>;
+  /** I passi di Valuta formula: i pezzi della formula, dal più interno, con il loro valore in quella cella. */
+  valutaPassi(sheet: string, row: number, col: number, formula: string): Promise<Array<{ testo: string; valore: CellValue | null }>>;
   renameSheet(oldName: string, newName: string): Promise<void>;
   addSheet(name: string): Promise<void>;
   removeSheet(name: string): Promise<void>;
@@ -155,6 +157,10 @@ export class InlineEngineClient implements EngineClient {
 
   public async ricalcolaTempo(): Promise<number> {
     return this.workbook.ricalcolaFunzioniDelTempo().length;
+  }
+
+  public async valutaPassi(sheet: string, row: number, col: number, formula: string): Promise<Array<{ testo: string; valore: CellValue | null }>> {
+    return this.workbook.valutaPassi(sheet, row, col, formula);
   }
 
   public async renameSheet(oldName: string, newName: string): Promise<void> {

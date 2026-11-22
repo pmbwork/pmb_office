@@ -1,5 +1,8 @@
 // Dal file al foglio di calcolo di una scheda e ritorno: applica i dati di un file al documento di una scheda,
 // li estrae per salvarli, e prepara i byte da scrivere. Niente finestre e niente disco: lo fa il guscio con file-io.ts.
+import { ripulisciPagina } from '../sheet/pagina';
+import { copiaProtezione } from '../sheet/protezione';
+import { copiaGruppi } from '../sheet/gruppi';
 import { createCellSelection } from '../sheet/selection';
 import { HistoryManager } from '../sheet/history';
 import { NamedRangeRegistry } from '../sheet/named-ranges';
@@ -33,6 +36,11 @@ export async function applicaDati(doc: SheetDocument, dati: SheetDocumentData): 
   doc.freezeRows = dati.freezeRows ?? 0;
   doc.freezeCols = dati.freezeCols ?? 0;
   doc.coloreScheda = dati.coloreScheda;
+  doc.nascosto = dati.nascosto;
+  doc.impostaPagina = dati.impostaPagina ? ripulisciPagina(dati.impostaPagina) : undefined;
+  doc.protezione = copiaProtezione(dati.protezione);
+  doc.gruppi = copiaGruppi(dati.gruppi);
+  doc.protezioneCartella = copiaProtezione(dati.protezioneCartella);
   doc.visteFiltro = dati.visteFiltro ? copia(dati.visteFiltro) : undefined;
   doc.activeSheetName = dati.activeSheetName;
   doc.merges = copia(dati.merges ?? []);
@@ -60,20 +68,22 @@ export function estraiDati(doc: SheetDocument): Promise<SheetDocumentData> {
   return extractDocumentData(doc, doc.styles);
 }
 
-export interface Aperto { titolo: string; formato: FormatoId; avvisi: string[] }
+export interface Aperto { titolo: string; formato: FormatoId; avvisi: string[]; soloLettura?: boolean }
 
 /** Apre un file nel documento della scheda indicata (lo crea). Se il file non si apre, il documento della scheda resta com'era. */
-export async function apriInScheda(store: DocumentStore, tabId: string, bytes: Uint8Array, nome: string): Promise<Aperto> {
+export async function apriInScheda(store: DocumentStore, tabId: string, bytes: Uint8Array, nome: string, password?: string): Promise<Aperto> {
   const esisteva = store.hasDocument(tabId);
-  const letto = await importa(bytes, nome);
+  const letto = await importa(bytes, nome, password);
   const titolo = titoloDaNome(nome);
   try {
-    await applicaDati(store.getOrCreateDocument(tabId, titolo), letto.dati);
+    const doc = store.getOrCreateDocument(tabId, titolo);
+    await applicaDati(doc, letto.dati);
+    doc.passwordApertura = letto.password;
   } catch (e) {
     if (!esisteva) store.removeDocument(tabId);
     throw e;
   }
-  return { titolo, formato: letto.formato, avvisi: letto.avvisi };
+  return { titolo, formato: letto.formato, avvisi: letto.avvisi, ...(letto.soloLettura ? { soloLettura: true } : {}) };
 }
 
 export interface Preparato { nome: string; bytes: Uint8Array; mime: string; avvisi: string[] }
@@ -84,5 +94,5 @@ export async function preparaSalvataggio(store: DocumentStore, tabId: string, ti
   if (!doc) throw new Error(t("Nessun foglio di calcolo da salvare"));
   const dati = await estraiDati(doc);
   const f = FORMATI.find((x) => x.id === formato);
-  return { nome: nomeFile(titolo, formato), bytes: await esporta(dati, formato), mime: f ? f.mime : 'application/octet-stream', avvisi: avvisiEsportazione(dati, formato) };
+  return { nome: nomeFile(titolo, formato), bytes: await esporta(dati, formato, doc.passwordApertura), mime: f ? f.mime : 'application/octet-stream', avvisi: avvisiEsportazione(dati, formato, doc.passwordApertura) };
 }

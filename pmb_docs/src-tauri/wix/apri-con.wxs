@@ -15,6 +15,14 @@
           <RegistryValue Name=".odt" Type="string" Value="" />
           <RegistryValue Name=".txt" Type="string" Value="" />
           <RegistryValue Name=".md" Type="string" Value="" />
+          <RegistryValue Name=".docm" Type="string" Value="" />
+          <RegistryValue Name=".dotx" Type="string" Value="" />
+          <RegistryValue Name=".dotm" Type="string" Value="" />
+          <RegistryValue Name=".doc" Type="string" Value="" />
+          <RegistryValue Name=".dot" Type="string" Value="" />
+          <RegistryValue Name=".ott" Type="string" Value="" />
+          <RegistryValue Name=".fodt" Type="string" Value="" />
+          <RegistryValue Name=".rtf" Type="string" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="Software\Classes\.docx\OpenWithList\pmb-docs-shell.exe">
           <RegistryValue Type="string" Value="" />
@@ -26,6 +34,30 @@
           <RegistryValue Type="string" Value="" />
         </RegistryKey>
         <RegistryKey Root="HKLM" Key="Software\Classes\.md\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.docm\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.dotx\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.dotm\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.doc\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.dot\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.ott\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.fodt\OpenWithList\pmb-docs-shell.exe">
+          <RegistryValue Type="string" Value="" />
+        </RegistryKey>
+        <RegistryKey Root="HKLM" Key="Software\Classes\.rtf\OpenWithList\pmb-docs-shell.exe">
           <RegistryValue Type="string" Value="" />
         </RegistryKey>
       </Component>

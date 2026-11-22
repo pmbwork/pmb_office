@@ -45,10 +45,10 @@ describe('T465: avvisi di esportazione, PDF con i risultati, conferma prima di e
       const t = avvisiEsportazione(dati, f).join(' ');
       for (const parola of ['convalide', 'formattazioni condizionali', 'righe e colonne nascoste', 'filtri', 'grafici', 'tabelle pivot']) expect(t, `${f}: ${parola}`).toContain(parola);
     }
-    // OpenDocument conserva convalide e righe/colonne nascoste: avvisa di formattazioni condizionali, filtri, grafici e pivot
+    // OpenDocument conserva convalide, righe/colonne nascoste e (dal T548) formattazioni condizionali: avvisa di filtri, grafici e pivot
     const odf = avvisiEsportazione(dati, 'ods').join(' ');
-    for (const parola of ['formattazioni condizionali', 'filtri', 'grafici', 'tabelle pivot']) expect(odf, `ods: ${parola}`).toContain(parola);
-    for (const parola of ['convalide', 'righe e colonne nascoste']) expect(odf, `ods: ${parola}`).not.toContain(parola);
+    for (const parola of ['filtri', 'grafici', 'tabelle pivot']) expect(odf, `ods: ${parola}`).toContain(parola);
+    for (const parola of ['convalide', 'righe e colonne nascoste', 'formattazioni condizionali']) expect(odf, `ods: ${parola}`).not.toContain(parola);
     // Excel conserva convalide, formattazioni condizionali e righe/colonne nascoste: avvisa solo di ciò che non conserva
     const excel = avvisiEsportazione(dati, 'xlsx').join(' ');
     for (const parola of ['grafici', 'tabelle pivot']) expect(excel, `xlsx: ${parola}`).toContain(parola);

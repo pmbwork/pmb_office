@@ -1,0 +1,285 @@
+[
+ {
+  "nome": "lineare 1+2",
+  "inizio": 1.0,
+  "tipo": "lineare",
+  "unita": "giorno",
+  "passo": 2,
+  "limite": null,
+  "n": 10,
+  "excel": [
+   3.0,
+   5.0,
+   7.0,
+   9.0,
+   11.0,
+   13.0,
+   15.0,
+   17.0,
+   19.0,
+   21.0
+  ]
+ },
+ {
+  "nome": "lineare 1+0,1",
+  "inizio": 1.0,
+  "tipo": "lineare",
+  "unita": "giorno",
+  "passo": 0.1,
+  "limite": null,
+  "n": 10,
+  "excel": [
+   1.1,
+   1.2,
+   1.3,
+   1.4,
+   1.5,
+   1.6,
+   1.7000000000000002,
+   1.8,
+   1.9,
+   2.0
+  ]
+ },
+ {
+  "nome": "lineare 10-3 fino a 0",
+  "inizio": 10.0,
+  "tipo": "lineare",
+  "unita": "giorno",
+  "passo": -3,
+  "limite": 0,
+  "n": 10,
+  "excel": [
+   7.0,
+   4.0,
+   1.0,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "nome": "crescita 2x3 fino a 500",
+  "inizio": 2.0,
+  "tipo": "crescita",
+  "unita": "giorno",
+  "passo": 3,
+  "limite": 500,
+  "n": 10,
+  "excel": [
+   6.0,
+   18.0,
+   54.0,
+   162.0,
+   486.0,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "nome": "crescita -1x2 fino a -20",
+  "inizio": -1.0,
+  "tipo": "crescita",
+  "unita": "giorno",
+  "passo": 2,
+  "limite": -20,
+  "n": 10,
+  "excel": [
+   -2.0,
+   -4.0,
+   -8.0,
+   -16.0,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "nome": "crescita 100x0,5",
+  "inizio": 100.0,
+  "tipo": "crescita",
+  "unita": "giorno",
+  "passo": 0.5,
+  "limite": null,
+  "n": 6,
+  "excel": [
+   50.0,
+   25.0,
+   12.5,
+   6.25,
+   3.125,
+   1.5625
+  ]
+ },
+ {
+  "nome": "giorni da venerdì",
+  "inizio": 46346.0,
+  "tipo": "data",
+  "unita": "giorno",
+  "passo": 1,
+  "limite": null,
+  "n": 10,
+  "excel": [
+   46347.0,
+   46348.0,
+   46349.0,
+   46350.0,
+   46351.0,
+   46352.0,
+   46353.0,
+   46354.0,
+   46355.0,
+   46356.0
+  ]
+ },
+ {
+  "nome": "giorni a 7",
+  "inizio": 46346.0,
+  "tipo": "data",
+  "unita": "giorno",
+  "passo": 7,
+  "limite": null,
+  "n": 5,
+  "excel": [
+   46353.0,
+   46360.0,
+   46367.0,
+   46374.0,
+   46381.0
+  ]
+ },
+ {
+  "nome": "feriali da venerdì",
+  "inizio": 46346.0,
+  "tipo": "data",
+  "unita": "feriale",
+  "passo": 1,
+  "limite": null,
+  "n": 10,
+  "excel": [
+   46349.0,
+   46350.0,
+   46351.0,
+   46352.0,
+   46353.0,
+   46356.0,
+   46357.0,
+   46358.0,
+   46359.0,
+   46360.0
+  ]
+ },
+ {
+  "nome": "feriali da sabato",
+  "inizio": 46347.0,
+  "tipo": "data",
+  "unita": "feriale",
+  "passo": 1,
+  "limite": null,
+  "n": 5,
+  "excel": [
+   46349.0,
+   46350.0,
+   46351.0,
+   46352.0,
+   46353.0
+  ]
+ },
+ {
+  "nome": "feriali a 2",
+  "inizio": 46342.0,
+  "tipo": "data",
+  "unita": "feriale",
+  "passo": 2,
+  "limite": null,
+  "n": 6,
+  "excel": [
+   46344.0,
+   46346.0,
+   46350.0,
+   46352.0,
+   46356.0,
+   46358.0
+  ]
+ },
+ {
+  "nome": "mesi dal 31 gennaio",
+  "inizio": 46053.0,
+  "tipo": "data",
+  "unita": "mese",
+  "passo": 1,
+  "limite": null,
+  "n": 6,
+  "excel": [
+   46081.0,
+   46112.0,
+   46142.0,
+   46173.0,
+   46203.0,
+   46234.0
+  ]
+ },
+ {
+  "nome": "mesi a 3",
+  "inizio": 46037.0,
+  "tipo": "data",
+  "unita": "mese",
+  "passo": 3,
+  "limite": null,
+  "n": 5,
+  "excel": [
+   46127.0,
+   46218.0,
+   46310.0,
+   46402.0,
+   46492.0
+  ]
+ },
+ {
+  "nome": "anni dal 29 febbraio",
+  "inizio": 45351.0,
+  "tipo": "data",
+  "unita": "anno",
+  "passo": 1,
+  "limite": null,
+  "n": 5,
+  "excel": [
+   45716.0,
+   46081.0,
+   46446.0,
+   46812.0,
+   47177.0
+  ]
+ },
+ {
+  "nome": "giorni fino a una data",
+  "inizio": 46346.0,
+  "tipo": "data",
+  "unita": "giorno",
+  "passo": 2,
+  "limite": 46353.0,
+  "n": 10,
+  "excel": [
+   46348.0,
+   46350.0,
+   46352.0,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ }
+]

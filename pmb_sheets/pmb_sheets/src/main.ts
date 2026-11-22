@@ -3,6 +3,7 @@ import { html } from "./i18n/html";
 import { LinguaElement } from "./i18n/lingua-element";
 import { suMac, tastoPrimario } from "@comune/piattaforma";
 import { installaFinestraFilePortatile } from "@comune/file-portatile";
+import { installaFinestreNative, manigliaNativa } from "@comune/file-nativi";
 import { customElement, state } from "lit/decorators.js";
 
 // Import CSS
@@ -25,10 +26,27 @@ import "./components/dialogo-preferenze";
 import "./components/dialogo-personalizza-barra";
 import "./components/dialogo-viste-filtro";
 import "./components/dialogo-nomi";
+import "./components/dialogo-duplicati";
+import "./components/dialogo-testo-colonne";
+import "./components/dialogo-imposta-pagina";
+import type { ImpostaPagina } from "./sheet/pagina";
+import { dividiRighe, type OpzioniDivisione } from "./sheet/testo-in-colonne";
+import type { AreaFiltro } from "./sheet/filter";
 import "./components/dialogo-conferma";
 import type { SceltaConferma } from "./components/dialogo-conferma";
 import "./components/dialogo-commento";
 import "./components/dialogo-link";
+import "./components/dialogo-protezione";
+import "./components/dialogo-obiettivo";
+import "./components/dialogo-subtotali";
+import "./components/dialogo-qr";
+import "./components/dialogo-password-file";
+import "./components/dialogo-serie";
+import { stileCella } from "./sheet/stili-cella";
+import { PasswordRichiesta } from "@comune/protezione/password-file";
+import "./components/dialogo-valuta";
+import { ferma as fermaLettura, leggi as leggiAdAltaVoce, staLeggendo } from "@comune/voce";
+import type { ModoProtezione } from "./components/dialogo-protezione";
 import "./components/dialogo-formato";
 import { urlAmmesso } from "./sheet/link";
 import { LIMITE_BYTE_IMMAGINE, dataUrlDaByte, rilevaTipoImmagine } from "./sheet/immagini";
@@ -53,14 +71,17 @@ import { DocumentStore } from "./sheet/document-store";
 import type { CellValue } from "./engine/values";
 import { styleMap } from "./utils/style-map";
 import { indirizzoCella, scambioDaDocumento } from "./formati/scambio";
-import { areaDaStampare, costruisciTabella, stileEffettivo, type TabellaStampa, type ValoreStampa } from "./formati/stampa";
+import { stileEffettivo, type ValoreStampa } from "./formati/stampa";
+import { pianoDiStampa, lettereColonne, type PianoStampa, type PaginaPiano } from "./formati/piano-stampa";
+import { ALTEZZA_LETTERE_COLONNA, LARGHEZZA_NUMERI_RIGA } from "./sheet/pagina";
 import { formatCellValue } from "./sheet/number-format";
 import { formatDisplayValue } from "./sheet/format-display";
 import { scriviIntervallo } from "./sheet/regole-dialogo";
 import "./theme/stampa.css";
 import { INTERVALLO_CONTROLLO, Recupero, archivioDa, type Recuperato, type SchedaViva } from "./formati/recupero";
 import { migraChiavi } from "./formati/migrazione";
-import { t, impostaLingua, risolviLingua, localeCorrente, NOMI_LINGUA, type ScelteLingua } from './i18n/lingua';
+import { t, impostaLingua, risolviLingua, localeCorrente, linguaCorrente, NOMI_LINGUA, type ScelteLingua } from './i18n/lingua';
+import { barraPredefinita } from "./sheet/barra-personalizzata";
 
 /** La lingua scelta l'ultima volta, letta subito (prima delle impostazioni, che arrivano dopo) per non mostrare l'italiano per un attimo. */
 const CHIAVE_LINGUA = "pmb_sheets.lingua";
@@ -113,6 +134,8 @@ function copiaRegole(regole: readonly unknown[]): unknown[] {
 
 // versione pocket (device come AI_PRO): Apri e Salva con la finestra interna, così Windows non annota niente nel PC ospite
 installaFinestraFilePortatile({ t, locale: localeCorrente });
+// versione installata su Windows: Apri e Salva con le finestre di Windows, così «Salva» riscrive il file sul posto (file_nativi.rs)
+installaFinestreNative({ t });
 
 @customElement("free-app")
 export class FreeApp extends LinguaElement {
@@ -148,7 +171,12 @@ export class FreeApp extends LinguaElement {
   @state() private conferma: { titolo: string; messaggio: string; scelte: SceltaConferma[]; risolvi: (id: string) => void } | null = null;
   private controlloInCorso = false;
   /** la tabella del foglio da stampare, presente solo mentre si stampa */
-  @state() private tabellaStampa: TabellaStampa | null = null;
+  /** le pagine da stampare, mentre la stampa di sistema è aperta (poi null) */
+  @state() private tabellaStampa: PianoStampa | null = null;
+  /** File › Imposta pagina: l'impostazione del foglio attivo mentre la finestra è aperta */
+  @state() private dialogoPagina: { pagina: ImpostaPagina; foglio: string; selezione: string } | null = null;
+  /** File › Anteprima di stampa: le pagine come usciranno */
+  @state() private anteprima: PianoStampa | null = null;
   @state() private informazioniAperte: PaginaInformazioni | null = null;
   @state() private segnalaAperta = false;
   @state() private preferenzeAperte = false;
@@ -164,8 +192,23 @@ export class FreeApp extends LinguaElement {
   @state() private barraPersonalizzata: string[] | null = null;
   @state() private dialogoFormato: { codice: string; valore: CellValue } | null = null;
   @state() private dialogoLink: { riga: number; colonna: number; cella: string; url: string; testo: string } | null = null;
+  @state() private dialogoProtezione: { modo: ModoProtezione; foglio: string; errore: string } | null = null;
+  @state() private dialogoObiettivo: { cella: string; errore: string } | null = null;
+  @state() private dialogoQr = false;
+  @state() private dialogoSerie: { direzione: "colonne" | "righe"; data: boolean; errore: string } | null = null;
+  /** la finestra della password per aprire: chiederla per un file cifrato («apri») o impostarla per il foglio («imposta») */
+  @state() private dialogoPasswordFile: { modo: "apri" | "imposta"; nome: string; errore: string; haPassword?: boolean; bytes?: Uint8Array; maniglia?: ManiglioFile | null } | null = null;
+  @state() private dialogoValuta: { cella: string; formula: string; passi: Array<{ testo: string; valore: string }> } | null = null;
+  @state() private controlloAperto = false;
+  @state() private celleControllo: Array<{ foglio: string; cella: string; valore: string; formula: string }> = [];
+  private osservate: Array<{ foglio: string; riga: number; colonna: number }> = [];
+  private timerControllo: number | undefined;
+  @state() private dialogoSubtotali: { colonne: Array<{ col: number; nome: string }>; errore: string } | null = null;
   @state() private dialogoCommento: { riga: number; colonna: number; cella: string; testo: string; data: string } | null = null;
   @state() private dialogoNomi: { intervallo: string; foglio: string } | null = null;
+  /** Dati › Rimuovi duplicati e Dati › Testo in colonne: l'area su cui lavorano e ciò che le finestre mostrano */
+  @state() private dialogoDuplicati: { area: AreaFiltro; intestazioni: string[] } | null = null;
+  @state() private dialogoTestoColonne: { area: AreaFiltro; testi: string[]; sovrascritte: number } | null = null;
   @state() private dialogoViste: { viste: unknown[]; filtriAttivi: boolean; errore: string } | null = null;
   @state() private dialogoRegole: { modo: "condizionale" | "convalida"; intervallo: string; regole?: unknown[]; convalide?: unknown[] } | null = null;
 
@@ -247,6 +290,31 @@ export class FreeApp extends LinguaElement {
       display: none;
     }
 
+    /* una pagina di carta per ogni pagina del piano: la @page ha margine zero, i margini li fa la pagina */
+    .stampa-pagina {
+      position: relative;
+      box-sizing: border-box;
+      overflow: hidden;
+      break-after: page;
+      page-break-after: always;
+    }
+    .stampa-pagina:last-child { break-after: auto; page-break-after: auto; }
+    .stampa-margine { display: flex; justify-content: space-between; font-size: 9pt; color: #000000; }
+    .stampa-margine span { flex: 1; white-space: nowrap; overflow: hidden; }
+    .stampa-margine span:nth-child(2) { text-align: center; }
+    .stampa-margine span:nth-child(3) { text-align: right; }
+    .stampa-tabella th { background: #f1f3f4; border: 1px solid #c0c0c0; font-weight: 400; font-size: 11px; color: #444444; text-align: center; padding: 0 2px; }
+    .stampa-tabella { border-collapse: collapse; table-layout: fixed; }
+    .stampa-tabella td { padding: 0 3px; overflow: hidden; text-overflow: clip; line-height: 1.3; }
+    .anteprima { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; background: #5f6368; }
+    .anteprima-barra { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--color-bg, #ffffff); color: var(--color-text, #202124); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+    .anteprima-barra h2 { margin: 0; font-size: 15px; font-weight: 500; }
+    .anteprima-barra .spazio { flex: 1; }
+    .anteprima-barra button { padding: 6px 14px; border-radius: 4px; border: 1px solid var(--color-border, #dadce0); background: var(--color-bg, #ffffff); color: inherit; font: inherit; cursor: pointer; }
+    .anteprima-barra button.primario { background: #1a73e8; border-color: #1a73e8; color: #ffffff; }
+    .anteprima-pagine { flex: 1; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 20px; zoom: 0.6; }
+    .anteprima-pagine .stampa-pagina { background: #ffffff; color: #000000; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); flex: none; font-family: var(--font-family-base); font-size: 13px; }
+
     @media print {
       :host {
         height: auto;
@@ -277,6 +345,8 @@ export class FreeApp extends LinguaElement {
         text-overflow: clip;
         line-height: 1.3;
       }
+
+
     }
     .app-theme-wrapper {
       display: contents;
@@ -303,6 +373,8 @@ export class FreeApp extends LinguaElement {
     // la chiusura della finestra (X, Alt+F4, barra delle applicazioni) passa da qui: si controlla se ci sono fogli non salvati
     void invokeTauri("proteggi_chiusura", { attiva: true });
     window.addEventListener("chiusura-richiesta", this.suChiusuraRichiesta); // lo manda la shell Tauri quando la finestra viene chiusa dal sistema
+    // tema «Come il sistema»: se Windows o il Mac passano dal chiaro allo scuro (o viceversa) mentre il programma è aperto, lo si segue subito
+    try { window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", this.suTemaSistema); } catch { /* senza matchMedia resta il tema letto all'avvio */ }
     await this.loadInitialSettings();
     void this.updateComplete.then(() => this.apriDaAvvio());
     // su Mac, un file aperto dal Finder mentre il programma è già acceso: prima si chiede che cosa fare delle modifiche non salvate
@@ -335,7 +407,15 @@ export class FreeApp extends LinguaElement {
       }
       if (e.key === "F11") {
         e.preventDefault();
-        void invokeTauri("toggle_fullscreen");
+        this.applicaSchermoIntero(!this.schermoIntero);
+        return;
+      }
+      // Esc ferma la lettura ad alta voce
+      if (e.key === "Escape" && staLeggendo() && !mod && !e.altKey) { fermaLettura(); this.statusMessage = t("Lettura fermata"); }
+      // Esc esce dallo schermo intero, come in pmb_docs
+      if (e.key === "Escape" && this.schermoIntero && !mod && !e.altKey) {
+        e.preventDefault();
+        this.applicaSchermoIntero(false);
         return;
       }
       if (mod && !e.altKey && !altro && !e.shiftKey && e.key.toLowerCase() === "k") {
@@ -355,6 +435,14 @@ export class FreeApp extends LinguaElement {
         return;
       }
       // Scorciatoia Ctrl+Alt+S per sidebar
+      // Raggruppa (Alt+Maiusc+→) e Separa (Alt+Maiusc+←), come Excel e LibreOffice
+      if (!mod && e.altKey && e.shiftKey && !altro && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+        e.preventDefault();
+        const grid: any = this.getActiveGrid();
+        const metodo = e.key === "ArrowRight" ? "raggruppaSelezione" : "separaSelezione";
+        if (grid && typeof grid[metodo] === "function") this.statusMessage = grid[metodo]();
+        return;
+      }
       if (mod && e.altKey && (e.key.toLowerCase() === "s" || e.code === "KeyS")) {
         e.preventDefault();
         this.toggleSidebar();
@@ -363,9 +451,18 @@ export class FreeApp extends LinguaElement {
   }
 
   private suChiusuraRichiesta = () => { void this.richiediChiusuraApp(); };
+  /** Schermo intero della finestra (F11, Visualizza › Schermo intero; Esc ne esce). Come in pmb_docs lo stato lo tiene la pagina e la parte
+   *  nativa lo applica (imposta_schermo_intero), così pagina e finestra non perdono il passo. */
+  private schermoIntero = false;
+  private applicaSchermoIntero(attivo: boolean): void {
+    this.schermoIntero = attivo;
+    void invokeTauri("imposta_schermo_intero", { attivo });
+  }
+  private suTemaSistema = () => { if (this.currentTheme === "system") void this.setTheme("system", false); };
 
   disconnectedCallback() {
     window.removeEventListener("chiusura-richiesta", this.suChiusuraRichiesta);
+    try { window.matchMedia?.("(prefers-color-scheme: dark)").removeEventListener("change", this.suTemaSistema); } catch { /* vedi connectedCallback */ }
     window.clearInterval(this.timerRecupero);
     super.disconnectedCallback();
   }
@@ -384,9 +481,8 @@ export class FreeApp extends LinguaElement {
     if (saved && saved.theme) {
       this.setTheme(saved.theme, false);
     } else {
-      // Verifica prefers-color-scheme
-      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      this.setTheme(prefersDark ? "dark" : "light", false);
+      // nessuna impostazione salvata: il tema segue quello del computer (anche quando cambia)
+      this.setTheme("system", false);
     }
   }
 
@@ -570,27 +666,84 @@ export class FreeApp extends LinguaElement {
       return;
     }
     try {
-      const scambio = scambioDaDocumento(await estraiDati(doc));
-      const foglio = scambio.fogli.find((f) => f.nome === scambio.foglioAttivo) ?? scambio.fogli[0];
-      const area = foglio ? areaDaStampare(foglio) : null;
-      if (!foglio || !area) {
+      const piano = await this.pianoDelFoglioAttivo(doc);
+      if (!piano) {
         this.statusMessage = t("Il foglio è vuoto: niente da stampare");
         return;
       }
-      const matrice = await doc.client.getRange(foglio.nome, area.riga1, area.col1, area.riga2, area.col2);
-      const tabella = costruisciTabella(foglio, (riga, col) => {
-        const valore = matrice[riga - area.riga1]?.[col - area.col1] ?? { kind: "empty" as const };
-        return this.valoreDaStampare(valore, stileEffettivo(foglio, riga, col, indirizzoCella(riga, col)).numFmt);
-      });
-      if (!tabella) return;
-      this.tabellaStampa = tabella;
+      this.tabellaStampa = piano;
+      this.impostaPaginaDiStampa(piano);
       await this.updateComplete;
-      window.addEventListener("afterprint", () => { this.tabellaStampa = null; }, { once: true });
+      window.addEventListener("afterprint", () => { this.tabellaStampa = null; this.impostaPaginaDiStampa(null); }, { once: true });
       window.print();
     } catch (err) {
       this.tabellaStampa = null;
+      this.impostaPaginaDiStampa(null);
       this.statusMessage = t("Impossibile stampare: {}", err instanceof Error ? err.message : String(err));
     }
+  }
+
+  /** Il piano di stampa del foglio attivo, con i valori calcolati dal motore e l'impostazione di pagina del foglio. null se è vuoto. */
+  async pianoDelFoglioAttivo(doc: NonNullable<ReturnType<typeof defaultDocumentStore.getDocument>>): Promise<PianoStampa | null> {
+    const scambio = scambioDaDocumento(await estraiDati(doc));
+    const foglio = scambio.fogli.find((f) => f.nome === scambio.foglioAttivo) ?? scambio.fogli[0];
+    if (!foglio) return null;
+    // i valori si leggono dal motore una riga alla volta, solo per le celle che il piano chiede
+    const valori = new Map<string, ValoreStampa>();
+    const leggi = async (r1: number, c1: number, r2: number, c2: number): Promise<void> => {
+      const m = await doc.client.getRange(foglio.nome, r1, c1, r2, c2);
+      for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
+        const v = m[r - r1]?.[c - c1] ?? { kind: "empty" as const };
+        valori.set(`${r}:${c}`, this.valoreDaStampare(v, stileEffettivo(foglio, r, c, indirizzoCella(r, c)).numFmt));
+      }
+    };
+    // prima un giro senza valori per sapere quali righe e colonne servono, poi si leggono e si fa il piano vero
+    const prova = pianoDiStampa(foglio, () => ({ testo: "", tipo: "vuoto" }), { file: this.titolo, adesso: new Date(), locale: localeCorrente() });
+    if (!prova) return null;
+    const righe = prova.pagine.flatMap((pg) => pg.righe);
+    const colonne = prova.pagine.flatMap((pg) => pg.colonne);
+    await leggi(Math.min(...righe), Math.min(...colonne), Math.max(...righe), Math.max(...colonne));
+    return pianoDiStampa(foglio, (r, c) => valori.get(`${r}:${c}`) ?? { testo: "", tipo: "vuoto" }, { file: this.titolo, adesso: new Date(), locale: localeCorrente() });
+  }
+
+  /** La regola @page (carta e orientamento) deve stare nel documento, fuori dal componente: si mette prima della stampa e si toglie dopo. */
+  private impostaPaginaDiStampa(piano: PianoStampa | null): void {
+    const id = "pmb-sheets-pagina-stampa";
+    document.getElementById(id)?.remove();
+    if (!piano) return;
+    const stile = document.createElement("style");
+    stile.id = id;
+    stile.textContent = `@page { size: ${piano.carta.larghezza}mm ${piano.carta.altezza}mm; margin: 0; }`;
+    document.head.appendChild(stile);
+  }
+
+  /** Una pagina stampata: margini, intestazione, tabella (con le intestazioni di riga e colonna se scelte) e piè di pagina. */
+  private paginaStampa(piano: PianoStampa, pg: PaginaPiano) {
+    const m = piano.margini;
+    const corpo = {
+      position: "absolute", left: `${m.sinistro}mm`, right: `${m.destro}mm`, top: `${m.alto}mm`, bottom: `${m.basso}mm`,
+      display: "flex", flexDirection: "column", alignItems: piano.centraOrizzontale ? "center" : "flex-start", justifyContent: piano.centraVerticale ? "center" : "flex-start",
+    };
+    const margine = (testi: PaginaPiano["intestazione"], dove: "alto" | "basso") => html`<div class="stampa-margine" style=${styleMap({
+      position: "absolute", left: `${m.sinistro}mm`, right: `${m.destro}mm`, [dove === "alto" ? "top" : "bottom"]: `${Math.max(2, (dove === "alto" ? m.alto : m.basso) / 2 - 2)}mm`,
+    })}><span>${testi.sinistra}</span><span>${testi.centro}</span><span>${testi.destra}</span></div>`;
+    return html`<section class="stampa-pagina" style=${styleMap({ width: `${piano.carta.larghezza}mm`, height: `${piano.carta.altezza}mm` })}>
+      ${margine(pg.intestazione, "alto")}
+      <div style=${styleMap(corpo)}>
+        <div class="stampa-scala" style=${styleMap({ zoom: String(piano.scala) })}>
+          <table class="stampa-tabella${piano.griglia ? " con-griglia" : ""}">
+            <colgroup>${piano.intestazioniRigheColonne ? html`<col style=${styleMap({ width: `${LARGHEZZA_NUMERI_RIGA}px` })} />` : ""}${pg.larghezze.map((w) => html`<col style=${styleMap({ width: `${w}px` })} />`)}</colgroup>
+            ${piano.intestazioniRigheColonne ? html`<thead><tr style=${styleMap({ height: `${ALTEZZA_LETTERE_COLONNA}px` })}><th></th>${lettereColonne(pg).map((l) => html`<th>${l}</th>`)}</tr></thead>` : ""}
+            <tbody>
+              ${pg.celle.map((riga, i) => html`<tr style=${styleMap({ height: `${pg.altezze[i] ?? 22}px` })}>
+                ${piano.intestazioniRigheColonne ? html`<th>${pg.righe[i]}</th>` : ""}${riga.map((c) => html`<td rowspan=${c.rowspan} colspan=${c.colspan} style=${styleMap(c.stile)}>${c.testo}</td>`)}
+              </tr>`)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      ${margine(pg.pie, "basso")}
+    </section>`;
   }
   private getActiveTab(): DocumentTab {
     return { id: DOC_ID, title: this.titolo };
@@ -607,7 +760,7 @@ export class FreeApp extends LinguaElement {
   }
 
   /** I fogli del file, come li comunica la griglia. */
-  private handleSheetsChanged(e: CustomEvent<{ fogli: string[]; attivo: string; colori?: Record<string, string> }>) {
+  private handleSheetsChanged(e: CustomEvent<{ fogli: string[]; nascosti?: string[]; attivo: string; colori?: Record<string, string> }>) {
     this.coloriSchede = e.detail.colori ?? {};
     this.fogli = e.detail.fogli;
     this.foglioAttivo = e.detail.attivo;
@@ -641,17 +794,29 @@ export class FreeApp extends LinguaElement {
 
   /** Chiusura della finestra: se ci sono fogli non salvati chiede conferma, poi chiude davvero. */
   async richiediChiusuraApp(): Promise<void> {
-    if (this.conferma) return; // una domanda è già aperta
+    // una domanda è già aperta: la pagina è viva e lo ridice alla shell a ogni nuova X, altrimenti la terza X entro 10 s (decidi_chiusura in lib.rs)
+    // la scambierebbe per una pagina bloccata e chiuderebbe senza salvare (trovato con la prova fisica del 2026-11-19; uguale in pmb_docs)
+    if (this.conferma) { void invokeTauri("proteggi_chiusura", { attiva: true }); return; }
     let modificate: DocumentTab[] = [];
     try { modificate = await this.schedeModificate(); } catch (err) { console.warn("[chiusura] controllo non riuscito:", err); modificate = this.tabs; }
     if (modificate.length > 0) {
       const nomi = modificate.map((s) => `«${s.title === TITOLO_NUOVO ? t(TITOLO_NUOVO) : s.title}»`).join(", ");
+      // la domanda compare: la pagina è viva, quindi una nuova X (anche un doppio clic) deve trovare la domanda, non chiudere senza salvare
+      void invokeTauri("proteggi_chiusura", { attiva: true });
       const scelta = await this.chiediConferma(
         t("Uscire senza salvare?"),
         modificate.length === 1 ? t("Il foglio {} ha modifiche non salvate.", nomi) : t("{} fogli hanno modifiche non salvate: {}.", modificate.length, nomi),
-        [{ id: "esci", testo: t("Esci senza salvare") }, { id: "annulla", testo: t("Annulla"), principale: true, annulla: true }],
+        [{ id: "salva", testo: t("Salva"), principale: true }, { id: "esci", testo: t("Non salvare") }, { id: "annulla", testo: t("Annulla"), annulla: true }],
       );
-      if (scelta !== "esci") return;
+      if (scelta === "salva") {
+        // come in pmb_docs: si chiude solo se il salvataggio riesce (la finestra «Salva con nome» annullata lascia il programma aperto)
+        const salvato = await this.salva(false);
+        if (!salvato || (await this.schedeModificate()).length > 0) { void invokeTauri("proteggi_chiusura", { attiva: true }); this.statusMessage = t("Il foglio non è stato salvato: il programma resta aperto"); return; }
+      } else if (scelta !== "esci") {
+        // la pagina ha risposto: una nuova X entro 10 secondi deve chiedere di nuovo (la shell altrimenti chiuderebbe senza domande)
+        void invokeTauri("proteggi_chiusura", { attiva: true });
+        return;
+      }
     }
     await invokeTauri("destroy_window");
   }
@@ -700,23 +865,65 @@ export class FreeApp extends LinguaElement {
 
   /** Se la finestra è stata avviata con un file (doppio clic in Esplora risorse, "Apri con"), lo apre. */
   private async apriDaAvvio() {
-    const f = await invokeTauri<{ nome: string; bytes: number[] }>("file_di_avvio");
+    // nome, percorso ed eventuale problema (src-tauri/src/lib.rs, file_di_avvio: uguale in pmb_docs); i byte si leggono grezzi con file_leggi
+    // (prima arrivavano come elenco JSON di numeri: 4 volte più lento)
+    const f = await invokeTauri<{ nome: string; percorso: string; problema?: string | null }>("file_di_avvio");
     if (!f || !f.nome) return;
-    await this.apriDaByte(Uint8Array.from(f.bytes), f.nome, null);
+    // il file c'è ma non si apre: lo si dice, invece di aprire un foglio vuoto senza spiegazioni
+    if (f.problema === "TROPPO_GRANDE") { this.statusMessage = t("«{}» è troppo grande per essere aperto (oltre 100 MB)", f.nome); return; }
+    if (f.problema === "FORMATO_NON_SUPPORTATO") { this.statusMessage = t("«{}»: questo tipo di file non si apre con pmb_sheets", f.nome); return; }
+    if (f.problema) { this.statusMessage = t("Non trovo il file «{}»", f.nome); return; }
+    const grezzo = await invokeTauri<ArrayBuffer | ArrayLike<number>>("file_leggi", { percorsoFile: f.percorso });
+    const bytes = grezzo instanceof ArrayBuffer ? new Uint8Array(grezzo) : grezzo && typeof grezzo.length === "number" ? Uint8Array.from(grezzo as ArrayLike<number>) : null;
+    if (!bytes) { this.statusMessage = t("Non riesco a leggere \"{}\"", f.nome); return; }
+    // con il percorso, «Salva» riscrive il file sul posto invece di chiedere dove salvarlo
+    await this.apriDaByte(bytes, f.nome, manigliaNativa(f.percorso) as unknown as ManiglioFile);
   }
 
-  private async apriDaByte(bytes: Uint8Array, nome: string, maniglia: ManiglioFile | null) {
+  private async apriDaByte(bytes: Uint8Array, nome: string, maniglia: ManiglioFile | null, password?: string) {
     const file = { name: nome, maniglia };
     try {
-      const aperto = await apriInScheda(defaultDocumentStore, DOC_ID, bytes, file.name);
+      const aperto = await apriInScheda(defaultDocumentStore, DOC_ID, bytes, file.name, password);
+      this.dialogoPasswordFile = null;
       this.titolo = aperto.titolo;
-      this.origini.set(DOC_ID, { maniglia: file.maniglia ?? null, formato: aperto.formato, nome: file.name });
+      // un file che si apre ma non si riscrive nello stesso formato (macro, .xlsb, .html...) non resta legato al suo originale: «Salva» chiede un nome nuovo
+      this.origini.set(DOC_ID, { maniglia: aperto.soloLettura ? null : file.maniglia ?? null, formato: aperto.formato, nome: file.name });
       await this.segnaPulita(DOC_ID);
       await this.ricaricaGriglia();
       this.statusMessage = aperto.avvisi.length > 0 ? t("Aperto \"{}\". {}", file.name, aperto.avvisi.join(" ")) : t("Aperto \"{}\"", file.name);
     } catch (err) {
+      // il file ha la password per aprire: la si chiede (di nuovo, se era sbagliata) e si riprova
+      if (err instanceof PasswordRichiesta) {
+        this.dialogoPasswordFile = { modo: "apri", nome: file.name, errore: err.sbagliata ? t("La password non è giusta") : "", bytes, maniglia };
+        await this.updateComplete;
+        (this.renderRoot.querySelector("free-dialogo-password-file") as unknown as { libera?: () => void } | null)?.libera?.();
+        return;
+      }
+      this.dialogoPasswordFile = null;
       this.statusMessage = t("Impossibile aprire \"{}\": {}", file.name, err instanceof Error ? err.message : String(err));
     }
+  }
+
+  private async applicaSerie(d: { direzione: "colonne" | "righe"; tipo: string; unita: string; passo: string; limite: string }): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    if (!grid || !this.dialogoSerie) return;
+    const r = await grid.riempiSerie(d.direzione, d.tipo, d.unita, d.passo, d.limite);
+    if (!r.ok) { this.dialogoSerie = { ...this.dialogoSerie, errore: r.messaggio }; return; }
+    this.dialogoSerie = null;
+    this.statusMessage = r.messaggio;
+    this.riportaFocusAllaGriglia();
+  }
+
+  /** La password scritta nella finestra: apre il file cifrato, oppure imposta (o toglie, se vuota) quella del foglio. */
+  private async confermaPasswordFile(password: string): Promise<void> {
+    const d = this.dialogoPasswordFile;
+    if (!d) return;
+    if (d.modo === "apri") { if (d.bytes) await this.apriDaByte(d.bytes, d.nome, d.maniglia ?? null, password); return; }
+    const doc = defaultDocumentStore.getDocument(this.getActiveTab().id);
+    if (doc) doc.passwordApertura = password === "" ? undefined : password;
+    this.dialogoPasswordFile = null;
+    this.statusMessage = password === "" ? t("Password per aprire tolta: vale dal prossimo salvataggio") : t("Password per aprire impostata: vale dal prossimo salvataggio in .xlsx o .ods");
+    this.riportaFocusAllaGriglia();
   }
 
   /** File > Salva (Ctrl+S) e Salva con nome (Ctrl+Maiusc+S): salva la scheda attiva. */
@@ -766,6 +973,72 @@ export class FreeApp extends LinguaElement {
     this.statusMessage = this.sidebarOpen ? t("Pannello laterale aperto") : t("Pannello laterale chiuso");
   }
 
+  // ---- File › Imposta pagina e File › Anteprima di stampa ----
+  private apriImpostaPagina(): void {
+    const grid: any = this.getActiveGrid();
+    if (!grid || typeof grid.paginaAttiva !== "function") return;
+    const doc = grid.getDoc();
+    this.anteprima = null;
+    this.dialogoPagina = { pagina: grid.paginaAttiva(), foglio: doc.activeSheetName, selezione: doc.selection.isAll ? "" : scriviIntervallo(doc.selection.range) };
+  }
+  private applicaImpostaPagina(p: ImpostaPagina, poiAnteprima: boolean): void {
+    const grid: any = this.getActiveGrid();
+    this.dialogoPagina = null;
+    if (!grid || typeof grid.impostaPaginaAttiva !== "function") return;
+    grid.impostaPaginaAttiva(p);
+    this.statusMessage = t("Impostazione di pagina aggiornata");
+    if (poiAnteprima) void this.apriAnteprima();
+  }
+  private async apriAnteprima(): Promise<void> {
+    const doc = defaultDocumentStore.getDocument(this.getActiveTab().id);
+    if (!doc) { this.statusMessage = t("Nessun foglio di calcolo da stampare"); return; }
+    const piano = await this.pianoDelFoglioAttivo(doc);
+    if (!piano) { this.statusMessage = t("Il foglio è vuoto: niente da stampare"); return; }
+    this.anteprima = piano;
+    await this.updateComplete;
+    this.renderRoot.querySelector<HTMLButtonElement>('.anteprima button[data-azione="stampa"]')?.focus();
+  }
+  private chiudiAnteprima(): void { this.anteprima = null; }
+
+  // ---- Dati › Rimuovi duplicati e Dati › Testo in colonne ----
+  private async apriRimuoviDuplicati(): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    if (!grid || typeof grid.preparaDuplicati !== "function") return;
+    const p = await grid.preparaDuplicati();
+    if ("errore" in p) { this.statusMessage = p.errore; return; }
+    this.dialogoDuplicati = p;
+  }
+  private async eseguiRimuoviDuplicati(colonne: number[], conIntestazione: boolean): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    const d = this.dialogoDuplicati;
+    this.dialogoDuplicati = null;
+    if (!grid || !d) return;
+    const esito = await grid.rimuoviDuplicati(d.area, colonne, conIntestazione);
+    this.statusMessage = esito.tolte === 0
+      ? t("Nessun duplicato trovato: {} righe uniche", esito.restano)
+      : t("Righe duplicate rimosse: {}. Righe uniche rimaste: {}", esito.tolte, esito.restano);
+  }
+  private async apriTestoInColonne(): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    if (!grid || typeof grid.preparaTestoInColonne !== "function") return;
+    const p = await grid.preparaTestoInColonne();
+    if ("errore" in p) { this.statusMessage = p.errore; return; }
+    this.dialogoTestoColonne = { ...p, sovrascritte: 0 };
+  }
+  /** Prima di dividere controlla se si sostituiscono celle piene a destra: in quel caso la finestra chiede conferma. */
+  private async eseguiTestoInColonne(opzioni: OpzioniDivisione, confermato: boolean): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    const d = this.dialogoTestoColonne;
+    if (!grid || !d) return;
+    if (!confermato) {
+      const n = await grid.celleSovrascritte(d.area, dividiRighe(d.testi, opzioni));
+      if (n > 0) { this.dialogoTestoColonne = { ...d, sovrascritte: n }; return; }
+    }
+    this.dialogoTestoColonne = null;
+    const esito = await grid.testoInColonne(d.area, opzioni);
+    this.statusMessage = esito.righe === 0 ? t("Niente da dividere con questo separatore") : t("Testo diviso: {} righe in {} colonne", esito.righe, esito.colonne);
+  }
+
   private getActiveGrid(): any {
     return this.renderRoot.querySelector("free-sheet-grid");
   }
@@ -806,6 +1079,14 @@ export class FreeApp extends LinguaElement {
   private handleMenuAction(e: CustomEvent<{ action: string; label: string }>) {
     const { action, label } = e.detail;
     if (action !== "open-menu-search") this.riportaFocusAllaGriglia();
+
+    // Formato › Stili di cella: lo stile si applica alle celle selezionate come formato (un passo di annulla)
+    if (action.startsWith("cell-style-")) {
+      const s = stileCella(action.slice("cell-style-".length));
+      const grid: any = this.getActiveGrid();
+      if (s && grid && typeof grid.applyFormat === "function") { grid.applyFormat(s.stile, t("Stile di cella «{}»", t(s.nome))); this.statusMessage = t("Stile di cella «{}»", t(s.nome)); }
+      return;
+    }
 
     switch (action) {
       case "undo": {
@@ -896,8 +1177,120 @@ export class FreeApp extends LinguaElement {
         this.alternaMenuNascosti();
         break;
       case "toggle-fullscreen":
-        void invokeTauri("toggle_fullscreen");
+        this.applicaSchermoIntero(!this.schermoIntero);
         break;
+      case "page-setup": {
+        this.apriImpostaPagina();
+        break;
+      }
+      case "print-preview": {
+        void this.apriAnteprima();
+        break;
+      }
+      case "print-area-set":
+      case "print-area-clear":
+      case "page-break-row":
+      case "page-break-col":
+      case "page-breaks-clear": {
+        const grid: any = this.getActiveGrid();
+        if (!grid || typeof grid.paginaAttiva !== "function") break;
+        this.statusMessage = action === "print-area-set" ? grid.impostaAreaStampaDallaSelezione()
+          : action === "print-area-clear" ? grid.cancellaAreaStampa()
+          : action === "page-break-row" ? grid.alternaInterruzionePagina("riga")
+          : action === "page-break-col" ? grid.alternaInterruzionePagina("colonna")
+          : grid.togliInterruzioniPagina();
+        break;
+      }
+      case "remove-duplicates": {
+        void this.apriRimuoviDuplicati();
+        break;
+      }
+      case "case-upper":
+      case "case-lower":
+      case "case-title":
+      case "case-sentence":
+      case "case-toggle": {
+        const grid: any = this.getActiveGrid();
+        const modo = ({ "case-upper": "maiuscolo", "case-lower": "minuscolo", "case-title": "iniziali", "case-sentence": "frase", "case-toggle": "inverti" } as Record<string, string>)[action];
+        if (grid && typeof grid.cambiaMaiuscole === "function") void grid.cambiaMaiuscole(modo).then((m: string) => { this.statusMessage = m; });
+        break;
+      }
+      case "read-aloud": {
+        if (staLeggendo()) { fermaLettura(); this.statusMessage = t("Lettura fermata"); break; }
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.testiDaLeggere === "function") {
+          void grid.testiDaLeggere().then((pezzi: string[]) => {
+            const ok = leggiAdAltaVoce({ pezzi, lingua: linguaCorrente() === "en" ? "en-US" : "it-IT" });
+            this.statusMessage = ok ? t("Lettura ad alta voce: Esc o di nuovo Strumenti › Leggi le celle ad alta voce per fermarla") : t("Non c'è niente da leggere, o Windows non ha una voce installata per questa lingua");
+          });
+        }
+        break;
+      }
+      case "trace-precedents":
+      case "trace-dependents": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.mostraTracce === "function") void grid.mostraTracce(action === "trace-precedents" ? "precedenti" : "dipendenti").then((m: string) => { this.statusMessage = m; });
+        break;
+      }
+      case "group":
+      case "ungroup":
+      case "group-collapse":
+      case "group-expand":
+      case "outline-clear": {
+        const grid: any = this.getActiveGrid();
+        const metodo = ({ group: "raggruppaSelezione", ungroup: "separaSelezione", "group-collapse": "comprimiGruppo", "group-expand": "espandiGruppo", "outline-clear": "cancellaStruttura" } as Record<string, string>)[action];
+        if (grid && typeof grid[metodo] === "function") this.statusMessage = grid[metodo]();
+        break;
+      }
+      case "fill-series": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.propostaSerie === "function") void grid.propostaSerie().then((p: { direzione: "colonne" | "righe"; data: boolean }) => { this.dialogoSerie = { ...p, errore: "" }; });
+        break;
+      }
+      case "file-password": {
+        const doc = defaultDocumentStore.getDocument(this.getActiveTab().id);
+        this.dialogoPasswordFile = { modo: "imposta", nome: this.titolo, errore: "", haPassword: !!doc?.passwordApertura };
+        break;
+      }
+      case "evaluate-formula": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.passiValutazione === "function") void grid.passiValutazione().then((v: { cella: string; formula: string; passi: Array<{ testo: string; valore: string }> }) => { this.dialogoValuta = v; });
+        break;
+      }
+      case "watch-window": {
+        this.controlloAperto = !this.controlloAperto;
+        if (this.controlloAperto) this.avviaControllo(); else this.fermaControllo();
+        break;
+      }
+      case "trace-clear": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.togliTracce === "function") grid.togliTracce();
+        break;
+      }
+      case "show-formulas": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.alternaMostraFormule === "function") grid.alternaMostraFormule();
+        break;
+      }
+      case "subtotals": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.colonneTabellaSelezionata === "function") {
+          void grid.colonneTabellaSelezionata().then((c: Array<{ col: number; nome: string }> | null) => {
+            if (!c) { this.statusMessage = t("Seleziona la tabella, con l'intestazione nella prima riga"); return; }
+            this.dialogoSubtotali = { colonne: c, errore: "" };
+          });
+        }
+        break;
+      }
+      case "goal-seek": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.cellaAttiva === "function") this.dialogoObiettivo = { cella: grid.cellaAttiva(), errore: "" };
+        break;
+      }
+      case "split-text": {
+        void this.apriTestoInColonne();
+        break;
+      }
       case "named-ranges": {
         const grid: any = this.getActiveGrid();
         const doc = grid && typeof grid.getDoc === "function" ? grid.getDoc() : null;
@@ -913,6 +1306,12 @@ export class FreeApp extends LinguaElement {
       case "insert-link":
         this.apriDialogoLink();
         break;
+      case "protect-sheet":
+        void this.apriProtezione(false);
+        break;
+      case "protect-workbook":
+        void this.apriProtezione(true);
+        break;
       case "spelling": {
         const grid: any = this.getActiveGrid();
         if (grid && typeof grid.toggleOrtografia === "function") this.statusMessage = grid.toggleOrtografia();
@@ -921,6 +1320,14 @@ export class FreeApp extends LinguaElement {
       case "insert-image":
         void this.inserisciImmagine();
         break;
+      case "insert-qr":
+        this.dialogoQr = true;
+        break;
+      case "insert-sparkline": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.inserisciMinigrafico === "function") void grid.inserisciMinigrafico().then((m: string) => { this.statusMessage = m; });
+        break;
+      }
       case "insert-table": {
         const grid: any = this.getActiveGrid();
         if (grid && typeof grid.insertTable === "function") this.statusMessage = grid.insertTable();
@@ -1026,6 +1433,10 @@ export class FreeApp extends LinguaElement {
       case "merge-vertical":
       case "unmerge":
       case "find-replace":
+      case "cell-unlock":
+      case "cell-lock":
+      case "cell-hide-formula":
+      case "cell-show-formula":
       case "insert-checkbox": {
         const grid = this.getActiveGrid();
         if (grid && typeof grid.handleFormatAction === "function") grid.handleFormatAction(action);
@@ -1188,6 +1599,84 @@ export class FreeApp extends LinguaElement {
     if (!grid) return;
     grid.handleFormatAction("set-num-fmt-custom", codice);
     this.statusMessage = codice === "" ? t("Formato numerico: Automatico") : t("Formato numerico: {}", codice);
+  }
+
+  /** Strumenti › Proteggi foglio / la struttura: se non è protetto si apre la finestra per proteggerlo; se lo è, si toglie la protezione
+   *  (con la finestra della password, se ne ha una). */
+  private async apriProtezione(cartella: boolean): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    if (!grid || typeof grid.statoProtezione !== "function") return;
+    const s = grid.statoProtezione();
+    const protetto = cartella ? s.cartella : s.foglio;
+    const conPassword = cartella ? s.cartellaConPassword : s.foglioConPassword;
+    if (protetto && !conPassword) {
+      await (cartella ? grid.togliProtezioneCartella("") : grid.togliProtezioneFoglio(""));
+      this.statusMessage = cartella ? t("Struttura della cartella non più protetta") : t("Foglio «{}» non più protetto", s.nome);
+      return;
+    }
+    this.dialogoProtezione = { modo: `${protetto ? "togli" : "proteggi"}-${cartella ? "cartella" : "foglio"}` as ModoProtezione, foglio: s.nome, errore: "" };
+  }
+
+  private async confermaProtezione(password: string): Promise<void> {
+    const d = this.dialogoProtezione;
+    const grid: any = this.getActiveGrid();
+    if (!d || !grid) return;
+    const cartella = d.modo.endsWith("cartella");
+    if (d.modo.startsWith("proteggi")) {
+      await (cartella ? grid.proteggiCartella(password) : grid.proteggiFoglio(password));
+      this.dialogoProtezione = null;
+      this.statusMessage = cartella ? t("Struttura della cartella protetta") : t("Foglio «{}» protetto", d.foglio);
+      this.riportaFocusAllaGriglia();
+      return;
+    }
+    const ok = await (cartella ? grid.togliProtezioneCartella(password) : grid.togliProtezioneFoglio(password));
+    if (!ok) {
+      this.dialogoProtezione = { ...d, errore: t("La password non è giusta") };
+      (this.renderRoot.querySelector("free-dialogo-protezione") as { libera?: () => void } | null)?.libera?.();
+      return;
+    }
+    this.dialogoProtezione = null;
+    this.statusMessage = cartella ? t("Struttura della cartella non più protetta") : t("Foglio «{}» non più protetto", d.foglio);
+    this.riportaFocusAllaGriglia();
+  }
+
+  private async applicaSubtotali(d: { gruppo: number; funzione: number; colonne: number[] }): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    if (!grid || !this.dialogoSubtotali) return;
+    if (d.colonne.length === 0) { this.dialogoSubtotali = { ...this.dialogoSubtotali, errore: t("Scegli almeno una colonna a cui aggiungere il subtotale") }; return; }
+    this.dialogoSubtotali = null;
+    this.statusMessage = await grid.subtotali(d.gruppo, d.colonne, d.funzione);
+    this.riportaFocusAllaGriglia();
+  }
+
+  // ---- Finestra controllo: i valori si rileggono ogni secondo finché è aperta ----
+  private avviaControllo(): void {
+    this.fermaControllo();
+    const aggiorna = async (): Promise<void> => {
+      const grid: any = this.getActiveGrid();
+      if (grid && typeof grid.valoriOsservati === "function") this.celleControllo = await grid.valoriOsservati(this.osservate);
+    };
+    void aggiorna();
+    this.timerControllo = window.setInterval(() => { void aggiorna(); }, 1000);
+  }
+  private fermaControllo(): void {
+    if (this.timerControllo !== undefined) { window.clearInterval(this.timerControllo); this.timerControllo = undefined; }
+  }
+  private aggiungiOsservata(): void {
+    const grid: any = this.getActiveGrid();
+    if (!grid || typeof grid.cellaAttivaConFoglio !== "function") return;
+    const c = grid.cellaAttivaConFoglio();
+    if (!this.osservate.some((x) => x.foglio === c.foglio && x.riga === c.riga && x.colonna === c.colonna) && this.osservate.length < 100) this.osservate = [...this.osservate, c];
+    this.avviaControllo();
+  }
+
+  private async cercaObiettivo(d: { obiettivo: string; valore: string; variabile: string }): Promise<void> {
+    const grid: any = this.getActiveGrid();
+    if (!grid || !this.dialogoObiettivo) return;
+    const r = await grid.ricercaObiettivo(d.obiettivo, d.valore, d.variabile);
+    if (r.ok) { this.dialogoObiettivo = null; this.statusMessage = r.messaggio; this.riportaFocusAllaGriglia(); return; }
+    this.dialogoObiettivo = { ...this.dialogoObiettivo, errore: r.messaggio };
+    (this.renderRoot.querySelector("free-dialogo-obiettivo") as { libera?: () => void } | null)?.libera?.();
   }
 
   /** Inserisci > Link (Ctrl+K): apre la finestra del link sulla cella attiva. */
@@ -1488,20 +1977,80 @@ export class FreeApp extends LinguaElement {
         </div>
 
         ${this.segnalaAperta
-          ? html`<free-dialogo-segnala @chiudi-dialogo=${() => { this.segnalaAperta = false; }} @inviato=${() => { this.segnalaAperta = false; this.statusMessage = t("Grazie! Il messaggio è stato inviato."); }} @posta=${(e: CustomEvent<{ testo: string }>) => { void this.apriPostaSegnalazione(e.detail.testo); }}></free-dialogo-segnala>`
+          ? html`<free-dialogo-segnala @chiudi-dialogo=${() => { this.segnalaAperta = false; this.riportaFocusAllaGriglia(); }} @inviato=${() => { this.segnalaAperta = false; this.statusMessage = t("Grazie! Il messaggio è stato inviato."); }} @posta=${(e: CustomEvent<{ testo: string }>) => { void this.apriPostaSegnalazione(e.detail.testo); }}></free-dialogo-segnala>`
           : ""}
 
         ${this.informazioniAperte !== null
-          ? html`<free-dialogo-informazioni .pagina=${this.informazioniAperte} @chiudi-dialogo=${() => { this.informazioniAperte = null; }}></free-dialogo-informazioni>`
+          ? html`<free-dialogo-informazioni .pagina=${this.informazioniAperte} @chiudi-dialogo=${() => { this.informazioniAperte = null; this.riportaFocusAllaGriglia(); }}></free-dialogo-informazioni>`
           : ""}
 
         ${this.dialogoFormato
           ? html`<free-dialogo-formato
               .codice=${this.dialogoFormato.codice}
               .valore=${this.dialogoFormato.valore}
-              @chiudi-dialogo=${() => { this.dialogoFormato = null; }}
+              @chiudi-dialogo=${() => { this.dialogoFormato = null; this.riportaFocusAllaGriglia(); }}
               @salva-formato=${(e: CustomEvent<{ codice: string }>) => this.applicaFormatoPersonalizzato(e.detail.codice)}
             ></free-dialogo-formato>`
+          : ""}
+
+        ${this.dialogoValuta
+          ? html`<free-dialogo-valuta .cella=${this.dialogoValuta.cella} .formula=${this.dialogoValuta.formula} .passi=${this.dialogoValuta.passi}
+              @chiudi-dialogo=${() => { this.dialogoValuta = null; this.riportaFocusAllaGriglia(); }}></free-dialogo-valuta>`
+          : ""}
+
+        ${this.controlloAperto
+          ? html`<free-pannello-controllo .celle=${this.celleControllo}
+              @aggiungi-osservata=${() => this.aggiungiOsservata()}
+              @togli-osservata=${(e: CustomEvent<{ indice: number }>) => { this.osservate = this.osservate.filter((_, i) => i !== e.detail.indice); this.avviaControllo(); }}
+              @chiudi-controllo=${() => { this.controlloAperto = false; this.fermaControllo(); this.riportaFocusAllaGriglia(); }}></free-pannello-controllo>`
+          : ""}
+
+        ${this.dialogoSerie
+          ? html`<free-dialogo-serie .direzione=${this.dialogoSerie.direzione} .data=${this.dialogoSerie.data} .errore=${this.dialogoSerie.errore}
+              @applica-serie=${(e: CustomEvent<{ direzione: "colonne" | "righe"; tipo: string; unita: string; passo: string; limite: string }>) => void this.applicaSerie(e.detail)}
+              @chiudi-dialogo=${() => { this.dialogoSerie = null; this.riportaFocusAllaGriglia(); }}></free-dialogo-serie>`
+          : ""}
+
+        ${this.dialogoPasswordFile
+          ? html`<free-dialogo-password-file .modo=${this.dialogoPasswordFile.modo} .nome=${this.dialogoPasswordFile.nome} .errore=${this.dialogoPasswordFile.errore}
+              .haPassword=${!!this.dialogoPasswordFile.haPassword}
+              @conferma-password-file=${(e: CustomEvent<{ password: string }>) => void this.confermaPasswordFile(e.detail.password)}
+              @chiudi-dialogo=${() => { const apri = this.dialogoPasswordFile?.modo === "apri"; const nome = this.dialogoPasswordFile?.nome ?? ""; this.dialogoPasswordFile = null; if (apri) this.statusMessage = t("«{}» non aperto: serve la password", nome); this.riportaFocusAllaGriglia(); }}></free-dialogo-password-file>`
+          : ""}
+
+        ${this.dialogoQr
+          ? html`<free-dialogo-qr
+              @chiudi-dialogo=${() => { this.dialogoQr = false; this.riportaFocusAllaGriglia(); }}
+              @inserisci-qr=${(e: CustomEvent<{ s: string; w: number; h: number }>) => { this.dialogoQr = false; const grid: any = this.getActiveGrid(); if (grid && typeof grid.insertImage === "function") this.statusMessage = grid.insertImage(e.detail.s, "codice-qr.png", e.detail.w, e.detail.h); this.riportaFocusAllaGriglia(); }}
+            ></free-dialogo-qr>`
+          : ""}
+
+        ${this.dialogoSubtotali
+          ? html`<free-dialogo-subtotali
+              .colonne=${this.dialogoSubtotali.colonne}
+              .errore=${this.dialogoSubtotali.errore}
+              @chiudi-dialogo=${() => { this.dialogoSubtotali = null; this.riportaFocusAllaGriglia(); }}
+              @applica-subtotali=${(e: CustomEvent<{ gruppo: number; funzione: number; colonne: number[] }>) => void this.applicaSubtotali(e.detail)}
+            ></free-dialogo-subtotali>`
+          : ""}
+
+        ${this.dialogoObiettivo
+          ? html`<free-dialogo-obiettivo
+              .cella=${this.dialogoObiettivo.cella}
+              .errore=${this.dialogoObiettivo.errore}
+              @chiudi-dialogo=${() => { this.dialogoObiettivo = null; this.riportaFocusAllaGriglia(); }}
+              @cerca-obiettivo=${(e: CustomEvent<{ obiettivo: string; valore: string; variabile: string }>) => void this.cercaObiettivo(e.detail)}
+            ></free-dialogo-obiettivo>`
+          : ""}
+
+        ${this.dialogoProtezione
+          ? html`<free-dialogo-protezione
+              .modo=${this.dialogoProtezione.modo}
+              .foglio=${this.dialogoProtezione.foglio}
+              .errore=${this.dialogoProtezione.errore}
+              @chiudi-dialogo=${() => { this.dialogoProtezione = null; this.riportaFocusAllaGriglia(); }}
+              @conferma-protezione=${(e: CustomEvent<{ password: string }>) => void this.confermaProtezione(e.detail.password)}
+            ></free-dialogo-protezione>`
           : ""}
 
         ${this.dialogoLink
@@ -1509,7 +2058,7 @@ export class FreeApp extends LinguaElement {
               .cella=${this.dialogoLink.cella}
               .url=${this.dialogoLink.url}
               .testo=${this.dialogoLink.testo}
-              @chiudi-dialogo=${() => { this.dialogoLink = null; }}
+              @chiudi-dialogo=${() => { this.dialogoLink = null; this.riportaFocusAllaGriglia(); }}
               @salva-link=${(e: CustomEvent<{ url: string; testo: string }>) => void this.salvaLink(e.detail.url, e.detail.testo)}
               @rimuovi-link=${() => void this.rimuoviLink()}
             ></free-dialogo-link>`
@@ -1520,17 +2069,58 @@ export class FreeApp extends LinguaElement {
               .cella=${this.dialogoCommento.cella}
               .testo=${this.dialogoCommento.testo}
               .data=${this.dialogoCommento.data}
-              @chiudi-dialogo=${() => { this.dialogoCommento = null; }}
+              @chiudi-dialogo=${() => { this.dialogoCommento = null; this.riportaFocusAllaGriglia(); }}
               @salva-commento=${(e: CustomEvent<{ testo: string }>) => this.salvaCommento(e.detail.testo)}
             ></free-dialogo-commento>`
           : ""}
 
+        ${this.dialogoPagina
+          ? html`<free-dialogo-imposta-pagina
+              .pagina=${this.dialogoPagina.pagina}
+              .foglio=${this.dialogoPagina.foglio}
+              .selezione=${this.dialogoPagina.selezione}
+              @chiudi-dialogo=${() => { this.dialogoPagina = null; this.riportaFocusAllaGriglia(); }}
+              @applica-pagina=${(e: CustomEvent) => this.applicaImpostaPagina(e.detail.pagina, false)}
+              @anteprima-pagina=${(e: CustomEvent) => this.applicaImpostaPagina(e.detail.pagina, true)}
+            ></free-dialogo-imposta-pagina>`
+          : ""}
+        ${this.anteprima
+          ? html`<div class="anteprima" role="dialog" aria-modal="true" aria-labelledby="titolo-anteprima" @keydown=${(e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); this.chiudiAnteprima(); } }}>
+              <div class="anteprima-barra">
+                <h2 id="titolo-anteprima">${t("Anteprima di stampa")}</h2>
+                <span data-campo="conta-pagine">${this.anteprima.pagine.length === 1 ? t("1 pagina") : t("{} pagine", this.anteprima.pagine.length)} · ${t("scala {}%", Math.round(this.anteprima.scala * 100))}</span>
+                <span class="spazio"></span>
+                <button data-azione="imposta" @click=${() => this.apriImpostaPagina()}>${t("Imposta pagina...")}</button>
+                <button data-azione="stampa" class="primario" @click=${() => { this.chiudiAnteprima(); void this.stampa(); }}>${t("Stampa")}</button>
+                <button data-azione="chiudi" @click=${() => this.chiudiAnteprima()}>${t("Chiudi")}</button>
+              </div>
+              <div class="anteprima-pagine">${this.anteprima.pagine.map((pg) => this.paginaStampa(this.anteprima!, pg))}</div>
+            </div>`
+          : ""}
+        ${this.dialogoDuplicati
+          ? html`<free-dialogo-duplicati
+              .area=${scriviIntervallo(this.dialogoDuplicati.area)}
+              .primaColonna=${this.dialogoDuplicati.area.startCol}
+              .intestazioni=${this.dialogoDuplicati.intestazioni}
+              @chiudi-dialogo=${() => { this.dialogoDuplicati = null; this.riportaFocusAllaGriglia(); }}
+              @rimuovi-duplicati=${(e: CustomEvent) => { void this.eseguiRimuoviDuplicati(e.detail.colonne, e.detail.conIntestazione); }}
+            ></free-dialogo-duplicati>`
+          : ""}
+        ${this.dialogoTestoColonne
+          ? html`<free-dialogo-testo-colonne
+              .area=${scriviIntervallo(this.dialogoTestoColonne.area)}
+              .testi=${this.dialogoTestoColonne.testi}
+              .sovrascritte=${this.dialogoTestoColonne.sovrascritte}
+              @chiudi-dialogo=${() => { this.dialogoTestoColonne = null; this.riportaFocusAllaGriglia(); }}
+              @dividi-testo=${(e: CustomEvent) => { void this.eseguiTestoInColonne(e.detail.opzioni, e.detail.confermato); }}
+            ></free-dialogo-testo-colonne>`
+          : ""}
         ${this.dialogoNomi
           ? html`<free-dialogo-nomi
               .nomi=${defaultDocumentStore.getDocument(DOC_ID)?.namedRanges.getAll() ?? []}
               .intervallo=${this.dialogoNomi.intervallo}
               .foglio=${this.dialogoNomi.foglio}
-              @chiudi-dialogo=${() => { this.dialogoNomi = null; }}
+              @chiudi-dialogo=${() => { this.dialogoNomi = null; this.riportaFocusAllaGriglia(); }}
               @aggiungi-nome=${(e: CustomEvent) => { void this.aggiungiNome(e.detail.nome); }}
               @elimina-nome=${(e: CustomEvent) => { void this.eliminaNome(e.detail.nome); }}
             ></free-dialogo-nomi>`
@@ -1541,15 +2131,15 @@ export class FreeApp extends LinguaElement {
               .tema=${this.currentTheme}
               .lingua=${this.linguaScelta}
               @scegli-lingua=${(e: CustomEvent<{ lingua: ScelteLingua }>) => { void this.applicaLingua(e.detail.lingua); }}
-              @chiudi-dialogo=${() => { this.preferenzeAperte = false; }}
+              @chiudi-dialogo=${() => { this.preferenzeAperte = false; this.riportaFocusAllaGriglia(); }}
               @scegli-tema=${(e: CustomEvent<{ tema: "light" | "dark" | "system" }>) => { void this.setTheme(e.detail.tema); }}
             ></free-dialogo-preferenze>`
           : ""}
 
         ${this.personalizzaBarraAperto
           ? html`<free-dialogo-personalizza-barra
-              .barra=${this.barraPersonalizzata ?? []}
-              @chiudi-dialogo=${() => { this.personalizzaBarraAperto = false; }}
+              .barra=${this.barraPersonalizzata ?? barraPredefinita()}
+              @chiudi-dialogo=${() => { this.personalizzaBarraAperto = false; this.riportaFocusAllaGriglia(); }}
               @barra-cambiata=${(e: CustomEvent<{ barra: string[] }>) => {
                 this.barraPersonalizzata = e.detail.barra;
                 try { localStorage.setItem("pmb_sheets.barra_personalizzata", JSON.stringify(this.barraPersonalizzata)); } catch {}
@@ -1577,7 +2167,7 @@ export class FreeApp extends LinguaElement {
               .convalide=${this.dialogoRegole.convalide ?? []}
               @gestisci-convalida=${(e: CustomEvent<{ azione: "elimina"; firma: string }>) => this.gestisciConvalida(e.detail)}
               @gestisci-regola=${(e: CustomEvent) => this.gestisciRegola(e.detail)}
-              @chiudi-dialogo=${() => { this.dialogoRegole = null; }}
+              @chiudi-dialogo=${() => { this.dialogoRegole = null; this.riportaFocusAllaGriglia(); }}
               @applica-regola=${(e: CustomEvent) => this.applicaRegola(e.detail)}
             ></free-dialogo-regole>`
           : ""}
@@ -1607,18 +2197,7 @@ export class FreeApp extends LinguaElement {
         ></free-statusbar>
 
         ${this.tabellaStampa
-          ? html`<div class="stampa" aria-hidden="true">
-              <div class="stampa-scala" style=${styleMap({ zoom: String(this.tabellaStampa.scala) })}>
-                <table class="stampa-tabella">
-                  <colgroup>${this.tabellaStampa.larghezze.map((w) => html`<col style=${styleMap({ width: `${w}px` })} />`)}</colgroup>
-                  <tbody>
-                    ${this.tabellaStampa.righe.map((riga, i) => html`<tr style=${styleMap({ height: `${this.tabellaStampa?.altezze[i] ?? 22}px` })}>
-                      ${riga.map((c) => html`<td rowspan=${c.rowspan} colspan=${c.colspan} style=${styleMap(c.stile)}>${c.testo}</td>`)}
-                    </tr>`)}
-                  </tbody>
-                </table>
-              </div>
-            </div>`
+          ? html`<div class="stampa" aria-hidden="true">${this.tabellaStampa.pagine.map((pg) => this.paginaStampa(this.tabellaStampa!, pg))}</div>`
           : ""}
         <!-- Modale ricerca nei menu (Alt+/) -->
         <free-menu-search

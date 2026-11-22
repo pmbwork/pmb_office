@@ -160,6 +160,7 @@ describe('T091: importare i link degli altri programmi', () => {
   it('un link che contiene testo in una modifica registrata o in un tag intelligente resta un link', async () => {
     const corpo = `<w:p><w:hyperlink r:id="rId1"><w:ins w:id="1"><w:r><w:t>ins</w:t></w:r></w:ins><w:smartTag w:uri="x" w:element="y"><w:r><w:t>tag</w:t></w:r></w:smartTag></w:hyperlink><w:r><w:t> fuori</w:t></w:r></w:p>`;
     const d = await importaDocx(await docxCon(corpo, [['rId1', 'https://a.it']]));
-    expect(tratti(d)).toEqual([[['instag', 'https://a.it'], [' fuori', undefined]]]);
+    // l'inserito resta segnato come modifica registrata (un tratto a sé, T553), sempre nel link
+    expect(tratti(d)).toEqual([[['ins', 'https://a.it'], ['tag', 'https://a.it'], [' fuori', undefined]]]);
   });
 });

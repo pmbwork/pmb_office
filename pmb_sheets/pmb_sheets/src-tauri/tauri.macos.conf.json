@@ -60,6 +60,96 @@
         "description": "Valori separati da virgola (.csv)",
         "role": "Editor",
         "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "xlsm"
+        ],
+        "name": "Cartella di lavoro Excel con macro",
+        "description": "Cartella di lavoro Excel con macro (.xlsm)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "xltx"
+        ],
+        "name": "Modello Excel",
+        "description": "Modello Excel (.xltx)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "xltm"
+        ],
+        "name": "Modello Excel con macro",
+        "description": "Modello Excel con macro (.xltm)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "xlsb"
+        ],
+        "name": "Cartella di lavoro Excel binaria",
+        "description": "Cartella di lavoro Excel binaria (.xlsb)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "xls"
+        ],
+        "name": "Cartella di lavoro Excel 97-2003",
+        "description": "Cartella di lavoro Excel 97-2003 (.xls)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "xlt"
+        ],
+        "name": "Modello Excel 97-2003",
+        "description": "Modello Excel 97-2003 (.xlt)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "ots"
+        ],
+        "name": "Modello foglio OpenDocument",
+        "description": "Modello foglio OpenDocument (.ots)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "fods"
+        ],
+        "name": "Foglio OpenDocument piatto",
+        "description": "Foglio OpenDocument piatto (.fods)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "dif"
+        ],
+        "name": "Data Interchange Format",
+        "description": "Data Interchange Format (.dif)",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "slk"
+        ],
+        "name": "Symbolic Link SYLK",
+        "description": "Symbolic Link SYLK (.slk)",
+        "role": "Editor",
+        "rank": "Alternate"
       }
     ]
   }

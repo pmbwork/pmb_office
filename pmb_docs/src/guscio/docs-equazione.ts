@@ -14,25 +14,25 @@ export class DocsEquazione extends LinguaElement {
   @state() private errore = '';
 
   static styles = css`
-    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: #1f1f1f; }
-    .dialogo { width: 560px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: #ffffff; border-radius: 8px;
+    :host { display: block; font: 14px Roboto, Arial, sans-serif; color: var(--pmb-testo, #1f1f1f); }
+    .dialogo { width: 560px; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 24px; background: var(--pmb-superficie, #ffffff); border-radius: 8px;
       box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
     h2 { margin: 0 0 12px; font-size: 18px; font-weight: 500; }
     .barra { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
-    .barra button { min-width: 34px; height: 30px; padding: 0 8px; border: 1px solid #dadce0; border-radius: 4px; background: #ffffff; font: 15px "Cambria Math", "Times New Roman", serif; cursor: pointer; }
-    .barra button:hover { background: #e8f0fe; }
-    label { display: block; font-size: 13px; color: #444746; margin-bottom: 6px; }
-    textarea { width: 100%; box-sizing: border-box; height: 64px; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 4px; font: 14px Consolas, "Courier New", monospace; resize: vertical; outline: none; }
+    .barra button { min-width: 34px; height: 30px; padding: 0 8px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; background: var(--pmb-superficie, #ffffff); font: 15px "Cambria Math", "Times New Roman", serif; cursor: pointer; }
+    .barra button:hover { background: var(--pmb-selezione, #e8f0fe); }
+    label { display: block; font-size: 13px; color: var(--pmb-testo-2, #444746); margin-bottom: 6px; }
+    textarea { width: 100%; box-sizing: border-box; height: 64px; padding: 8px 10px; border: 1px solid var(--pmb-bordo, #dadce0); border-radius: 4px; font: 14px Consolas, "Courier New", monospace; resize: vertical; outline: none; }
     textarea:focus { border-color: #0b57d0; }
-    .anteprima { min-height: 90px; margin: 12px 0; border: 1px dashed #dadce0; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #ffffff; overflow: auto; padding: 8px; }
+    .anteprima { min-height: 90px; margin: 12px 0; border: 1px dashed var(--pmb-bordo, #dadce0); border-radius: 4px; display: flex; align-items: center; justify-content: center; background: var(--pmb-superficie, #ffffff); overflow: auto; padding: 8px; }
     .anteprima canvas { max-width: 100%; }
     .errore { color: #d93025; font-size: 13px; }
-    .vuoto { color: #5f6368; font-size: 13px; }
-    .nota { color: #5f6368; font-size: 12px; margin: 0 0 12px; }
+    .vuoto { color: var(--pmb-testo-2, #5f6368); font-size: 13px; }
+    .nota { color: var(--pmb-testo-2, #5f6368); font-size: 12px; margin: 0 0 12px; }
     .pulsanti { display: flex; justify-content: flex-end; gap: 12px; }
-    .pulsanti button { height: 36px; padding: 0 20px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid #dadce0; background: #ffffff; color: #0b57d0; }
+    .pulsanti button { height: 36px; padding: 0 20px; border-radius: 18px; font: inherit; font-weight: 500; cursor: pointer; border: 1px solid var(--pmb-bordo, #dadce0); background: var(--pmb-superficie, #ffffff); color: var(--pmb-accento, #0b57d0); }
     .pulsanti button.primario { border: 0; background: #0b57d0; color: #ffffff; }
-    .pulsanti button:disabled { background: #dadce0; color: #ffffff; cursor: default; border: 0; }
+    .pulsanti button:disabled { background: var(--pmb-hover, #dadce0); color: #ffffff; cursor: default; border: 0; }
   `;
 
   focalizza(): void { this.renderRoot.querySelector<HTMLTextAreaElement>('textarea')?.focus(); }

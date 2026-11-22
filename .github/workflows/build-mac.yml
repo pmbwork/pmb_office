@@ -9,6 +9,9 @@ on:
         description: 'Versione della suite (vuoto = la data di oggi, AAAA.M.G)'
         required: false
         default: ''
+# il token del workflow può solo leggere il codice
+permissions:
+  contents: read
 jobs:
   mac:
     runs-on: macos-latest
@@ -20,16 +23,17 @@ jobs:
       run:
         working-directory: ${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
+          toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: ${{ matrix.app }}/src-tauri
       - run: npm ci
@@ -45,12 +49,12 @@ jobs:
       # il .app si impacchetta con ditto, che conserva permessi e collegamenti del pacchetto (serve alla suite)
       - name: pacchetto .app per la suite
         run: ditto -c -k --keepParent src-tauri/target/universal-apple-darwin/release/bundle/macos/${{ steps.nome.outputs.nome }}.app ${{ steps.nome.outputs.nome }}-app.zip
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ steps.nome.outputs.nome }}-mac
           path: ${{ matrix.app }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ steps.nome.outputs.nome }}-app
           path: ${{ matrix.app }}/${{ steps.nome.outputs.nome }}-app.zip
@@ -61,8 +65,8 @@ jobs:
     needs: mac
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v7
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           pattern: '*-app'
           path: app
@@ -86,7 +90,7 @@ jobs:
             test -x "/Applications/$p.app/Contents/MacOS/$ese"
             echo "$p $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "/Applications/$p.app/Contents/Info.plist"): $(lipo -archs "/Applications/$p.app/Contents/MacOS/$ese")"
           done
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: pmb_office-mac
           path: uscita/

@@ -48,13 +48,17 @@ async function inByte(d: unknown): Promise<Uint8Array> {
   throw new TypeError('dati da scrivere non riconosciuti');
 }
 
+/** I comandi della parte nativa con cui una maniglia legge e scrive: quelli della pocket, o quelli di file-nativi.ts nella versione installata. */
+export interface ComandiFile { leggi: string; scrivi: string }
+const COMANDI_PORTATILE: ComandiFile = { leggi: 'portatile_leggi', scrivi: 'portatile_scrivi' };
+
 /** Una maniglia per un file del device (o del PC) letto e scritto dalla parte nativa. */
-export function manigliaPortatile(percorso: string): ManigliaPortatile {
+export function manigliaPortatile(percorso: string, comandi: ComandiFile = COMANDI_PORTATILE): ManigliaPortatile {
   const nome = percorso.split(/[\\/]/).pop() ?? percorso;
   return {
     kind: 'file', name: nome, percorso,
     async getFile() {
-      const r = await invoca<ArrayBuffer | ArrayLike<number>>('portatile_leggi', { percorsoFile: percorso });
+      const r = await invoca<ArrayBuffer | ArrayLike<number>>(comandi.leggi, { percorsoFile: percorso });
       const byte = r instanceof ArrayBuffer ? new Uint8Array(r) : Uint8Array.from(r as ArrayLike<number>);
       return new File([byte as BlobPart], nome);
     },
@@ -67,7 +71,7 @@ export function manigliaPortatile(percorso: string): ManigliaPortatile {
           const tutto = new Uint8Array(totale);
           let o = 0;
           for (const p of parti) { tutto.set(p, o); o += p.length; }
-          await invoca('portatile_scrivi', tutto, { headers: { 'Content-Type': 'application/octet-stream', percorso: encodeURIComponent(percorso) } });
+          await invoca(comandi.scrivi, tutto, { headers: { 'Content-Type': 'application/octet-stream', percorso: encodeURIComponent(percorso) } });
         },
       };
     },
@@ -260,7 +264,7 @@ export function installaFinestraFilePortatile(o: Opzioni): boolean {
   if (!portatile()) return false;
   opzioni = o;
   const w = window as unknown as Record<string, unknown>;
-  w.showOpenFilePicker = async (p: OpzioniSelettore = {}) => (await finestra('apri', p)).map(manigliaPortatile);
+  w.showOpenFilePicker = async (p: OpzioniSelettore = {}) => (await finestra('apri', p)).map((percorso) => manigliaPortatile(percorso));
   w.showSaveFilePicker = async (p: OpzioniSelettore = {}) => manigliaPortatile((await finestra('salva', p))[0]);
   return true;
 }

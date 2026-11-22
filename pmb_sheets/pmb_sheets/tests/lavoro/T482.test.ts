@@ -181,7 +181,7 @@ describe('T482: nel documento, dall\'esportazione all\'apertura', () => {
     expect(aperto.dati.namedRanges?.map((n) => n.name)).toEqual(['Prezzi']);
   });
 
-  it('gli avvisi di esportazione in OpenDocument elencano solo le formattazioni condizionali', async () => {
+  it('gli avvisi di esportazione in OpenDocument non elencano niente: anche le formattazioni condizionali si conservano (T548)', async () => {
     const origine = documentoDaScambio({
       foglioAttivo: 'F',
       fogli: [foglio('F', {
@@ -191,8 +191,7 @@ describe('T482: nel documento, dall\'esportazione all\'apertura', () => {
       nomi: [{ nome: 'N', foglio: 'F', riferimento: 'A1' }],
     });
     const testoAvvisi = avvisiEsportazione(origine, 'ods').join(' ');
-    expect(testoAvvisi).toContain('le formattazioni condizionali');
-    for (const parola of ['commenti', 'convalide', 'intervalli denominati', 'righe e colonne nascoste']) expect(testoAvvisi).not.toContain(parola);
+    for (const parola of ['formattazioni condizionali', 'commenti', 'convalide', 'intervalli denominati', 'righe e colonne nascoste']) expect(testoAvvisi).not.toContain(parola);
     // gli altri formati continuano ad avvisare di tutto
     const csv = avvisiEsportazione(origine, 'csv').join(' ');
     for (const parola of ['commenti', 'formattazioni condizionali', 'intervalli denominati', 'righe e colonne nascoste']) expect(csv).toContain(parola);

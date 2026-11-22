@@ -8,7 +8,7 @@ Uso: python giro_docs_02_sottomenu_preferenze_logo.py   (non muovere il mouse du
 import os, subprocess, tempfile, time
 from playwright.sync_api import sync_playwright
 
-EXE = r'C:\AI_system\pmb_office\pmb_docs\pmb-docs-shell.exe'
+EXE = os.environ.get('PMB_DOCS_EXE', r'C:\Program Files\pmb_office\pmb_docs\pmb-docs-shell.exe')
 PORTA = 9702
 G = "document.querySelector('docs-guscio')"
 FOTO = tempfile.mkdtemp(prefix='pmb_docs_giro02_')
@@ -29,7 +29,7 @@ try:
         except Exception: time.sleep(0.5)
     pg = browser.contexts[0].pages[0]; pg.set_default_timeout(8000)
     pg.wait_for_selector('docs-guscio'); pg.wait_for_timeout(1500)
-    pg.evaluate("() => { localStorage.setItem('pmb_docs.preferenze', JSON.stringify({ interfaccia: 'it', tema: 'chiaro' })); }")
+    pg.evaluate("() => { localStorage.setItem('pmb_docs.preferenze', JSON.stringify({ interfaccia: 'it', tema: 'chiaro', temaScelto: true })); }")
     pg.reload(); pg.wait_for_selector('docs-guscio'); pg.wait_for_timeout(1500)
     errori = []
     pg.on('pageerror', lambda e: errori.append(str(e)[:200]))
@@ -67,7 +67,8 @@ try:
     barra.locator('.pannello > .voce').filter(has=pg.locator(':scope > .etichetta:text-is("Preferenze")')).click(); pg.wait_for_timeout(500)
     dlg = pg.locator('docs-preferenze')
     legende = [x.strip() for x in dlg.locator('legend').all_text_contents()]
-    esito('Preferenze: riquadri Tema, Lingua del programma, Correttore ortografico', legende == ['Tema', 'Lingua del programma', 'Correttore ortografico'], legende)
+    # dalla 0.4.9 c'è anche il riquadro della correzione automatica (maiuscola a inizio frase e Opzioni di correzione automatica)
+    esito('Preferenze: riquadri Tema, Lingua del programma, Correttore ortografico, Correzione automatica, Commenti e revisioni (0.4.12)', legende == ['Tema', 'Lingua del programma', 'Correttore ortografico', 'Correzione automatica', 'Commenti e revisioni'], legende)
     pg.screenshot(path=os.path.join(FOTO, '2_preferenze.png'))
     dlg.locator('input[data-tema="sistema"]').click(); pg.wait_for_timeout(400)
     salvato = js("() => JSON.parse(localStorage.getItem('pmb_docs.preferenze')).tema")

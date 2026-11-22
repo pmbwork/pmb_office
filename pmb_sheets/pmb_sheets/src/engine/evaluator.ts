@@ -671,6 +671,15 @@ export class Evaluator {
       return errorVal('#N/A');
     }
 
+    // ISREF: l'argomento è un riferimento (cella, intervallo, o una funzione che restituisce un riferimento come INDIRECT e OFFSET)?
+    if (fnName === 'ISREF') {
+      if (argNodes.length !== 1) return errorVal('#VALUE!');
+      const nodo = argNodes[0];
+      if (nodo.type === 'Cell' || nodo.type === 'Range') return boolVal(true);
+      const v = this.evalNode(nodo);
+      if (isRangeArg(v)) return boolVal(true);
+      return boolVal(nodo.type === 'Call' && ['INDIRECT', 'OFFSET'].includes(String((nodo as { name?: string }).name ?? '').toUpperCase()) && v.kind !== 'error');
+    }
     // Funzioni che guardano la cella indicata e non il suo valore: ISFORMULA, FORMULATEXT, CELL
     if (fnName === 'ISFORMULA' || fnName === 'FORMULATEXT' || fnName === 'CELL') {
       const nodoRif = fnName === 'CELL' ? argNodes[1] : argNodes[0];
