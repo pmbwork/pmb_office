@@ -1,6 +1,6 @@
 [package]
 name = "pmb-docs-shell"
-version = "0.4.20"
+version = "0.4.21"
 description = "Shell nativa portatile per pmb_docs"
 edition = "2021"
 

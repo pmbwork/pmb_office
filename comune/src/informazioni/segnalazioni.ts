@@ -5,7 +5,8 @@
 // Il contenuto dei documenti non viene mai incluso: solo quello che l'utente scrive e, se vuole, nome e versione del programma e il sistema.
 // I messaggi per l'utente passano da un traduttore facoltativo `tr` (come la funzione t() di pmb_docs); senza, escono in italiano.
 
-export const EMAIL_SEGNALAZIONI = 'foraicreator@gmail.com';
+// contatto pubblico di PMB (scelta dell'utente, 2026-11-22); il servizio di segnalazione spedisce invece all'account che lo pubblica
+export const EMAIL_SEGNALAZIONI = 'pmbwork@proton.me';
 export const URL_SERVIZIO_SEGNALAZIONI = 'https://script.google.com/macros/s/AKfycbxKl8R57M1zUnJKjayr7yHBP3BvH20FEoqtIYLyr5kX5g6OjkZCZja9z_uZf-modw/exec';
 
 export const LIMITI_SEGNALAZIONE = { minimoTesto: 10, massimoTesto: 4000, massimoContatto: 200 } as const;

@@ -2271,7 +2271,7 @@ dependencies = [
 
 [[package]]
 name = "pmb-docs-shell"
-version = "0.4.20"
+version = "0.4.21"
 dependencies = [
  "ed25519-dalek",
  "objc2",

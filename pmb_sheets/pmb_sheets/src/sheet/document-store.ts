@@ -6,6 +6,7 @@
  * Zero DOM, zero Lit, interamente testabile in ambiente Node.
  */
 
+import type { PulsanteConfig } from './pulsanti';
 import type { ImpostaPagina } from './pagina';
 import { EngineClient, InlineEngineClient } from './engine-client';
 import { SelectionState, createCellSelection } from './selection';
@@ -70,6 +71,8 @@ export interface SheetDocument {
   charts: ChartConfig[];
   /** immagini sopra le celle (vedi immagini.ts); ognuna sta su un foglio */
   immagini: ImmagineConfig[];
+  /** pulsanti dei file di Excel con le loro macro sicure (vedi pulsanti.ts); ognuno sta su un foglio */
+  pulsanti: PulsanteConfig[];
   pivots: PivotConfig[];
   /** l'aspetto degli altri fogli del file (quello del foglio attivo sta nei campi qui sopra): vedi stato-fogli.ts */
   sheetStates: Map<string, StatoFoglio>;
@@ -110,6 +113,7 @@ export class DocumentStore {
         isFilterActive: false,
         charts: [],
         immagini: [],
+        pulsanti: [],
         pivots: [],
         sheetStates: new Map<string, StatoFoglio>(),
       };

@@ -11,6 +11,7 @@ import { graficiDelFoglioDuplicato, graficiDopoEliminazioneFoglio, graficiDopoRi
 import { fotografaSopraLeCelle, incollaRegoleTrasposte, incollaSopraLeCelle, nomiUguali, regolaDopoSpostamento, sopraVuoto, spostaCommenti, spostaDatiSopraLeCelle, spostaNomi, type Spostamento } from "../sheet/sposta-con-celle";
 import { chiaveMese, extractUniqueColumnValues, filtriDaJson, filtroDaScelta, filtroInJson, fineAreaFiltro, formatoMostraData, LUNGHEZZA_MASSIMA_NOME_VISTA, ordinePerColore, regioneCorrente, valoriDistinti, type AreaFiltro, type FilterCondition, type FiltroExtra, type VistaFiltro } from "../sheet/filter";
 import { LIMITE_IMMAGINI, immaginiDaDati, misureIniziali, nuovoIdImmagine, type ImmagineConfig } from "../sheet/immagini";
+import { LIMITE_PULSANTI, nuovoIdPulsante } from "../sheet/pulsanti";
 import { COLORE_LINK } from "../sheet/link";
 import { localeNumeri } from "../sheet/locale-numeri";
 import { regioneDati, ritocchiTabella } from "../sheet/tabella";
@@ -208,6 +209,13 @@ export class FreeSheetGrid extends LinguaElement {
   private unregisterChange?: () => void;
 
   static styles = css`
+    /* pulsanti dei file di Excel: aspetto dei pulsanti di Windows, sopra le celle come le immagini */
+    .pulsante-modulo { position: absolute; z-index: 6; box-sizing: border-box; margin: 0; padding: 2px 4px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+      text-align: center; white-space: pre-line; line-height: 1.15; font: 15px Calibri, Carlito, Arial, sans-serif; color: #000; background: #f0f0f0; border: 1px solid #adadad; border-radius: 2px; cursor: pointer; }
+    .pulsante-modulo:hover { background: #e5f1fb; border-color: #0078d7; }
+    .pulsante-modulo:focus-visible { outline: 2px solid #0b57d0; outline-offset: 1px; }
+    .pulsante-modulo.fermo { cursor: not-allowed; opacity: 0.75; }
+    .pulsante-modulo.verticale { writing-mode: vertical-rl; transform: rotate(180deg); }
     :host([hidden]) {
       display: none !important;
     }
@@ -4682,6 +4690,13 @@ export class FreeSheetGrid extends LinguaElement {
   }
 
   /** Porta la selezione su una cella (per esempio da un commento nel pannello laterale). */
+  /** Il link della cella attiva, se c'è (lo usano i pulsanti con la macro «apri il link della cella»). */
+  public linkDellaSelezione(): string | undefined {
+    const doc = this.getDoc();
+    const a = doc.selection.anchor;
+    return resolveCellStyle(a.row, a.col, doc.styles).link || undefined;
+  }
+
   public goToCell(row: number, col: number): void {
     this.selectSingle(row, col);
   }
@@ -4692,6 +4707,7 @@ export class FreeSheetGrid extends LinguaElement {
     await doc.client.renameSheet(da, a);
     rinominaFoglioCommenti(doc.comments, da, a);
     doc.immagini = doc.immagini.map((i) => (i.sheetName === da ? { ...i, sheetName: a } : i));
+    doc.pulsanti = (doc.pulsanti ?? []).map((p) => (p.sheetName === da ? { ...p, sheetName: a } : p));
     // grafici e pivot seguono il nuovo nome (senza, il grafico non si vedrebbe più: si mostra solo sul foglio che ha il suo nome)
     doc.charts = graficiDopoRinomina(doc.charts ?? [], da, a);
     doc.pivots = pivotDopoRinomina(doc.pivots ?? [], da, a);
@@ -4733,6 +4749,7 @@ export class FreeSheetGrid extends LinguaElement {
       commenti: new Map([...doc.comments].map(([k, v]) => [k, { ...v }] as const)),
       nomi: doc.namedRanges.getAll().map((n) => ({ ...n })),
       immagini: doc.immagini.map((i) => ({ ...i })),
+      pulsanti: (doc.pulsanti ?? []).map((p) => ({ ...p })),
       grafici: JSON.parse(JSON.stringify(doc.charts ?? [])) as typeof doc.charts,
       pivots: JSON.parse(JSON.stringify(doc.pivots ?? [])) as typeof doc.pivots,
       pivotFogli: new Map(this.pivotFogli),
@@ -4749,6 +4766,7 @@ export class FreeSheetGrid extends LinguaElement {
         await doc.client.restore(prima.libro);
         doc.comments = new Map([...prima.commenti].map(([k, v]) => [k, { ...v }] as const));
         doc.immagini = prima.immagini.map((i) => ({ ...i }));
+        doc.pulsanti = prima.pulsanti.map((p) => ({ ...p }));
         doc.charts = JSON.parse(JSON.stringify(prima.grafici)) as typeof doc.charts;
         doc.pivots = JSON.parse(JSON.stringify(prima.pivots)) as typeof doc.pivots;
         this.pivotFogli = new Map(prima.pivotFogli);
@@ -4768,6 +4786,7 @@ export class FreeSheetGrid extends LinguaElement {
     await doc.client.removeSheet(nome);
     togliCommentiFoglio(doc.comments, nome);
     doc.immagini = doc.immagini.filter((i) => i.sheetName !== nome);
+    doc.pulsanti = (doc.pulsanti ?? []).filter((p) => p.sheetName !== nome);
     doc.charts = graficiDopoEliminazioneFoglio(doc.charts ?? [], nome);
     doc.pivots = pivotDopoEliminazioneFoglio(doc.pivots ?? [], nome);
     for (const [id, foglio] of [...this.pivotFogli]) if (foglio === nome || !doc.pivots.some((p) => p.id === id)) this.pivotFogli.delete(id);
@@ -4787,6 +4806,7 @@ export class FreeSheetGrid extends LinguaElement {
     await doc.client.addSheet(copyName);
     copiaCommentiFoglio(doc.comments, origine, copyName);
     doc.immagini = [...doc.immagini, ...doc.immagini.filter((i) => i.sheetName === origine).map((i) => ({ ...i, id: nuovoIdImmagine(), sheetName: copyName }))].slice(0, LIMITE_IMMAGINI);
+    doc.pulsanti = [...(doc.pulsanti ?? []), ...(doc.pulsanti ?? []).filter((p) => p.sheetName === origine).map((p) => ({ ...p, id: nuovoIdPulsante(), sheetName: copyName }))].slice(0, LIMITE_PULSANTI);
     doc.charts = graficiDelFoglioDuplicato(doc.charts ?? [], origine, copyName, () => `chart-${Date.now()}-${Math.floor(Math.random() * 100000)}`);
     duplicaStatoFoglio(doc, origine, copyName); // la copia ha lo stesso aspetto: stili, larghezze, celle unite, convalide...
     const stato = JSON.parse((await doc.client.serialize()) as string) as { sheets: Array<{ name: string; cells: Record<string, string> }> };
@@ -6426,6 +6446,17 @@ export class FreeSheetGrid extends LinguaElement {
               @immagine-change=${(e: CustomEvent<{ id: string; prima: { x: number; y: number; width: number; height: number }; dopo: { x: number; y: number; width: number; height: number } }>) => this.immagineCambiata(e.detail.id, e.detail.prima, e.detail.dopo)}
               @immagine-delete=${(e: CustomEvent<string>) => this.deleteImage(e.detail)}
             ></free-immagine-overlay>
+          `)}
+
+          <!-- Pulsanti dei file di Excel (controlli modulo con macro sicure) -->
+          ${(doc.pulsanti || []).filter((p) => p.sheetName === doc.activeSheetName).map((p) => html`
+            <button type="button" class="pulsante-modulo ${p.azioni ? '' : 'fermo'} ${p.stile?.verticale ? 'verticale' : ''}" data-pulsante=${p.id}
+              style="left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${p.stile?.colore ? `color:${p.stile.colore};` : ''}${p.stile?.dimensione ? `font-size:${Math.round(p.stile.dimensione * 4 / 3)}px;` : ''}${p.stile?.grassetto ? 'font-weight:700;' : ''}${p.stile?.corsivo ? 'font-style:italic;' : ''}${p.stile?.sottolineato ? 'text-decoration:underline;' : ''}"
+              title=${p.azioni ? (p.macro ? t("Esegue la macro «{}»", p.macro) : '') : t("Questa macro non si può eseguire: {}", p.motivo ?? '')}
+              @mousedown=${(e: MouseEvent) => e.stopPropagation()}
+              @dblclick=${(e: MouseEvent) => e.stopPropagation()}
+              @click=${(e: MouseEvent) => { e.stopPropagation(); this.dispatchEvent(new CustomEvent('pulsante-macro', { detail: { id: p.id }, bubbles: true, composed: true })); }}
+            >${p.testo}</button>
           `)}
 
           <!-- Editor sovrapposto -->

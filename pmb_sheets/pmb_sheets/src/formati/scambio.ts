@@ -14,6 +14,7 @@ import type { NamedRange } from '../sheet/named-ranges';
 import type { CommentoSalvato } from '../sheet/commenti';
 import { MAX_COLS, MAX_ROWS, columnIndexToLetters, parseCellAddress } from '../engine/address';
 import { ORIGINE_X, ORIGINE_Y, byteDaDataUrl, dataUrlDaByte, immaginiDaDati, nuovoIdImmagine, type ImmagineConfig, type ImmagineScambio } from '../sheet/immagini';
+import { nuovoIdPulsante, pulsantiDaDati, type PulsanteConfig, type PulsanteScambio } from '../sheet/pulsanti';
 import { t } from '../i18n/lingua';
 import { copiaPagina, eDiPartenza, type ImpostaPagina } from '../sheet/pagina';
 import { copiaProtezione, protezioneValida, type ProtezioneCartella, type ProtezioneFoglio } from '../sheet/protezione';
@@ -49,6 +50,8 @@ export interface FoglioScambio {
   commenti?: CommentoScambio[];
   /** immagini sopra le celle: posizione in pixel dall'angolo di A1 */
   immagini?: ImmagineScambio[];
+  /** pulsanti dei file di Excel (controlli modulo) con la macro tradotta in azioni sicure: posizione dall'angolo di A1 */
+  pulsanti?: PulsanteScambio[];
   /** risultati delle formule (per i formati che li memorizzano): indirizzo → valore calcolato */
   calcolati?: Record<string, ValoreCalcolato>;
   /** il filtro del foglio, se è acceso: la tabella (intestazione nella prima riga) e, per colonna, i valori spuntati */
@@ -185,6 +188,9 @@ export function scambioDaDocumento(data: SheetDocumentData): Scambio {
       if (b) immagini.push({ x: Math.max(0, Math.round(im.x - ORIGINE_X)), y: Math.max(0, Math.round(im.y - ORIGINE_Y)), width: im.width, height: im.height, nome: im.nome, tipo: b.tipo, byte: b.byte });
     }
     if (immagini.length > 0) f.immagini = immagini;
+    const pulsanti: PulsanteScambio[] = (data.buttons ?? []).filter((p) => p.sheetName === f.nome)
+      .map((p) => ({ x: Math.max(0, Math.round(p.x - ORIGINE_X)), y: Math.max(0, Math.round(p.y - ORIGINE_Y)), width: p.width, height: p.height, testo: p.testo, ...(p.macro ? { macro: p.macro } : {}), ...(p.azioni ? { azioni: p.azioni.map((a) => ({ ...a })) } : {}), ...(p.motivo ? { motivo: p.motivo } : {}), ...(p.stile ? { stile: { ...p.stile } } : {}) }));
+    if (pulsanti.length > 0) f.pulsanti = pulsanti;
   }
   const nomi: NomeScambio[] = (data.namedRanges ?? [])
     .filter((n: NamedRange) => fogli.some((f) => f.nome === n.sheetName))
@@ -287,6 +293,10 @@ export function documentoDaScambio(s: Scambio): SheetDocumentData {
       immagini.push({ id: `${nuovoIdImmagine()}-${i}-${k}`, sheetName: nomi[i], x: im.x + ORIGINE_X, y: im.y + ORIGINE_Y, width: im.width, height: im.height, dataUrl: dataUrlDaByte(im.byte, im.tipo), nome: im.nome });
     });
   });
+  const pulsanti: PulsanteConfig[] = [];
+  origine.forEach((fg, i) => {
+    for (const p of fg.pulsanti ?? []) pulsanti.push({ id: nuovoIdPulsante(), sheetName: nomi[i], x: p.x + ORIGINE_X, y: p.y + ORIGINE_Y, width: p.width, height: p.height, testo: p.testo, ...(p.macro ? { macro: p.macro } : {}), ...(p.azioni ? { azioni: p.azioni } : {}), ...(p.motivo ? { motivo: p.motivo } : {}), ...(p.stile ? { stile: p.stile } : {}) });
+  });
   const nomiDefiniti: NamedRange[] = [];
   for (const n of s.nomi ?? []) {
     const idx = origine.findIndex((fg) => fg.nome === n.foglio);
@@ -305,6 +315,7 @@ export function documentoDaScambio(s: Scambio): SheetDocumentData {
     namedRanges: nomiDefiniti,
     comments: commenti,
     images: immaginiDaDati(immagini),
+    ...(pulsanti.length > 0 ? { buttons: pulsantiDaDati(pulsanti) } : {}),
     fogliStato,
     ...(protezioneValida(s.protezioneCartella) ? { protezioneCartella: copiaProtezione(protezioneValida(s.protezioneCartella)) } : {}),
   };

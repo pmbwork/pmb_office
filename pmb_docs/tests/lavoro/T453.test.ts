@@ -141,7 +141,7 @@ describe('la finestra di pmb_docs', () => {
     await attendi(); await g.updateComplete;
     expect(aperti).toHaveLength(1);
     expect(decodeURIComponent(aperti[0])).toContain('Un problema che voglio raccontare con calma.');
-    expect(aperti[0]).toMatch(/^mailto:foraicreator@gmail\.com\?subject=pmb_docs%20\d+\.\d+\.\d+/);
+    expect(aperti[0]).toMatch(/^mailto:pmbwork@proton\.me\?subject=pmb_docs%20\d+\.\d+\.\d+/);
     expect(g.shadowRoot.querySelector('docs-segnala')).toBeNull();
   });
   it('Annulla ed Esc chiudono senza inviare niente', async () => {

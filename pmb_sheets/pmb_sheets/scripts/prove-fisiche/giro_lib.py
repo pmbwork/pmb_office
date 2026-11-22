@@ -23,7 +23,9 @@ TMP = os.environ['TEMP']
 RISULTATI = os.path.join(TMP, 'giro_risultati.jsonl')
 
 class Banco:
-    def __init__(self, porta, sezione):
+    def __init__(self, porta, sezione, argomenti=()):
+        # argomenti: per esempio il percorso di un file da aprire all'avvio (come un doppio clic: il programma conosce la sua cartella)
+        self.argomenti = list(argomenti)
         self.porta = porta; self.sezione = sezione; self.p = None; self.pw = None; self.pg = None; self.n = {'OK': 0, 'FAIL': 0, 'MANCA': 0, 'NOTA': 0}
     def __enter__(self):
         try: self._impostazioni = open(IMPOSTAZIONI, 'rb').read()
@@ -32,7 +34,7 @@ class Banco:
         env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = f'--remote-debugging-port={self.porta}'
         # un profilo nuovo a ogni giro: una copia di emergenza lasciata da un giro interrotto fermerebbe i controlli del recupero (giro_13)
         env['WEBVIEW2_USER_DATA_FOLDER'] = os.path.join(TMP, f'pmb_giro_{self.porta}_{int(time.time())}')
-        self.p = subprocess.Popen([EXE], env=env)
+        self.p = subprocess.Popen([EXE, *self.argomenti], env=env)
         self.pw = sync_playwright().start()
         for _ in range(60):
             try: b = self.pw.chromium.connect_over_cdp(f'http://127.0.0.1:{self.porta}'); break

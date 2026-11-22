@@ -38,7 +38,7 @@ const stato = (): string => (app as unknown as { statusMessage: string }).status
 describe('T453: segnalazioni (sheets)', () => {
   it('la voce apre la finestra, con avviso sulla privacy e spunta già messa', async () => {
     const d = await apri();
-    expect(d.shadowRoot.textContent).toContain('foraicreator@gmail.com');
+    expect(d.shadowRoot.textContent).toContain('pmbwork@proton.me');
     expect(d.shadowRoot.textContent).toMatch(/solo quando premi Invia/);
     expect((d.shadowRoot.querySelector('input[type=checkbox]') as HTMLInputElement).checked).toBe(true);
   });
@@ -77,9 +77,9 @@ describe('T453: segnalazioni (sheets)', () => {
     await attendi(); await app.updateComplete;
     expect(aperti).toHaveLength(1);
     expect(decodeURIComponent(aperti[0])).toContain('Un problema da raccontare con calma.');
-    expect(aperti[0]).toMatch(/^mailto:foraicreator@gmail\.com\?subject=pmb_sheets%20\d+\.\d+\.\d+/);
+    expect(aperti[0]).toMatch(/^mailto:pmbwork@proton\.me\?subject=pmb_sheets%20\d+\.\d+\.\d+/);
     expect(app.renderRoot.querySelector('free-dialogo-segnala')).toBeNull();
-    expect(stato()).toContain('foraicreator@gmail.com');
+    expect(stato()).toContain('pmbwork@proton.me');
   });
   it('Annulla ed Esc chiudono senza inviare niente', async () => {
     const f = vi.fn(); vi.stubGlobal('fetch', f);

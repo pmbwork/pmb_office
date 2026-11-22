@@ -225,6 +225,7 @@ function avvisiSoloNativo(dati: SheetDocumentData, formato?: FormatoId): string[
     if (dati.styles?.some((st) => typeof st.link === 'string' && st.link !== '')) perso.push(t("i link delle celle"));
     if ((dati.images?.length ?? 0) > 0) perso.push(t("le immagini"));
   }
+  if ((dati.buttons?.length ?? 0) > 0) perso.push(t("i pulsanti con le macro (restano nel formato di pmb_sheets, .psheet)"));
   // il filtro: in Excel si conserva la tabella con i valori spuntati (Fase 49), non i criteri per condizione, colore e data; negli altri formati niente
   const stati = [dati, ...Object.values(dati.fogliStato ?? {})];
   if (formato !== 'xlsx' && (dati.filters?.columns.length ?? 0) > 0) perso.push(t("i filtri"));
@@ -309,7 +310,7 @@ export async function importa(bytes: Uint8Array, nome: string, password?: string
     if (conMacro) soloLettura = true;
     if (formato === 'xlsx') {
       const { scambio, avvisi } = await leggiXlsx(bytes);
-      const extra = conMacro ? [t("Le macro e i controlli del file non vengono caricati; Salva chiede un nome nuovo e non cambia il file originale.")] : [];
+      const extra = conMacro ? [t("Il file contiene macro: pmb_sheets non esegue codice VBA (i pulsanti eseguono solo comandi sicuri); Salva chiede un nome nuovo e non cambia il file originale.")] : [];
       return { dati: documentoDaScambio(scambio), formato, avvisi: [...avvisi, ...avvisiDiConversione(scambio), ...extra], ...(soloLettura ? { soloLettura } : {}) };
     }
     const { scambio, avvisi } = await leggiOds(bytes);

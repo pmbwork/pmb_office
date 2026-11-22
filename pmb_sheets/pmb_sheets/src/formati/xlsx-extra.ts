@@ -27,7 +27,7 @@ function soglieLette(min: Soglia | undefined, mid: Soglia | undefined, max: Sogl
 }
 import type { CommentoScambio, ConvalidaScambio, FiltroScambio, FoglioScambio, NomeScambio } from './scambio';
 import { indirizzoCella } from './scambio';
-import { urlAmmesso } from '../sheet/link';
+import { linkLocaleAmmesso, linkLocaleDaExcel, targetExcelDiLinkLocale, urlAmmesso } from '../sheet/link';
 import { shiftFormula } from '../engine/shift-formula';
 
 const elenco = (n: NodoXml | undefined, nome: string): NodoXml[] => (n ? figliElemento(n, nome) : []);
@@ -408,7 +408,7 @@ export function collegamentiFoglio(f: FoglioScambio): CollegamentoFoglio[] {
   for (const [a, st] of Object.entries(f.stili)) {
     const coord = parseCellAddress(a);
     if (!coord || !intero(coord.row, 1, MAX_ROWS) || !intero(coord.col, 1, MAX_COLS)) continue;
-    if (typeof st.link === 'string' && st.link !== '' && urlAmmesso(st.link)) out.push({ ref: indirizzoCella(coord.row, coord.col), url: st.link, r: coord.row, c: coord.col });
+    if (typeof st.link === 'string' && st.link !== '' && (urlAmmesso(st.link) || linkLocaleAmmesso(st.link))) out.push({ ref: indirizzoCella(coord.row, coord.col), url: st.link, r: coord.row, c: coord.col });
   }
   return out.sort((x, y) => x.r - y.r || x.c - y.c).map(({ ref, url }) => ({ ref, url }));
 }
@@ -421,7 +421,8 @@ export function collegamentiXml(links: CollegamentoFoglio[]): string[] {
 
 /** Le relazioni dei link di un foglio, da unire a quelle degli altri contenuti del foglio. */
 export function relazioniCollegamenti(links: CollegamentoFoglio[], tipo: string): string[] {
-  return links.map((l, i) => elemento('Relationship', { Id: `rIdL${i + 1}`, Type: tipo, Target: l.url, TargetMode: 'External' }));
+  // i link a file locali si scrivono come li scrive Excel (percorso relativo con le barre rovesciate)
+  return links.map((l, i) => elemento('Relationship', { Id: `rIdL${i + 1}`, Type: tipo, Target: linkLocaleAmmesso(l.url) ? targetExcelDiLinkLocale(l.url) : l.url, TargetMode: 'External' }));
 }
 
 /** Legge i link esterni di un foglio: `destinazioni` dice, per ogni id di relazione, l'indirizzo a cui punta. Restituisce i link ammessi e quanti ne ha scartati
@@ -432,9 +433,11 @@ export function leggiCollegamenti(radice: NodoXml | undefined, destinazioni: Map
   if (!radice) return { link, scartati };
   for (const h of elenco(trova(radice, 'hyperlinks'), 'hyperlink')) {
     const id = h.attributi['r:id'];
-    const url = id !== undefined ? destinazioni.get(id) : undefined;
+    const destinazione = id !== undefined ? destinazioni.get(id) : undefined;
+    // un indirizzo web o di posta, oppure (dal 0.2.16) un file o una cartella del computer, che si apre solo dopo una conferma
+    const url = destinazione === undefined ? undefined : urlAmmesso(destinazione) ? destinazione : linkLocaleDaExcel(destinazione) ?? undefined;
     const area = h.attributi.ref !== undefined ? leggiArea(h.attributi.ref) : null;
-    if (url === undefined || !urlAmmesso(url) || area === null) { scartati++; continue; }
+    if (url === undefined || area === null) { scartati++; continue; }
     if ((area.endRow - area.startRow + 1) * (area.endCol - area.startCol + 1) > 1000) { scartati++; continue; }
     for (let r = area.startRow; r <= area.endRow; r++) for (let c = area.startCol; c <= area.endCol; c++) link.push({ riga: r, colonna: c, url });
   }

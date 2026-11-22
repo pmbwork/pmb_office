@@ -258,6 +258,72 @@ pub mod commands {
         super::ULTIMA_RICHIESTA.store(0, std::sync::atomic::Ordering::SeqCst);
     }
 
+    /// Estensioni che non si aprono mai da un link di un foglio (uguali a ESTENSIONI_VIETATE di src/sheet/link.ts).
+    const ESTENSIONI_VIETATE: &[&str] = &[
+        "exe", "com", "bat", "cmd", "ps1", "psm1", "psd1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "msi", "msp", "mst", "scr", "pif", "lnk", "url",
+        "reg", "hta", "cpl", "jar", "dll", "sys", "inf", "scf", "application", "appref-ms", "gadget", "msc", "chm", "library-ms", "settingcontent-ms",
+        "app", "command", "sh", "bash", "zsh", "csh", "py", "pyw", "pl", "rb", "php", "workflow", "terminal", "pkg", "dmg", "appimage", "deb", "rpm",
+        "xlsm", "xltm", "xlam", "docm", "dotm", "pptm", "potm", "ppam", "xla", "xll",
+    ];
+
+    /// Apre un file o una cartella del computer da un link di un foglio, dopo la conferma chiesta dalla finestra (dal 0.2.16).
+    /// Il percorso è relativo alla cartella del foglio aperto oppure assoluto. Si ricontrolla qui, sul percorso vero (risolti «..» e
+    /// collegamenti): niente percorsi di rete (aprirli può mandare le credenziali di Windows a un altro computer), niente programmi né
+    /// script, solo file e cartelle che esistono. Restituisce il percorso aperto.
+    #[tauri::command]
+    pub fn apri_file_locale(cartella: Option<String>, percorso: String) -> Result<String, String> {
+        let strano = |s: &str| s.is_empty() || s.len() > 2000 || s.chars().any(|c| c.is_control());
+        let rete = |s: &str| s.starts_with("\\\\") || s.starts_with("//");
+        if strano(&percorso) || cartella.as_deref().map(|c| strano(c) || rete(c)).unwrap_or(false) || rete(&percorso) {
+            return Err("Percorso non ammesso".to_string());
+        }
+        let relativo = std::path::Path::new(&percorso);
+        let pieno = if relativo.is_absolute() {
+            relativo.to_path_buf()
+        } else {
+            let c = cartella.ok_or_else(|| "Manca la cartella del foglio".to_string())?;
+            std::path::Path::new(&c).join(relativo)
+        };
+        let vero = std::fs::canonicalize(&pieno).map_err(|_| "Il file o la cartella non esiste".to_string())?;
+        let mut testo = vero.to_string_lossy().to_string();
+        if cfg!(windows) {
+            // canonicalize dà «\\?\C:\...» per un disco e «\\?\UNC\server\...» per la rete
+            if testo.to_ascii_uppercase().starts_with("\\\\?\\UNC\\") {
+                return Err("I percorsi di rete non si aprono".to_string());
+            }
+            if let Some(resto) = testo.strip_prefix("\\\\?\\") {
+                testo = resto.to_string();
+            }
+            if rete(&testo) {
+                return Err("I percorsi di rete non si aprono".to_string());
+            }
+        }
+        if vero.is_file() {
+            let estensione = vero.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+            if ESTENSIONI_VIETATE.contains(&estensione.trim_end_matches(|c: char| c == '.' || c == ' ')) {
+                return Err("Questo tipo di file non si apre da un link (programmi e script)".to_string());
+            }
+        } else if !vero.is_dir() {
+            return Err("Il file o la cartella non esiste".to_string());
+        }
+        #[cfg(windows)]
+        {
+            // Esplora risorse apre il file con il programma predefinito, o la cartella; nessuna riga di comando interpretata
+            std::process::Command::new("explorer.exe")
+                .arg(&testo)
+                .spawn()
+                .map_err(|e| format!("Impossibile aprire: {}", e))?;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("/usr/bin/open")
+                .arg(&testo)
+                .spawn()
+                .map_err(|e| format!("Impossibile aprire: {}", e))?;
+        }
+        Ok(testo)
+    }
+
     /// Apre un link nel programma predefinito di Windows. Accetta solo http, https e mailto, senza spazi né caratteri di controllo.
     #[tauri::command]
     pub fn open_url(url: String) -> Result<bool, String> {
@@ -425,6 +491,7 @@ pub fn run() {
             commands::proteggi_chiusura,
             commands::file_di_avvio,
             commands::open_url,
+            commands::apri_file_locale,
             file_nativi::file_apri_finestra,
             file_nativi::file_salva_finestra,
             file_nativi::file_leggi,

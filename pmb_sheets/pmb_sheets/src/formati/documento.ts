@@ -1,5 +1,6 @@
 // Dal file al foglio di calcolo di una scheda e ritorno: applica i dati di un file al documento di una scheda,
 // li estrae per salvarli, e prepara i byte da scrivere. Niente finestre e niente disco: lo fa il guscio con file-io.ts.
+import { pulsantiDaDati } from '../sheet/pulsanti';
 import { ripulisciPagina } from '../sheet/pagina';
 import { copiaProtezione } from '../sheet/protezione';
 import { copiaGruppi } from '../sheet/gruppi';
@@ -51,6 +52,7 @@ export async function applicaDati(doc: SheetDocument, dati: SheetDocumentData): 
   doc.isFilterActive = dati.filters?.active ?? false;
   doc.charts = copia(dati.charts ?? []);
   doc.immagini = immaginiDaDati(dati.images);
+  doc.pulsanti = pulsantiDaDati(dati.buttons);
   doc.pivots = copia(dati.pivots ?? []);
   doc.selection = createCellSelection(1, 1);
   doc.scroll = { left: 0, top: 0 };

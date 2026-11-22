@@ -74,7 +74,7 @@ export class DocsSegnala extends LinguaElement {
         </label>
         <label class="spunta"><input type="checkbox" .checked=${this.includiDati} ?disabled=${occupato} @change=${(e: Event) => { this.includiDati = (e.target as HTMLInputElement).checked; }} />
           <span>Includi nome e versione del programma e il sistema (aiuta a trovare il problema)</span></label>
-        <p class="nota">Il messaggio parte via Internet solo quando premi Invia, verso un servizio di Google gestito da PMB che lo inoltra a ${EMAIL_SEGNALAZIONI}. Contiene solo quello che scrivi qui, mai i tuoi documenti.</p>
+        <p class="nota">Il messaggio parte via Internet solo quando premi Invia, verso un servizio di Google gestito da PMB che lo inoltra a PMB (contatto: ${EMAIL_SEGNALAZIONI}). Contiene solo quello che scrivi qui, mai i tuoi documenti.</p>
         <p class="stato ${this.fase === 'errore' ? 'errore' : ''}" role="status" aria-live="polite">${this.messaggio}</p>
         <div class="pulsanti">
           ${this.fase === 'errore' ? html`<button @click=${() => this.posta()}>Apri la posta</button>` : nothing}

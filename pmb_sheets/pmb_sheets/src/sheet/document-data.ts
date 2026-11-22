@@ -10,6 +10,7 @@
  * Modulo puro e deterministico; non tocca il filesystem.
  */
 
+import { pulsantiDaDati, type PulsanteConfig } from './pulsanti';
 import { copiaGruppi, gruppiValidi, type Gruppi } from './gruppi';
 import { copiaProtezione, protezioneValida, type ProtezioneCartella, type ProtezioneFoglio } from './protezione';
 import { copiaPagina, eDiPartenza, ripulisciPagina, type ImpostaPagina } from './pagina';
@@ -63,6 +64,8 @@ export interface SheetDocumentData {
   filters?: { active: boolean; columns: FiltroSalvato[]; area?: AreaFiltro };
   charts?: ChartConfig[];
   images?: ImmagineConfig[];
+  /** pulsanti dei file di Excel (dal 0.2.16) */
+  buttons?: PulsanteConfig[];
   pivots?: PivotConfig[];
   /** l'aspetto degli altri fogli (i campi qui sopra sono quelli del foglio attivo); gli stili si riferiscono al registro `styles`, che è uno solo */
   fogliStato?: Record<string, StatoFoglioDati>;
@@ -144,6 +147,7 @@ export async function extractDocumentData(
     },
     charts: JSON.parse(JSON.stringify(doc.charts ?? [])),
     images: (doc.immagini ?? []).map((i) => ({ ...i })),
+    ...((doc.pulsanti ?? []).length > 0 ? { buttons: pulsantiDaDati(JSON.parse(JSON.stringify(doc.pulsanti))) } : {}),
     pivots: JSON.parse(JSON.stringify(doc.pivots ?? [])),
     fogliStato: Object.fromEntries([...(doc.sheetStates ?? new Map())].map(([nome, stato]) => [nome, statoADati(stato)])),
   };
@@ -212,6 +216,7 @@ export function deserializeSheetDocumentData(json: string): SheetDocumentData {
       : { active: false, columns: [] },
     charts: Array.isArray(parsed.charts) ? parsed.charts : [],
     images: immaginiDaDati(parsed.images),
+    ...(Array.isArray(parsed.buttons) && parsed.buttons.length > 0 ? { buttons: pulsantiDaDati(parsed.buttons) } : {}),
     pivots: Array.isArray(parsed.pivots) ? parsed.pivots : [],
     fogliStato: parsed.fogliStato && typeof parsed.fogliStato === 'object' && !Array.isArray(parsed.fogliStato)
       ? Object.fromEntries(Object.entries(parsed.fogliStato as Record<string, unknown>).filter(([, v]) => v && typeof v === 'object').map(([k, v]) => [k, statoADati(datiAStato(v as Partial<StatoFoglioDati>))]))

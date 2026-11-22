@@ -3,7 +3,7 @@ import { html } from "./i18n/html";
 import { LinguaElement } from "./i18n/lingua-element";
 import { suMac, tastoPrimario } from "@comune/piattaforma";
 import { installaFinestraFilePortatile } from "@comune/file-portatile";
-import { installaFinestreNative, manigliaNativa } from "@comune/file-nativi";
+import { cartellaDi, installaFinestreNative, manigliaNativa } from "@comune/file-nativi";
 import { customElement, state } from "lit/decorators.js";
 
 // Import CSS
@@ -48,7 +48,8 @@ import "./components/dialogo-valuta";
 import { ferma as fermaLettura, leggi as leggiAdAltaVoce, staLeggendo } from "@comune/voce";
 import type { ModoProtezione } from "./components/dialogo-protezione";
 import "./components/dialogo-formato";
-import { urlAmmesso } from "./sheet/link";
+import { linkLocaleAmmesso, urlAmmesso } from "./sheet/link";
+import { parseCellAddress } from "./engine/address";
 import { LIMITE_BYTE_IMMAGINE, dataUrlDaByte, rilevaTipoImmagine } from "./sheet/immagini";
 import { elencaCommenti } from "./sheet/commenti";
 import type { NamedRange } from "./sheet/named-ranges";
@@ -166,7 +167,8 @@ export class FreeApp extends LinguaElement {
   recupero = new Recupero(archivioDa(depositoLocale()));
   private timerRecupero = 0;
   /** da dove viene il foglio di ogni scheda (file aperto o già salvato): serve a "Salva" per riscrivere lo stesso file nello stesso formato */
-  private origini = new Map<string, { maniglia: ManiglioFile | null; formato: FormatoId; nome: string }>();
+  // cartella: dove sta il file aperto (anche se è in sola lettura, come un .xlsm): serve ai link a file accanto al foglio
+  private origini = new Map<string, { maniglia: ManiglioFile | null; formato: FormatoId; nome: string; cartella?: string }>();
   /** la domanda in corso ("Salvare le modifiche?"), con la funzione che ne raccoglie la risposta */
   @state() private conferma: { titolo: string; messaggio: string; scelte: SceltaConferma[]; risolvi: (id: string) => void } | null = null;
   private controlloInCorso = false;
@@ -887,7 +889,9 @@ export class FreeApp extends LinguaElement {
       this.dialogoPasswordFile = null;
       this.titolo = aperto.titolo;
       // un file che si apre ma non si riscrive nello stesso formato (macro, .xlsb, .html...) non resta legato al suo originale: «Salva» chiede un nome nuovo
-      this.origini.set(DOC_ID, { maniglia: aperto.soloLettura ? null : file.maniglia ?? null, formato: aperto.formato, nome: file.name });
+      const percorsoAperto = (file.maniglia as unknown as { percorso?: unknown } | null)?.percorso;
+      const cartella = typeof percorsoAperto === "string" && percorsoAperto ? cartellaDi(percorsoAperto) : "";
+      this.origini.set(DOC_ID, { maniglia: aperto.soloLettura ? null : file.maniglia ?? null, formato: aperto.formato, nome: file.name, ...(cartella ? { cartella } : {}) });
       await this.segnaPulita(DOC_ID);
       await this.ricaricaGriglia();
       this.statusMessage = aperto.avvisi.length > 0 ? t("Aperto \"{}\". {}", file.name, aperto.avvisi.join(" ")) : t("Aperto \"{}\"", file.name);
@@ -1703,8 +1707,9 @@ export class FreeApp extends LinguaElement {
     this.statusMessage = t("Link di {} rimosso", d.cella);
   }
 
-  /** Apre un link della cella nel programma predefinito del sistema (solo http, https e mailto: lo controlla anche la shell). */
+  /** Apre un link della cella nel programma predefinito del sistema (http, https e mailto: lo controlla anche la shell; i file del computer dopo una conferma). */
   private async apriLinkCella(url: string): Promise<void> {
+    if (linkLocaleAmmesso(url)) { await this.apriFileLocale(url.slice(5)); return; }
     if (!urlAmmesso(url)) { this.statusMessage = t("Indirizzo non ammesso"); return; }
     let aperto = false;
     if ((window as any).__TAURI__?.core?.invoke || (window as any).__TAURI_INTERNALS__?.invoke) {
@@ -1714,6 +1719,56 @@ export class FreeApp extends LinguaElement {
       aperto = true;
     }
     this.statusMessage = aperto ? t("Aperto {}", url) : t("Non è stato possibile aprire il link");
+  }
+
+  /** Un link a un file o a una cartella del computer: relativo alla cartella del foglio aperto, oppure assoluto. Si apre solo dopo la conferma,
+   *  e la parte nativa ricontrolla il percorso (niente rete, niente programmi). */
+  private async apriFileLocale(percorso: string): Promise<void> {
+    const assoluto = /^[a-z]:\//i.test(percorso) || percorso.startsWith("/");
+    const cartella = this.origini.get(DOC_ID)?.cartella;
+    if (!assoluto && !cartella) { this.statusMessage = t("Il link punta a «{}» accanto al foglio: apri il foglio da un file salvato sul computer", percorso); return; }
+    const separatore = cartella && cartella.includes("\\") ? "\\" : "/";
+    const mostrato = assoluto ? percorso : `${cartella}${separatore}${percorso.split("/").join(separatore)}`;
+    const scelta = await this.chiediConferma(t("Aprire il file?"), t("Il link apre «{}» con il programma predefinito del computer. Aprilo solo se il foglio viene da una fonte di cui ti fidi.", mostrato),
+      [{ id: "apri", testo: t("Apri"), principale: true }, { id: "annulla", testo: t("Annulla"), annulla: true }]);
+    if (scelta !== "apri") return;
+    if (!((window as any).__TAURI__?.core?.invoke || (window as any).__TAURI_INTERNALS__?.invoke)) { this.statusMessage = t("I file del computer si aprono solo dal programma installato"); return; }
+    try {
+      // si chiama la shell direttamente: invokeTauri nasconde gli errori, e qui il motivo (file che non c'è, tipo non ammesso, rete) va mostrato
+      const tauri = (window as any).__TAURI__?.core?.invoke ?? (window as any).__TAURI_INTERNALS__?.invoke;
+      const aperto: string = await tauri("apri_file_locale", { cartella: cartella ?? null, percorso });
+      this.statusMessage = t("Aperto {}", aperto || mostrato);
+    } catch (err) {
+      this.statusMessage = t("Non è stato possibile aprire «{}»: {}", mostrato, String((err as Error)?.message ?? err));
+    }
+  }
+
+  /** Un clic su un pulsante di un file di Excel: si eseguono le azioni sicure della sua macro (vai a un foglio, seleziona una cella, apri il link). */
+  private async eseguiPulsante(id: string): Promise<void> {
+    const doc = defaultDocumentStore.getDocument(DOC_ID) as any;
+    const grid: any = this.getActiveGrid();
+    const p = (doc?.pulsanti ?? []).find((x: { id: string }) => x.id === id);
+    if (!p || !grid) return;
+    const nome = p.testo ? p.testo.replace(/\s+/g, " ").slice(0, 40) : p.macro ?? "";
+    if (!p.azioni) { this.statusMessage = t("Il pulsante «{}» non si può usare: {}", nome, p.motivo ?? t("macro non eseguibile")); return; }
+    for (const a of p.azioni as Array<{ tipo: string; nome?: string; indirizzo?: string }>) {
+      if (a.tipo === "foglio") {
+        const fogli: string[] = grid.sheetList ?? [];
+        const vero = fogli.find((f) => f.toLowerCase() === String(a.nome).toLowerCase());
+        if (!vero) { this.statusMessage = t("Il pulsante «{}» cerca il foglio «{}», che non c'è", nome, a.nome ?? ""); return; }
+        await grid.switchSheet(vero);
+      } else if (a.tipo === "cella") {
+        const c = parseCellAddress(String(a.indirizzo));
+        if (!c) return;
+        grid.goToCell(c.row, c.col);
+      } else if (a.tipo === "link") {
+        const url = grid.linkDellaSelezione?.();
+        if (!url) { this.statusMessage = t("Il pulsante «{}» apre il link della cella, ma la cella non ne ha uno", nome); return; }
+        await this.apriLinkCella(url);
+        return;
+      }
+    }
+    this.statusMessage = t("Pulsante «{}» eseguito", nome);
   }
 
   private salvaCommento(testo: string): void {
@@ -1932,6 +1987,7 @@ export class FreeApp extends LinguaElement {
               .zoom=${this.zoom}
               @comments-changed=${() => this.requestUpdate()}
               @apri-link=${(e: CustomEvent<{ url: string }>) => void this.apriLinkCella(e.detail.url)}
+              @pulsante-macro=${(e: CustomEvent<{ id: string }>) => void this.eseguiPulsante(e.detail.id)}
               @chiedi-link=${() => this.apriDialogoLink()}
               @chiedi-formato-numero=${() => this.apriDialogoFormato()}
               @sheets-changed=${this.handleSheetsChanged}

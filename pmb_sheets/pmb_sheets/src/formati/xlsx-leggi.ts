@@ -9,11 +9,14 @@ import type { ProtezioneFoglio } from '../sheet/protezione';
 import { leggiZip } from '@comune/formati/zip';
 import { analizzaXml, figliElemento, testoXml, trova, type NodoXml } from '@comune/formati/xml';
 import type { BorderDef, BorderSet, CellStyle } from '../sheet/styles';
-import { MAX_COLS, MAX_ROWS, parseCellAddress } from '../engine/address';
+import { MAX_COLS, MAX_ROWS, columnIndexToLetters, parseCellAddress } from '../engine/address';
 import { shiftFormula } from '../engine/shift-formula';
 import type { FoglioScambio, Scambio } from './scambio';
 import { leggiDisegno } from './xlsx-immagini';
 import { leggiNomiStampa, leggiPaginaXlsx, unisciPagina } from './xlsx-pagina';
+import { elencoControlli, leggiControlli, leggiIntervallo, type ControlliLetti } from './xlsx-controlli';
+import { leggiMacro, nomeMacro, type MacroLetta } from './vba';
+import type { PulsanteScambio } from '../sheet/pulsanti';
 import { leggiAutoFiltro, leggiCollegamenti, leggiCommenti, leggiCondizionali, leggiConvalide, leggiDxfs, leggiNomi } from './xlsx-extra';
 import { NOME_FOGLIO_PREDEFINITO, foglioVuoto, indirizzoCella } from './scambio';
 import { tipoLetterale } from './xlsx-scrivi';
@@ -341,6 +344,8 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoXlsx> {
   let immaginiScartate = 0;
   let altriDisegni = false;
   const nascosti: string[] = [];
+  // controlli modulo (caselle combinate, pulsanti) per foglio: le tendine si completano dopo, quando ci sono tutti i fogli (l'elenco può stare su un altro)
+  const controlliFogli = new Map<FoglioScambio, ControlliLetti>();
   for (const s of elenco(trova(cartella, 'sheets'), 'sheet')) {
     const nome = s.attributi.name ?? `Foglio${nomiInOrdine.length + 1}`;
     nomiInOrdine.push(nome);
@@ -382,6 +387,16 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoXlsx> {
       } catch {
         altriDisegni = true; // un disegno rovinato non deve far rifiutare il file: si apre senza di lui e lo si dice
       }
+      // controlli modulo: proprietà in xl/ctrlProps, testo dei pulsanti nel disegno VML del foglio
+      if (elencoControlli(radice)) try {
+        const proprieta = new Map<string, string>();
+        for (const r of relazioniFoglio) if (r.attributi.Id !== undefined && r.attributi.Target && r.attributi.Type?.endsWith('/ctrlProp')) proprieta.set(r.attributi.Id, risolvi(cartellaFoglio, r.attributi.Target));
+        const relVml = relazioniFoglio.find((r) => r.attributi.Type?.endsWith('/vmlDrawing'));
+        const byteVml = relVml?.attributi.Target ? voci.get(risolvi(cartellaFoglio, relVml.attributi.Target)) : undefined;
+        const vml = byteVml && byteVml.length < 8 * 1024 * 1024 ? new TextDecoder('utf-8').decode(byteVml) : undefined;
+        const letti = leggiControlli(radice, (id) => { const pp = proprieta.get(id); const nodo = pp ? parte(pp) : undefined; return nodo; }, vml, foglio);
+        if (letti.tendine.length + letti.pulsanti.length + letti.altri + letti.collegate > 0) controlliFogli.set(foglio, letti);
+      } catch { /* controlli rovinati: il foglio si apre senza */ }
       const relCommenti = relazioniFoglio.find((r) => r.attributi.Type?.endsWith('/comments'));
       if (relCommenti?.attributi.Target) {
         const commenti = leggiCommenti(parte(risolvi(cartellaFoglio, relCommenti.attributi.Target)));
@@ -408,6 +423,52 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoXlsx> {
   }
   const nomiVoci = [...voci.keys()];
   const avvisi: string[] = [];
+  // macro del file (.xlsm): tradotte in azioni sicure, solo per i pulsanti
+  let macro = new Map<string, MacroLetta>();
+  const binVba = voci.get(`${dir}vbaProject.bin`);
+  if (binVba && controlliFogli.size > 0) { try { macro = leggiMacro(binVba); } catch { macro = new Map(); } }
+  let tendine = 0; let pulsanti = 0; let pulsantiFermi = 0; let altriControlli = 0;
+  for (const [foglio, letti] of controlliFogli) {
+    altriControlli += letti.altri + letti.collegate;
+    // caselle combinate → tendina della cella che coprono, con la voce scelta nel controllo scritta nella cella (se è vuota)
+    for (const t0 of letti.tendine) {
+      const intervallo = leggiIntervallo(t0.elenco, foglio.nome);
+      const origine = intervallo ? fogli.find((f) => f.nome.toLowerCase() === intervallo.foglio.toLowerCase()) : undefined;
+      if (!intervallo || !origine) { altriControlli++; continue; }
+      const indirizzo = indirizzoCella(t0.riga, t0.colonna);
+      const voci2: string[] = [];
+      for (let rr = intervallo.da.riga; rr <= intervallo.a.riga; rr++) for (let cc = intervallo.da.colonna; cc <= intervallo.a.colonna; cc++) {
+        const a = indirizzoCella(rr, cc);
+        const testo = origine.celle[a] ?? '';
+        voci2.push(origine.calcolati?.[a]?.valore ?? (testo.startsWith('=') ? '' : testo));
+      }
+      const scelta = t0.scelta >= 1 ? voci2[t0.scelta - 1] ?? '' : '';
+      if (scelta !== '' && (foglio.celle[indirizzo] ?? '') === '') foglio.celle[indirizzo] = scelta;
+      const riferimento = `${/^[A-Za-z_][A-Za-z0-9_.]*$/.test(origine.nome) ? origine.nome : `'${origine.nome.replace(/'/g, "''")}'`}!$${columnIndexToLetters(intervallo.da.colonna)}$${intervallo.da.riga}:$${columnIndexToLetters(intervallo.a.colonna)}$${intervallo.a.riga}`;
+      (foglio.convalide ??= []).push({ intervallo: { startRow: t0.riga, endRow: t0.riga, startCol: t0.colonna, endCol: t0.colonna }, regola: { id: '', type: 'list', value1: riferimento, listRange: riferimento, action: 'warn' } });
+      tendine++;
+    }
+    // pulsanti con la macro tradotta in azioni sicure (o il motivo per cui non si può eseguire)
+    const elenco: PulsanteScambio[] = [];
+    for (const p0 of letti.pulsanti) {
+      const nome = p0.macro ? nomeMacro(p0.macro) : '';
+      const m = nome ? macro.get(nome.toLowerCase()) : undefined;
+      const motivo = !nome ? 'nessuna macro collegata' : !m ? 'la macro non è nel file' : m.azioni === null ? `istruzione non eseguibile: ${m.motivo ?? ''}` : undefined;
+      if (motivo) pulsantiFermi++;
+      elenco.push({ x: p0.x, y: p0.y, width: p0.width, height: p0.height, testo: p0.testo, ...(nome ? { macro: nome } : {}), ...(m?.azioni ? { azioni: m.azioni } : {}), ...(motivo ? { motivo } : {}), ...(p0.stile ? { stile: p0.stile } : {}) });
+      pulsanti++;
+    }
+    if (elenco.length > 0) foglio.pulsanti = elenco;
+  }
+  if (tendine > 0) avvisi.push(tendine === 1 ? t("Una casella combinata del file è diventata la tendina della cella che copriva.") : t("{} caselle combinate del file sono diventate tendine delle celle che coprivano.", tendine));
+  if (pulsanti > 0) avvisi.push(pulsantiFermi === 0
+    ? t("{} pulsanti con macro: eseguono solo comandi sicuri (vai a un foglio, seleziona una cella, apri il link della cella).", pulsanti)
+    : pulsantiFermi === 1
+      ? t("{} pulsanti con macro; uno ha una macro che pmb_sheets non può eseguire (esegue solo: vai a un foglio, seleziona una cella, apri il link della cella).", pulsanti)
+      : t("{} pulsanti con macro; {} hanno una macro che pmb_sheets non può eseguire (esegue solo: vai a un foglio, seleziona una cella, apri il link della cella).", pulsanti, pulsantiFermi));
+  if (altriControlli > 0) avvisi.push(altriControlli === 1
+    ? t("Un controllo del file non è stato importato (elenco non valido, collegato a una cella o di un tipo che pmb_sheets non gestisce).")
+    : t("{} controlli del file non sono stati importati (elenco non valido, collegati a una cella o di un tipo che pmb_sheets non gestisce).", altriControlli));
   if (altriDisegni || nomiVoci.some((n) => n.startsWith('xl/charts/'))) avvisi.push(t("Grafici e disegni del file non sono stati importati."));
   if (immaginiScartate > 0) avvisi.push(t("{} (formato non ammesso, più grande di 1,5 MB o rovinata).", immaginiScartate === 1 ? "Un'immagine del file non è stata importata" : `${immaginiScartate} immagini del file non sono state importate`));
   if (nomiVoci.some((n) => n.startsWith('xl/pivotTables/'))) avvisi.push(t("Le tabelle pivot del file non sono state importate."));
