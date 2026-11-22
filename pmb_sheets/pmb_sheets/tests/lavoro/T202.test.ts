@@ -194,14 +194,15 @@ describe('T202 lettura di file .xlsx', () => {
     });
   });
 
-  it('riempimento: solo pieno e con colore esplicito', async () => {
+  // dal 0.2.16 si leggono anche i colori del tema (T573): senza tema nel file vale quello di Office (theme="4" = accento 1, #4f81bd)
+  it('riempimento: solo pieno, con colore esplicito o del tema', async () => {
     const stili = stiliXml({
       fills: '<fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/></patternFill></fill>'
         + '<fill><patternFill patternType="solid"><fgColor theme="4"/></patternFill></fill><fill><patternFill patternType="darkGray"><fgColor rgb="FF123456"/></patternFill></fill>',
       xfs: [0, 1, 2, 3, 4].map((i) => `<xf numFmtId="0" fontId="0" fillId="${i}" borderId="0"/>`).join(''),
     });
     const f = await primo({ stili, fogli: [dati('<row r="1"><c r="A1" s="0"/><c r="B1" s="1"/><c r="C1" s="2"/><c r="D1" s="3"/><c r="E1" s="4"/></row>')] });
-    expect(f.stili).toEqual({ C1: { fill: '#ffff00' } });
+    expect(f.stili).toEqual({ C1: { fill: '#ffff00' }, D1: { fill: '#4f81bd' } });
   });
 
   it('bordi: stili convertiti, colore di riserva nero, lati senza stile ignorati', async () => {

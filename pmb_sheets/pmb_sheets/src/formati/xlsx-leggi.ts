@@ -15,6 +15,7 @@ import type { FoglioScambio, Scambio } from './scambio';
 import { leggiDisegno } from './xlsx-immagini';
 import { leggiNomiStampa, leggiPaginaXlsx, unisciPagina } from './xlsx-pagina';
 import { elencoControlli, leggiControlli, leggiIntervallo, type ControlliLetti } from './xlsx-controlli';
+import { coloreExcel, leggiTavolozza, type Tavolozza } from './xlsx-colori';
 import { leggiMacro, nomeMacro, type MacroLetta } from './vba';
 import type { PulsanteScambio } from '../sheet/pulsanti';
 import { leggiAutoFiltro, leggiCollegamenti, leggiCommenti, leggiCondizionali, leggiConvalide, leggiDxfs, leggiNomi } from './xlsx-extra';
@@ -54,12 +55,9 @@ const vuoto = (s: CellStyle | undefined): boolean => s === undefined || Object.k
 const copia = (s: CellStyle): CellStyle => JSON.parse(JSON.stringify(s)) as CellStyle;
 const intero = (v: number, min: number, max: number): boolean => Number.isInteger(v) && v >= min && v <= max;
 
-/** Colore ARGB o RGB del file come "#rrggbb"; i colori del tema o a indice non si importano. */
-function colore(n: NodoXml | undefined): string | undefined {
-  const rgb = n?.attributi.rgb;
-  if (rgb !== undefined && /^[0-9a-fA-F]{8}$/.test(rgb)) return `#${rgb.slice(2).toLowerCase()}`;
-  if (rgb !== undefined && /^[0-9a-fA-F]{6}$/.test(rgb)) return `#${rgb.toLowerCase()}`;
-  return undefined;
+/** Colore del file come "#rrggbb": scritto (ARGB o RGB), del tema con la sua sfumatura o a indice (dal 0.2.16, vedi xlsx-colori.ts). */
+function colore(n: NodoXml | undefined, tavolozza?: Tavolozza): string | undefined {
+  return coloreExcel(n, tavolozza);
 }
 
 /** Formato numerico come lo usa Fogli: il simbolo dell'euro tra virgolette o tra parentesi quadre torna semplice. */
@@ -79,7 +77,7 @@ const LATI_BORDO: Record<string, BorderDef['style']> = {
 
 interface TabellaStili { xf: CellStyle[]; data: boolean[]; rientroORotazione?: boolean }
 
-function leggiStili(st: NodoXml | undefined): TabellaStili {
+function leggiStili(st: NodoXml | undefined, tavolozza?: Tavolozza): TabellaStili {
   if (!st) return { xf: [], data: [] };
   const personalizzati = new Map<number, string>();
   for (const n of elenco(trova(st, 'numFmts'), 'numFmt')) {
@@ -110,13 +108,16 @@ function leggiStili(st: NodoXml | undefined): TabellaStili {
       if (nome !== undefined && nome !== '' && nome !== nomeBase) s.fontFamily = nome;
       const dimensione = Number(trova(f, 'sz')?.attributi.val);
       if (Number.isFinite(dimensione) && dimensione > 0 && dimensione !== dimensioneBase) s.fontSize = dimensione;
-      const c = colore(trova(f, 'color'));
+      // il testo del tema 1 senza sfumatura è il «testo» di Excel (nero di sistema): resta automatico, così si legge anche con il tema scuro
+      const nodoColore = trova(f, 'color');
+      const automatico = nodoColore?.attributi.theme === '1' && nodoColore.attributi.tint === undefined;
+      const c = automatico ? undefined : colore(nodoColore, tavolozza);
       if (c) s.color = c;
     }
     const riempimento = riempimenti[Number(x.attributi.fillId)];
     const motivo = riempimento ? trova(riempimento, 'patternFill') : undefined;
     if (motivo && motivo.attributi.patternType === 'solid') {
-      const c = colore(trova(motivo, 'fgColor'));
+      const c = colore(trova(motivo, 'fgColor'), tavolozza);
       if (c) s.fill = c;
     }
     const bordo = bordi[Number(x.attributi.borderId)];
@@ -125,7 +126,7 @@ function leggiStili(st: NodoXml | undefined): TabellaStili {
       for (const lato of ['left', 'right', 'top', 'bottom'] as const) {
         const n = trova(bordo, lato);
         const stile = n ? LATI_BORDO[n.attributi.style ?? ''] : undefined;
-        if (n && stile) lati[lato] = { style: stile, color: colore(trova(n, 'color')) ?? '#000000' };
+        if (n && stile) lati[lato] = { style: stile, color: colore(trova(n, 'color'), tavolozza) ?? '#000000' };
       }
       if (Object.keys(lati).length > 0) s.borders = lati;
     }
@@ -172,7 +173,7 @@ export function senzaPrefissi(formula: string): string {
   return formula.split(/("(?:[^"]|"")*")/).map((parte, i) => (i % 2 === 1 ? parte : parte.replace(/_xl(?:fn|ws|pm)\./g, ''))).join('');
 }
 
-interface Contesto { stringhe: string[]; stili: TabellaStili; calendario1904: boolean }
+interface Contesto { stringhe: string[]; stili: TabellaStili; calendario1904: boolean; tavolozza?: Tavolozza }
 
 function valoreCella(x: NodoXml, tipo: string, c: Contesto, data: boolean): string | undefined {
   if (tipo === 'inlineStr') { const i = trova(x, 'is'); return i ? testoStringa(i) : undefined; }
@@ -286,8 +287,8 @@ function leggiFoglio(nome: string, radice: NodoXml | undefined, c: Contesto): Fo
   const protetto = trova(radice, 'sheetProtection');
   if (protetto && protetto.attributi.sheet !== undefined && vero(protetto.attributi.sheet)) f.protezione = protezioneDaAttributi(protetto.attributi, '');
 
-  const coloreTab = trova(radice, 'sheetPr/tabColor')?.attributi.rgb;
-  if (typeof coloreTab === 'string' && /^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(coloreTab)) f.colore = `#${coloreTab.slice(-6).toLowerCase()}`;
+  const coloreTab = coloreExcel(trova(radice, 'sheetPr/tabColor'), c.tavolozza);
+  if (coloreTab) f.colore = coloreTab;
 
   const pannello = trova(radice, 'sheetViews/sheetView/pane');
   if (pannello && (pannello.attributi.state === 'frozen' || pannello.attributi.state === 'frozenSplit')) {
@@ -329,10 +330,13 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoXlsx> {
 
   const stringhe = elenco(parte(parteDiTipo('/sharedStrings', `${dir}sharedStrings.xml`)), 'si').map(testoStringa);
   const nodoStili = parte(parteDiTipo('/styles', `${dir}styles.xml`));
-  const dxfs = leggiDxfs(nodoStili);
+  // la tavolozza del file: i colori del tema (xl/theme/theme1.xml) e a indice
+  const tavolozza = leggiTavolozza(parte(parteDiTipo('/theme', `${dir}theme/theme1.xml`)), nodoStili);
+  const dxfs = leggiDxfs(nodoStili, tavolozza);
   const contesto: Contesto = {
     stringhe,
-    stili: leggiStili(nodoStili),
+    stili: leggiStili(nodoStili, tavolozza),
+    tavolozza,
     calendario1904: vero(trova(cartella, 'workbookPr')?.attributi.date1904),
   };
 

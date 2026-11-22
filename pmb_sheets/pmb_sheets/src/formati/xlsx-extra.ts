@@ -29,6 +29,7 @@ import type { CommentoScambio, ConvalidaScambio, FiltroScambio, FoglioScambio, N
 import { indirizzoCella } from './scambio';
 import { linkLocaleAmmesso, linkLocaleDaExcel, targetExcelDiLinkLocale, urlAmmesso } from '../sheet/link';
 import { shiftFormula } from '../engine/shift-formula';
+import { coloreExcel, type Tavolozza } from './xlsx-colori';
 
 const elenco = (n: NodoXml | undefined, nome: string): NodoXml[] => (n ? figliElemento(n, nome) : []);
 const intero = (v: number, min: number, max: number): boolean => Number.isInteger(v) && v >= min && v <= max;
@@ -171,7 +172,7 @@ export function dxfXml(stile: StileCondizionale | undefined): string {
   return elemento('dxf', {}, [...font, ...riempimento]);
 }
 
-export function leggiDxfs(stili: NodoXml | undefined): StileCondizionale[] {
+export function leggiDxfs(stili: NodoXml | undefined, tavolozza?: Tavolozza): StileCondizionale[] {
   return elenco(trova(stili ?? ({ nome: '', attributi: {}, figli: [] } as NodoXml), 'dxfs'), 'dxf').map((d) => {
     const s: StileCondizionale = {};
     const font = trova(d, 'font');
@@ -181,12 +182,12 @@ export function leggiDxfs(stili: NodoXml | undefined): StileCondizionale[] {
       if (acceso(trova(font, 'i'))) s.italic = true;
       const u = trova(font, 'u');
       if (u && u.attributi.val !== 'none') s.underline = true;
-      const c = daArgb(trova(font, 'color')?.attributi.rgb);
+      const c = coloreExcel(trova(font, 'color'), tavolozza);
       if (c) s.textColor = c;
     }
     const motivo = trova(d, 'fill/patternFill');
     if (motivo) {
-      const c = daArgb(trova(motivo, 'bgColor')?.attributi.rgb) ?? daArgb(trova(motivo, 'fgColor')?.attributi.rgb);
+      const c = coloreExcel(trova(motivo, 'bgColor'), tavolozza) ?? coloreExcel(trova(motivo, 'fgColor'), tavolozza);
       if (c) s.backgroundColor = c;
     }
     return s;
