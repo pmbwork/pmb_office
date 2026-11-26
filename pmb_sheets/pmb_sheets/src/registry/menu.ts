@@ -115,6 +115,7 @@ export const menuRegistry: MenuCategory[] = [
       { id: "sep-view-freeze", label: "", separator: true },
       { id: "toggle-sidebar", label: "Mostra pannello laterale", shortcut: "Ctrl+Alt+S", action: "toggle-sidebar" },
       { id: "show-formulas", label: "Mostra formule", shortcut: "Ctrl+`", action: "show-formulas" },
+      { id: "toggle-gridlines", label: "Mostra griglia", action: "toggle-gridlines" },
       { id: "personalizza-barra", label: "Personalizza barra degli strumenti…", action: "personalizza-barra" },
       { id: "toggle-fullscreen", label: "Schermo intero", shortcut: "F11", action: "toggle-fullscreen" },
       { id: "nascondi-menu", label: "Nascondi i menu", shortcut: "Ctrl+Maiusc+F", action: "nascondi-menu" },

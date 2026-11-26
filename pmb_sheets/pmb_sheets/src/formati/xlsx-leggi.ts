@@ -4,6 +4,7 @@
 // Si importano anche: righe e colonne nascoste, convalide dei dati, formattazioni condizionali (le regole che l'app conosce), commenti, nomi definiti semplici.
 // Non si importano: grafici, immagini, tabelle pivot, filtri automatici, collegamenti, rientro e rotazione del testo, colori del tema (avvisi).
 // Limite: i nomi degli elementi XML senza prefisso (come li scrivono Excel e Google Fogli); file con prefissi tipo "x:worksheet" non sono letti.
+import { carattereBaseValido, type CarattereBase } from '../sheet/carattere-base';
 import { impronteValide } from '@comune/protezione/impronte';
 import type { ProtezioneFoglio } from '../sheet/protezione';
 import { leggiZip } from '@comune/formati/zip';
@@ -75,7 +76,7 @@ const LATI_BORDO: Record<string, BorderDef['style']> = {
   dashed: 'dashed', dotted: 'dashed', hair: 'dashed', dashDot: 'dashed', dashDotDot: 'dashed', mediumDashed: 'dashed', mediumDashDot: 'dashed', mediumDashDotDot: 'dashed', slantDashDot: 'dashed',
 };
 
-interface TabellaStili { xf: CellStyle[]; data: boolean[]; rientroORotazione?: boolean }
+interface TabellaStili { xf: CellStyle[]; data: boolean[]; rientroORotazione?: boolean; carattere?: CarattereBase }
 
 function leggiStili(st: NodoXml | undefined, tavolozza?: Tavolozza): TabellaStili {
   if (!st) return { xf: [], data: [] };
@@ -90,6 +91,8 @@ function leggiStili(st: NodoXml | undefined, tavolozza?: Tavolozza): TabellaStil
   const base = caratteri[0];
   const nomeBase = base ? trova(base, 'name')?.attributi.val : undefined;
   const dimensioneBase = base ? Number(trova(base, 'sz')?.attributi.val) : NaN;
+  // il carattere base del file (quello delle celle senza carattere proprio): la cartella lo tiene (vedi sheet/carattere-base.ts)
+  const carattere = carattereBaseValido({ nome: nomeBase, dimensione: dimensioneBase });
   const acceso = (n: NodoXml | undefined): boolean => n !== undefined && n.attributi.val !== '0' && n.attributi.val !== 'false';
 
   const xf: CellStyle[] = [];
@@ -154,7 +157,7 @@ function leggiStili(st: NodoXml | undefined, tavolozza?: Tavolozza): TabellaStil
     xf.push(s);
     data.push(codice !== undefined && eFormatoData(codice));
   }
-  return { xf, data, rientroORotazione };
+  return { xf, data, rientroORotazione, ...(carattere ? { carattere } : {}) };
 }
 
 /** Testo di una stringa condivisa: i frammenti formattati si uniscono, la pronuncia (rPh) si scarta. */
@@ -290,6 +293,9 @@ function leggiFoglio(nome: string, radice: NodoXml | undefined, c: Contesto): Fo
   const coloreTab = coloreExcel(trova(radice, 'sheetPr/tabColor'), c.tavolozza);
   if (coloreTab) f.colore = coloreTab;
 
+  // la griglia nascosta (Visualizza › Mostra griglia di Excel tolto)
+  const vista = trova(radice, 'sheetViews/sheetView');
+  if (vista && (vista.attributi.showGridLines === '0' || vista.attributi.showGridLines === 'false')) f.senzaGriglia = true;
   const pannello = trova(radice, 'sheetViews/sheetView/pane');
   if (pannello && (pannello.attributi.state === 'frozen' || pannello.attributi.state === 'frozenSplit')) {
     const colonne = Math.floor(Number(pannello.attributi.xSplit ?? 0));
@@ -487,7 +493,7 @@ async function leggi(bytes: Uint8Array): Promise<RisultatoXlsx> {
   void nascosti;
   const cp = trova(cartella, 'workbookProtection');
   const protezioneCartella = cp && vero(cp.attributi.lockStructure) ? protezioneDaAttributi(cp.attributi, 'workbook') : undefined;
-  return { scambio: { fogli, foglioAttivo, ...(nomiDefiniti.length > 0 ? { nomi: nomiDefiniti } : {}), ...(protezioneCartella ? { protezioneCartella } : {}) }, avvisi };
+  return { scambio: { fogli, foglioAttivo, ...(nomiDefiniti.length > 0 ? { nomi: nomiDefiniti } : {}), ...(protezioneCartella ? { protezioneCartella } : {}), ...(contesto.stili.carattere ? { carattere: contesto.stili.carattere } : {}) }, avvisi };
 }
 
 /** Dai byte di un file .xlsx al modello di scambio, con gli avvisi su ciò che non si importa. Un file non valido dà un errore chiaro ("File .xlsx non valido: ..."). */

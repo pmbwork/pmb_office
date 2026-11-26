@@ -7,6 +7,7 @@ import {
   conParagrafi, ordina, testoParagrafo, LUNGHEZZA_MASSIMA_NOME_STILE,
   type Documento, type Paragrafo, type Selezione, type Stato, type StilePersonale, type StileParagrafo,
 } from './documento';
+import { rigaNaturale } from './riga';
 
 /** I nomi degli stili già fatti (in italiano e come li chiama Word): uno stile personale non può chiamarsi così. */
 const NOMI_RISERVATI = ['testo normale', 'titolo', 'sottotitolo', 'titolo 1', 'titolo 2', 'titolo 3', 'normal', 'title', 'subtitle', 'heading 1', 'heading 2', 'heading 3'];
@@ -155,10 +156,14 @@ export function elencoStili(doc: Documento): VoceStile[] {
 
 /** Le regole CSS che disegnano gli stili nell'editor (dentro .testo). La specificità (due classi sul paragrafo) vince sugli stili già
  *  fatti (st-1, ...), che hanno una classe sola; i tratti con un formato proprio lo scrivono sullo span e vincono comunque. */
-export function cssStili(stili: StilePersonale[] | undefined, famiglia: (f: string) => string): string {
+export function cssStili(stili: StilePersonale[] | undefined, famiglia: (f: string) => string, riga: (f: string) => number = rigaNaturale): string {
   return (stili ?? []).map((s) => {
     const d: string[] = [];
-    if (s.f !== undefined) d.push(`font-family: ${famiglia(s.f)}`);
+    if (s.f !== undefined) d.push(`font-family: ${famiglia(s.f)}`, `--rn: ${riga(s.f)}`);
+    // spazi e interlinea dello stile (un paragrafo con i suoi li scrive sul paragrafo e vince)
+    if (s.sb !== undefined) d.push(`margin-top: ${s.sb}pt`);
+    if (s.sa !== undefined) d.push(`margin-bottom: ${s.sa}pt`);
+    if (s.ls !== undefined) d.push(`--ls: ${s.ls}`);
     if (s.z !== undefined) d.push(`font-size: ${s.z}pt`);
     if (s.k !== undefined && /^#[0-9a-fA-F]{6}$/.test(s.k)) d.push(`color: ${s.k}`);
     if (s.g) d.push('font-weight: 700');

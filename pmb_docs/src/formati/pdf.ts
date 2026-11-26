@@ -3,6 +3,7 @@
 // con impaginazione, font standard Type 1, stili (grassetto, corsivo, corpo, colori),
 // salti pagina, tabelle, righe orizzontali e immagini JPEG.
 
+import { rigaNaturale } from '../modello/riga';
 import type { Documento } from '../modello/documento';
 import type { ImpostazioniPagina } from '../editor/pagine';
 
@@ -138,8 +139,9 @@ export function esportaPdf(doc: Documento, imp?: ImpostazioniPagina): Uint8Array
     if (par.sb && comandiPaginaCorrente.length > 0) yCorrente -= par.sb;
     const interlineaMoltiplicatore = par.ls ?? 1.15;
 
-    // Linea orizzontale
-    if (par.hr) {
+    // Linea orizzontale: da sola (paragrafo senza testo); un paragrafo con del testo e la linea sotto la disegna dopo il testo
+    const conTesto = par.runs.some((r) => r.im !== undefined || r.t.trim() !== '');
+    if (par.hr && !conTesto) {
       if (yCorrente - 15 < cfg.margineBasso) nuovaPagina();
       const yLinea = yCorrente - 8;
       comandiPaginaCorrente.push(
@@ -157,11 +159,14 @@ export function esportaPdf(doc: Documento, imp?: ImpostazioniPagina): Uint8Array
     }
 
     // Calcolo approssimativo dell'altezza della riga
+    // l'interlinea come in Word: il multiplo dell'altezza naturale della riga del carattere (vedi modello/riga.ts)
     let maxCorpo = 11;
+    let carattereRiga: string | undefined;
     for (const r of par.runs) {
-      if (r.z && r.z > maxCorpo) maxCorpo = r.z;
+      if (r.z && r.z > maxCorpo) { maxCorpo = r.z; carattereRiga = r.f; }
     }
-    const altezzaRiga = maxCorpo * interlineaMoltiplicatore;
+    carattereRiga ??= par.runs.find((r) => r.t.trim() !== '')?.f;
+    const altezzaRiga = maxCorpo * interlineaMoltiplicatore * rigaNaturale(carattereRiga);
 
     if (yCorrente - altezzaRiga < cfg.margineBasso) {
       nuovaPagina();
@@ -248,6 +253,11 @@ export function esportaPdf(doc: Documento, imp?: ImpostazioniPagina): Uint8Array
     }
 
     yCorrente -= altezzaRiga + (par.sa ?? 0);
+    if (par.hr) {
+      const yLinea = yCorrente + (par.sa ?? 0) - 3;
+      comandiPaginaCorrente.push(`q 0.5 w 0.7 0.7 0.7 RG ${cfg.margineSinistro + rientroPt} ${yLinea} m ${cfg.larghezza - cfg.margineDestro} ${yLinea} l S Q`);
+      yCorrente -= 6;
+    }
   }
 
   // Chiudiamo l'ultima pagina

@@ -1,6 +1,6 @@
 [package]
 name = "pmb-sheets-shell"
-version = "0.2.17"
+version = "0.2.18"
 description = "Shell nativa portatile per pmb_office"
 edition = "2021"
 

@@ -30,7 +30,7 @@ with Banco(9632, '42 Finestra stretta: menu Altri strumenti, tavolozze e bottone
         b.ok('in tutto il riquadro i clic arrivano al menu (non alle schede o alla griglia che stanno sotto)', all('FREE-TOOLBAR' in x for x in punti), punti)
         b.ok('il riquadro sta dentro la finestra', p['l'] >= 0 and p['l'] + p['w'] <= 760 and p['t'] + p['h'] <= 760, p)
         # una tavolozza aperta da dentro il menu si vede e si usa
-        voce = b.js("() => { const p = " + TB + ".querySelector('.overflow-popup'); const x = p.querySelector('#btn-fill-color-overflow, #btn-text-color-overflow'); if (!x) return null; const q = x.getBoundingClientRect(); return [x.id, q.left + q.width / 2, q.top + q.height / 2]; }")
+        voce = b.js("() => { const p = " + TB + ".querySelector('.overflow-popup'); const x = p.querySelector('#btn-fill-color-scegli-overflow, #btn-text-color-scegli-overflow'); if (!x) return null; const q = x.getBoundingClientRect(); return [x.id, q.left + q.width / 2, q.top + q.height / 2]; }")
         if voce:
             L._clic_os(b, voce[1], voce[2]); b.attendi(500)
             sw = b.js("() => { const cp = " + TB + ".querySelector('free-color-picker'); const s = cp && cp.shadowRoot && cp.shadowRoot.querySelectorAll('.color-swatch'); if (!s || !s.length) return null; const x = s[12].getBoundingClientRect(); return [x.left + x.width / 2, x.top + x.height / 2]; }")

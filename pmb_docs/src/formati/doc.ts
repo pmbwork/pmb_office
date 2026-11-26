@@ -602,7 +602,8 @@ function attributiParagrafo(pap: Pap, ctx: Contesto): AttributiParagrafo {
   // come nel .docx: gli stili con un aspetto proprio (Titolo...) prendono solo gli spazi scritti nel paragrafo, gli altri anche quelli dello stile
   const prima = proprio ? pap.diretti.prima : pap.prima;
   const dopo = proprio ? pap.diretti.dopo : pap.dopo;
-  const interlinea = proprio ? pap.diretti.interlinea : pap.interlinea;
+  // senza interlinea scritta Word usa la singola (come nel .docx)
+  const interlinea = proprio ? pap.diretti.interlinea : pap.interlinea ?? 1;
   const sb = spazioValido(prima);
   const sa = spazioValido(dopo);
   if (sb !== undefined) a.sb = sb;

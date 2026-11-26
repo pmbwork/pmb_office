@@ -9,7 +9,7 @@ import { MISURE, COLORI, STILI } from './misure';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { ICONE_DOCS, iconaDi } from './icone';
-import { ICONE } from '@comune/icone';
+import { ICONE, COLORI_INIZIALI, conStriscia } from '@comune/icone';
 import { contenutoComando } from './contenuto-barra';
 import { t, tVoce } from '../i18n/lingua';
 
@@ -19,6 +19,9 @@ const ICONA_GIU = ICONE.expandMore;
 const ICONA_PUNTINA = ICONE.pinOutline;
 const ICONA_PUNTINA_PIENA = ICONE.pin;
 
+/** I comandi con il pulsante diviso (icona che applica, freccia che sceglie). */
+const DIVISI = new Set(['colore-testo', 'evidenzia']);
+
 @customElement('docs-toolbar')
 export class DocsToolbar extends LinguaElement {
   @property({ type: Number }) larghezza = 1600;
@@ -26,6 +29,8 @@ export class DocsToolbar extends LinguaElement {
   /** testi correnti delle caselle (carattere, corpo, stile) e pulsanti da mostrare accesi: li dà il guscio */
   @property({ attribute: false }) valori: Record<string, string> = {};
   @property({ attribute: false }) attivi: string[] = [];
+  /** il colore che applica l'icona dei pulsanti divisi (colore del testo, evidenziazione): l'ultimo scelto dalla tavolozza */
+  @property({ attribute: false }) colori: Record<string, string> = { 'colore-testo': COLORI_INIZIALI.testo, 'evidenzia': COLORI_INIZIALI.evidenzia };
   /** la barra scelta dall'utente (identificativi e separatori); null = barra predefinita */
   @property({ attribute: false }) barra: string[] | null = null;
   /** true se i menu in alto sono nascosti (la freccia a destra punta in giù) */
@@ -69,6 +74,11 @@ export class DocsToolbar extends LinguaElement {
     button.comando[data-id='annulla'] { margin-left: 2px; }
     button.comando[data-id='grassetto'] { margin-left: 3px; }
     button.comando[data-id='evidenzia'] { margin-left: 2px; }
+    /* pulsanti divisi dei colori: l'icona applica, la freccia apre la tavolozza */
+    .diviso { display: inline-flex; align-items: center; }
+    .diviso button.comando.colore { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .diviso button.freccia-colore { width: 14px; height: 32px; padding: 0; border: 0; background: transparent; cursor: pointer; font: 10px Roboto, Arial, sans-serif; color: inherit; border-radius: 0 4px 4px 0; }
+    .diviso button.freccia-colore:hover { background: var(--pmb-hover, #e1e5ea); }
     button.comando[data-id='link'] { margin-left: 9px; }
     button.comando[data-id='allineamento'] { margin-left: 7px; }
     button.comando[data-id='zoom'] { margin-left: 1px; }
@@ -200,7 +210,15 @@ export class DocsToolbar extends LinguaElement {
     </div>`;
   }
 
+  /** Pulsante diviso dei colori, come in Word e LibreOffice: l'icona applica il colore della sua striscia, la freccia apre la tavolozza. */
+  private pulsanteColore(id: string, etichetta: string) {
+    const nome = tVoce(etichetta);
+    const colore = this.colori[id];
+    return html`<span class="diviso" data-diviso=${id}><button class="comando colore" data-id=${id} aria-label=${nome} title=${nome} data-colore=${colore ?? ''} @click=${(ev: Event) => this.emetti(`${id}-applica`, ev)}><span class="icona" data-icona=${id}>${unsafeHTML(conStriscia(ICONE_DOCS[id] ?? '', colore))}</span></button><button class="freccia-colore" data-id=${`${id}-scegli`} aria-haspopup="true" aria-label=${t('Scegli: {}', nome)} title=${t('Scegli: {}', nome)} @click=${(ev: Event) => this.emetti(id, ev)}>▾</button></span>`;
+  }
+
   private pulsanteComando(id: string) {
+    if (DIVISI.has(id)) return this.pulsanteColore(id, funzione(id)?.etichetta ?? id);
     return html`<button class=${this.attivi.includes(id) ? 'comando attivo' : 'comando'} data-id=${id} aria-label=${tVoce(funzione(id)?.etichetta ?? id)} title=${tVoce(funzione(id)?.etichetta ?? id)} aria-pressed=${this.attivi.includes(id) ? 'true' : 'false'} @click=${(ev: Event) => this.emetti(id, ev)}><span class="icona" data-icona=${id}>${contenutoComando(id, this.valori)}</span></button>`;
   }
 
@@ -221,7 +239,7 @@ export class DocsToolbar extends LinguaElement {
     if (this.barra !== null) return this.renderPersonalizzata(this.barra);
     const { visibili, nascoste } = vociVisibili(this.larghezza);
     return html`<div class="barra-strumenti" @contextmenu=${this.suContesto}>
-      ${visibili.map((v) => html`<button class=${this.attivi.includes(v.id) ? 'comando attivo' : 'comando'} data-id=${v.id} aria-label=${tVoce(v.etichetta)} title=${tVoce(v.etichetta)} aria-pressed=${this.attivi.includes(v.id) ? 'true' : 'false'} @click=${(ev: Event) => this.emetti(v.id, ev)}><span class="icona" data-icona=${v.id}>${contenutoComando(v.id, this.valori)}</span></button>`)}
+      ${visibili.map((v) => DIVISI.has(v.id) ? this.pulsanteColore(v.id, v.etichetta) : html`<button class=${this.attivi.includes(v.id) ? 'comando attivo' : 'comando'} data-id=${v.id} aria-label=${tVoce(v.etichetta)} title=${tVoce(v.etichetta)} aria-pressed=${this.attivi.includes(v.id) ? 'true' : 'false'} @click=${(ev: Event) => this.emetti(v.id, ev)}><span class="icona" data-icona=${v.id}>${contenutoComando(v.id, this.valori)}</span></button>`)}
       ${nascoste.length ? html`<button class="altri" aria-label="Altri comandi" @click=${() => { this.altriAperto = !this.altriAperto; }}>⋮</button>` : ''}
       ${this.parteDestra()}
       ${this.altriAperto && nascoste.length ? html`<div class="pannello-altri" role="menu">${nascoste.map((v) => html`<button class="voce-altri" data-id=${v.id} role="menuitem" @click=${() => { this.altriAperto = false; this.emettiDaAltri(v.id); }}>${tVoce(v.etichetta)}</button>`)}</div>` : ''}

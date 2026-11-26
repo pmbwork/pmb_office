@@ -86,7 +86,8 @@ describe('T557: stili personali nel modello', () => {
     const zona = document.createElement('div');
     disegna(zona, s.doc);
     expect(zona.querySelector('p[data-p="0"]')!.className).toContain('su su-Stile1');
-    expect(cssStili(s.doc.stili, (f) => `"${f}"`)).toBe('.testo p.su.su-Stile1 { font-family: "Georgia"; font-size: 14pt; color: #cc0000; font-weight: 700; }');
+    // dal 2026-11-25 anche l'altezza naturale della riga del carattere (--rn) e gli spazi dello stile
+    expect(cssStili(s.doc.stili, (f) => `"${f}"`)).toBe('.testo p.su.su-Stile1 { font-family: "Georgia"; --rn: 1.136; margin-bottom: 12pt; font-size: 14pt; color: #cc0000; font-weight: 700; }');
     const b = statoBarra(s);
     expect(b.valori['stile-paragrafo']).toBe('Avviso ▾');
     const voci = popupPerComando('stile-paragrafo', b)!.voci;

@@ -1,3 +1,5 @@
+import { COLORI_INIZIALI } from '@comune/icone';
+import type { AzioneFormato } from '../editor/azioni-formato';
 import { t, localeCorrente, impostaLingua, risolviLingua, linguaCorrente } from '../i18n/lingua';
 import { css, unsafeCSS } from 'lit';
 import { html } from '../i18n/html';
@@ -1108,8 +1110,26 @@ export class DocsGuscio extends LinguaElement {
     this.editor()?.focalizza();
   };
 
-  /** Imposta le impostazioni di pagina (margini, orientamento, formato) nel guscio e nell'editor. */
+  /** Imposta le impostazioni di pagina (margini, orientamento, formato) nel documento, nel guscio e nell'editor. */
   impostaImpostazioniPagina(imp: ImpostazioniPagina): void {
+    // la pagina è del documento (si salva nel file ed è un passo di annulla); poi guscio ed editor la mostrano
+    this.editor()?.impostaPaginaDocumento(imp);
+    this.mostraPagina(imp);
+  }
+
+  /** La pagina del documento cambiata dall'editor (file aperto, Annulla, scheda): solo il guscio (righelli, larghezza del foglio). */
+  private suPaginaDocumento = (e: Event): void => {
+    const imp = (e as CustomEvent<{ impostazioni: ImpostazioniPagina }>).detail.impostazioni;
+    this.impostazioniPagina = { ...imp };
+    const larghezza = calcolaGeometria(this.impostazioniPagina).larghezza;
+    this.style.setProperty('--larghezza-foglio', `${larghezza}px`);
+    this.style.setProperty('--sx-minimo', larghezza === 794 ? '301px' : '44px');
+    this.allineaRighello();
+    // il foglio cambia larghezza solo quando il guscio si ridisegna: allora il testo va a capo in un altro modo e l'editor rifà le pagine
+    void this.updateComplete.then(() => this.editor()?.impostaImpostazioniPagina(this.impostazioniPagina));
+  };
+
+  private mostraPagina(imp: ImpostazioniPagina): void {
     this.impostazioniPagina = { ...imp };
     // larghezza del foglio per centrarlo e per allineare il righello (variabili CSS: niente attributi style in linea)
     const larghezza = calcolaGeometria(this.impostazioniPagina).larghezza;
@@ -1395,9 +1415,19 @@ export class DocsGuscio extends LinguaElement {
       if (pagina) this.osservaArea.observe(pagina);
     }
   }
+  /** Il colore che applicano le icone dei pulsanti divisi (l'ultimo scelto dalla tavolozza; all'inizio quelli di Word). */
+  @state() private coloriBarra: Record<string, string> = { 'colore-testo': COLORI_INIZIALI.testo, 'evidenzia': COLORI_INIZIALI.evidenzia };
+
   private suComando = (e: Event): void => {
     const dettaglio = (e as CustomEvent).detail as { id?: string; rect?: DOMRect | null } | undefined;
     const id = String(dettaglio?.id ?? '');
+    // l'icona del colore del testo o dell'evidenziazione applica il colore della sua striscia (come Word e LibreOffice)
+    if (id === 'colore-testo-applica' || id === 'evidenzia-applica') {
+      const quale = id === 'colore-testo-applica' ? 'colore-testo' : 'evidenzia';
+      this.editor()?.applicaAzione({ tipo: 'attributo', chiave: quale === 'colore-testo' ? 'k' : 'h', valore: this.coloriBarra[quale] } as AzioneFormato);
+      this.editor()?.focalizza();
+      return;
+    }
     if (id === 'cerca') { void this.apriTrova(false); return; }
     if (id === 'link') { void this.apriLink(); return; }
     if (id === 'immagine') { void this.inserisciImmagine(); return; }
@@ -1448,6 +1478,10 @@ export class DocsGuscio extends LinguaElement {
     if (azione?.tipo === 'modificaTabella') {
       const motivo = this.editor()?.motivoTabella(azione.op);
       if (motivo) { this.mostraAvviso(t(motivo)); this.editor()?.focalizza(); return; }
+    }
+    // un colore scelto dalla tavolozza diventa quello dell'icona (Automatico e Nessuno lo applicano senza cambiarla)
+    if (azione?.tipo === 'attributo' && (azione.chiave === 'k' || azione.chiave === 'h') && typeof azione.valore === 'string') {
+      this.coloriBarra = { ...this.coloriBarra, [azione.chiave === 'k' ? 'colore-testo' : 'evidenzia']: azione.valore };
     }
     this.editor()?.applicaAzione(azione);
   };
@@ -2271,9 +2305,9 @@ export class DocsGuscio extends LinguaElement {
           : html`<span class="stato-salvataggio" title="Il documento è salvato sul tuo computer come file"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg><span>Salvato su disco</span></span>`}
       </div>
       <docs-menubar .spuntate=${this.vociSpuntate()} .sottovoci=${this.sottovociMenu} @voce-menu=${this.suVoceMenu} @azione-menu=${this.suAzioneMenu}></docs-menubar>
-      <div class="contenitore-strumenti"><docs-toolbar .larghezza=${this.larghezza} .valori=${{ ...(this.barra?.valori ?? {}), 'zoom': `${this.zoom}% ▾` }} .attivi=${[...(this.barra?.attivi ?? []), ...(this.copiaFormatoAttiva ? ['copia-formato'] : []), ...(this.prefs.ortografia ? ['ortografia'] : [])]} .barra=${this.prefs.barra} ?menuNascosti=${this.prefs.menuNascosti} @comando=${this.suComando} @voce-menu=${this.suVoceMenu} @barra-cambiata=${this.suBarraCambiata} @personalizza-barra=${() => this.apriPersonalizza()}></docs-toolbar></div>
+      <div class="contenitore-strumenti"><docs-toolbar .larghezza=${this.larghezza} .colori=${this.coloriBarra} .valori=${{ ...(this.barra?.valori ?? {}), 'zoom': `${this.zoom}% ▾` }} .attivi=${[...(this.barra?.attivi ?? []), ...(this.copiaFormatoAttiva ? ['copia-formato'] : []), ...(this.prefs.ortografia ? ['ortografia'] : [])]} .barra=${this.prefs.barra} ?menuNascosti=${this.prefs.menuNascosti} @comando=${this.suComando} @voce-menu=${this.suVoceMenu} @barra-cambiata=${this.suBarraCambiata} @personalizza-barra=${() => this.apriPersonalizza()}></docs-toolbar></div>
       <div class="righello" aria-label="Righello">${this.righelloVisibile ? html`<docs-righello .geometria=${{ larghezza: calcolaGeometria(this.impostazioniPagina).larghezza, margineSinistro: this.impostazioniPagina.margineSinistro, margineDestro: this.impostazioniPagina.margineDestro }} @cambio-margine=${this.suCambioMargineRighello} @fine-margine=${() => this.editor()?.focalizza()}></docs-righello>` : ''}</div>
-      <main class="area-editor" @contextmenu=${this.suMenuContestuale} @wheel=${this.suRotella} @cambio=${this.suCambio} @documento-protetto=${this.suDocumentoProtetto} @dizionario=${this.suDizionarioCambiato} @apri-link=${this.suApriLink} @immagine-incollata=${this.suImmagineIncollata}><div class="pagina zoom-${this.zoom} orientamento-${this.impostazioniPagina.orientamento} formato-${this.impostazioniPagina.formato.toLowerCase()}${this.senzaPagine ? ' senza-pagine' : ''}" role="textbox" aria-multiline="true" aria-label="Documento">${this.righelloVisibile ? html`<docs-righello-verticale class="righello-v" .zoom=${this.zoom / 100} .geometria=${{ altezza: calcolaGeometria(this.impostazioniPagina).altezza, margineAlto: this.impostazioniPagina.margineAlto, margineBasso: this.impostazioniPagina.margineBasso }} @cambio-margine-v=${this.suCambioMargineVerticale} @fine-margine=${() => this.editor()?.focalizza()}></docs-righello-verticale>` : ''}<docs-editor .impostazioniPagina=${this.impostazioniPagina} .senzaPagine=${this.senzaPagine} .mostraNonStampabili=${this.caratteriNonStampabili}></docs-editor></div></main>
+      <main class="area-editor" @contextmenu=${this.suMenuContestuale} @wheel=${this.suRotella} @cambio=${this.suCambio} @pagina-documento=${this.suPaginaDocumento} @documento-protetto=${this.suDocumentoProtetto} @dizionario=${this.suDizionarioCambiato} @apri-link=${this.suApriLink} @immagine-incollata=${this.suImmagineIncollata}><div class="pagina zoom-${this.zoom} orientamento-${this.impostazioniPagina.orientamento} formato-${this.impostazioniPagina.formato.toLowerCase()}${this.senzaPagine ? ' senza-pagine' : ''}" role="textbox" aria-multiline="true" aria-label="Documento">${this.righelloVisibile ? html`<docs-righello-verticale class="righello-v" .zoom=${this.zoom / 100} .geometria=${{ altezza: calcolaGeometria(this.impostazioniPagina).altezza, margineAlto: this.impostazioniPagina.margineAlto, margineBasso: this.impostazioniPagina.margineBasso }} @cambio-margine-v=${this.suCambioMargineVerticale} @fine-margine=${() => this.editor()?.focalizza()}></docs-righello-verticale>` : ''}<docs-editor .impostazioniPagina=${this.impostazioniPagina} .senzaPagine=${this.senzaPagine} .mostraNonStampabili=${this.caratteriNonStampabili}></docs-editor></div></main>
       ${this.pannelloCommenti ? html`<docs-commenti .commenti=${this.elencoCommenti} .revisioni=${this.elencoRevisioni} .registra=${this.registraModifiche} .nuovo=${this.nuovoCommento} .attivo=${this.commentoAttivo}
         @nuovo-commento=${this.suNuovoCommento} @rispondi=${this.suEventoCommenti} @risolvi=${this.suEventoCommenti} @elimina=${this.suEventoCommenti} @elimina-tutti=${this.suEventoCommenti}
         @vai=${this.suEventoCommenti} @vai-modifica=${this.suEventoCommenti} @accetta=${this.suEventoCommenti} @rifiuta=${this.suEventoCommenti} @accetta-tutte=${this.suEventoCommenti}

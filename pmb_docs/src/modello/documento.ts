@@ -99,7 +99,23 @@ export interface Paragrafo extends AttributiParagrafo { runs: Run[] }
  *  interlinea (copiati nel paragrafo quando si applica lo stile). Vedi modello/stili.ts. */
 export interface StilePersonale { id: string; nome: string; base: StileParagrafo; f?: string; z?: number; k?: string; g?: boolean; c?: boolean; s?: boolean; al?: Allineamento; sb?: number; sa?: number; ls?: number }
 /** protezione = il documento è in sola lettura («Limita modifica» di Word), con le impronte della password se c'è (vedi modello/storia.ts). */
-export interface Documento { paragrafi: Paragrafo[]; intestazione?: Paragrafo[]; piede?: Paragrafo[]; commenti?: Commento[]; revisioni?: boolean; stili?: StilePersonale[]; protezione?: { impronte?: Impronta[] }; filigrana?: string; /** il testo su 2 o 3 colonne (Formato › Colonne; senza = 1) */ colonne?: 2 | 3 }
+/** La pagina del documento (File › Imposta pagina; si legge e si scrive nei file): formato della carta, orientamento ('v' verticale,
+ *  'o' orizzontale) e margini in pixel a 96 punti per pollice (alto, basso, sinistro, destro). Senza: A4 verticale, margini di un pollice. */
+export type FormatoPagina = 'A4' | 'Letter' | 'A3' | 'A5';
+export interface PaginaDocumento { f: FormatoPagina; o: 'v' | 'o'; ma: number; mb: number; ms: number; md: number }
+export const MARGINE_PAGINA_MASSIMO = 600;
+export function paginaValida(x: unknown): PaginaDocumento | undefined {
+  const p = x as Record<string, unknown>;
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return undefined;
+  if (!['A4', 'Letter', 'A3', 'A5'].includes(p.f as string) || (p.o !== 'v' && p.o !== 'o')) return undefined;
+  for (const k of ['ma', 'mb', 'ms', 'md']) if (typeof p[k] !== 'number' || !((p[k] as number) >= 0 && (p[k] as number) <= MARGINE_PAGINA_MASSIMO)) return undefined;
+  return { f: p.f as FormatoPagina, o: p.o, ma: Math.round(p.ma as number), mb: Math.round(p.mb as number), ms: Math.round(p.ms as number), md: Math.round(p.md as number) };
+}
+/** La pagina predefinita (A4 verticale, margini di un pollice): un documento con questa pagina non la scrive. */
+export function paginaPredefinita(p: PaginaDocumento | undefined): boolean {
+  return !p || (p.f === 'A4' && p.o === 'v' && p.ma === 96 && p.mb === 96 && p.ms === 96 && p.md === 96);
+}
+export interface Documento { /** la pagina (senza: A4 verticale, margini di un pollice) */ pagina?: PaginaDocumento; paragrafi: Paragrafo[]; intestazione?: Paragrafo[]; piede?: Paragrafo[]; commenti?: Commento[]; revisioni?: boolean; stili?: StilePersonale[]; protezione?: { impronte?: Impronta[] }; filigrana?: string; /** il testo su 2 o 3 colonne (Formato › Colonne; senza = 1) */ colonne?: 2 | 3 }
 export interface Posizione { p: number; o: number }
 export interface Selezione { ancora: Posizione; fuoco: Posizione }
 export type Formato = Segni & Attributi;
@@ -1028,6 +1044,7 @@ export function serializza(doc: Documento): string {
   if (stili.length > 0) o.su = stili.map((s) => ({ ...s }));
   if (doc.filigrana) o.fg = doc.filigrana;
   if (doc.colonne) o.co = doc.colonne;
+  if (doc.pagina && !paginaPredefinita(doc.pagina)) o.pg = { ...doc.pagina };
   if (doc.protezione) o.pr = doc.protezione.impronte ? { impronte: doc.protezione.impronte.map((i) => ({ ...i })) } : {};
   return JSON.stringify(o);
 }
@@ -1170,6 +1187,12 @@ export function deserializza(testo: string): Documento {
     if (dc.co !== 2 && dc.co !== 3) throw new Error(t('Documento non valido: colonne'));
     doc.colonne = dc.co;
   }
+  const dg = d as { pg?: unknown };
+  if (dg.pg !== undefined) {
+    const p = paginaValida(dg.pg);
+    if (!p) throw new Error(t('Documento non valido: pagina'));
+    if (!paginaPredefinita(p)) doc.pagina = p;
+  }
   const dp = d as { pr?: unknown };
   if (dp.pr !== undefined) {
     if (!dp.pr || typeof dp.pr !== 'object' || Array.isArray(dp.pr)) throw new Error(t('Documento non valido: protezione'));
@@ -1250,7 +1273,8 @@ export function stileValido(x: unknown): StilePersonale | undefined {
   for (const k of ['sb', 'sa'] as const) {
     if (s[k] === undefined) continue;
     if (typeof s[k] !== 'number' || !((s[k] as number) >= 0 && (s[k] as number) <= SPAZIO_PARAGRAFO_MASSIMO)) return undefined;
-    const v = spazioValido(s[k]);
+    // 0 si tiene: in uno stile vuol dire «nessuno spazio» (un Titolo 1 di Word senza spazio dopo), non «quello dello stile di base»
+    const v = s[k] === 0 ? 0 : spazioValido(s[k]);
     if (v !== undefined) o[k] = v;
   }
   return o;

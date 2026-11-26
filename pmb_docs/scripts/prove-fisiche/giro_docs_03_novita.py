@@ -9,6 +9,10 @@ Guardato con Playwright collegato a WebView2; la finestra «Apri» di Windows si
 7. avvio con un file .rtf («Apri con»): si apre e Ctrl+S lo riscrive sul posto.
 Profilo WebView2 temporaneo; i file di prova stanno in %TEMP%. Uso: python giro_docs_03_novita.py   (non muovere il mouse né usare la tastiera)"""
 import ctypes, ctypes.wintypes as W, os, subprocess, time
+import sys
+# guardia: i tasti e i clic veri vanno solo al programma in prova (comune/scripts/guardia_prove_fisiche.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'comune', 'scripts'))
+import guardia_prove_fisiche as GUARDIA
 from playwright.sync_api import sync_playwright
 
 EXE = os.environ.get('PMB_DOCS_EXE', r'C:\Program Files\pmb_office\pmb_docs\pmb-docs-shell.exe')
@@ -64,6 +68,7 @@ class Programma:
         env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = f'--remote-debugging-port={self.porta}'
         env['WEBVIEW2_USER_DATA_FOLDER'] = os.path.join(os.environ['TEMP'], f'pmb_docs_giro03_{self.porta}_{int(time.time())}')
         self.p = subprocess.Popen([EXE, *self.argomenti], env=env)
+        GUARDIA.proteggi(self.p.pid)
         self.pw = sync_playwright().start()
         for _ in range(80):
             try: self.b = self.pw.chromium.connect_over_cdp(f'http://127.0.0.1:{self.porta}'); break
@@ -123,7 +128,8 @@ with Programma(9731) as pr:
     del prima
 
     # 3. icona di Evidenzia
-    ic = pr.js("() => { const b = G.shadowRoot.querySelector('docs-toolbar'); const h = b && b.shadowRoot ? b.shadowRoot.innerHTML : ''; return h.includes('#facc15'); }")
+    ic = pr.js("() => { const b = G.shadowRoot.querySelector('docs-toolbar'); const h = b && b.shadowRoot ? b.shadowRoot.innerHTML : ''; const x = b && b.shadowRoot && b.shadowRoot.querySelector('button.comando[data-id=evidenzia] svg path'); return h.includes('M0 20h24v4H0z') && !!x && x.getAttribute('fill') === '#ffff00'; }")
+    # dal 2026-11-26 la striscia è il colore che l'icona applica (pulsante diviso): all'inizio il giallo di Word
     esito('l’icona di Evidenzia è l’evidenziatore con la striscia gialla', ic)
 
     # 4. tema

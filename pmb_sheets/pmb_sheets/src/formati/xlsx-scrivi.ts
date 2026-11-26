@@ -1,6 +1,7 @@
 // Scrittura di file .xlsx (Excel, Google Fogli) dal modello di scambio. Puro: restituisce i byte, non tocca il disco.
 // Le formule si scrivono col nome inglese e SENZA valore calcolato: Excel e Google Fogli le ricalcolano all'apertura (fullCalcOnLoad).
 // I testi delle celle si leggono come li legge il motore: "=..." formula, TRUE/FALSE booleano, numero con punto decimale, altrimenti testo.
+import { CARATTERE_BASE_PMB, carattereBaseValido, type CarattereBase } from '../sheet/carattere-base';
 import { livelloMassimo } from '../sheet/gruppi';
 import type { Impronta } from '@comune/protezione/impronte';
 import { scriviZip, type VoceZip } from '@comune/formati/zip';
@@ -190,7 +191,7 @@ class TabellaStili {
   private readonly combinazioni: string[] = [];
   private readonly dxfs: string[] = [];
 
-  constructor() { this.indice({}); }
+  constructor(private readonly base: CarattereBase = CARATTERE_BASE_PMB) { this.indice({}); }
 
   /** Indice dello stile differenziale (colori e grassetto di una formattazione condizionale). */
   dxf(stile: Parameters<typeof dxfXml>[0]): number {
@@ -205,8 +206,8 @@ class TabellaStili {
 
   /** Indice della combinazione per questo stile (la crea se serve). */
   indice(st: Readonly<CellStyle>): number {
-    const dimensione = typeof st.fontSize === 'number' && Number.isFinite(st.fontSize) && st.fontSize > 0 && st.fontSize <= 409 ? st.fontSize : 10;
-    const nome = typeof st.fontFamily === 'string' && st.fontFamily.trim() !== '' ? st.fontFamily : 'Arial';
+    const dimensione = typeof st.fontSize === 'number' && Number.isFinite(st.fontSize) && st.fontSize > 0 && st.fontSize <= 409 ? st.fontSize : this.base.dimensione;
+    const nome = typeof st.fontFamily === 'string' && st.fontFamily.trim() !== '' ? st.fontFamily : this.base.nome;
     const coloreTesto = argb(st.color);
     const fontId = this.voce(this.caratteri, elemento('font', {}, [
       ...(st.bold ? ['<b/>'] : []), ...(st.italic ? ['<i/>'] : []), ...(st.strike ? ['<strike/>'] : []), ...(st.underline ? ['<u/>'] : []),
@@ -369,7 +370,7 @@ function fogliXml(f: FoglioScambio, attivo: boolean, stili: TabellaStili, string
   return INTESTAZIONE_XML + elemento('worksheet', { xmlns: NS_PRINCIPALE, 'xmlns:r': NS_RELAZIONI }, [
     ...(sheetPrFigli(f).length > 0 ? [elemento('sheetPr', {}, sheetPrFigli(f))] : []),
     elemento('dimension', { ref: dimensione }),
-    elemento('sheetViews', {}, [elemento('sheetView', { tabSelected: attivo ? 1 : undefined, workbookViewId: 0 }, pannello)]),
+    elemento('sheetViews', {}, [elemento('sheetView', { showGridLines: f.senzaGriglia ? 0 : undefined, tabSelected: attivo ? 1 : undefined, workbookViewId: 0 }, pannello)]),
     elemento('sheetFormatPr', { defaultRowHeight: 15, outlineLevelRow: livelloMassimo(f.gruppi, 'righe') || undefined, outlineLevelCol: livelloMassimo(f.gruppi, 'colonne') || undefined }),
     ...(elencoColonne.length > 0 ? [elemento('cols', {}, elencoColonne)] : []),
     elemento('sheetData', {}, datiRighe),
@@ -398,7 +399,7 @@ export async function scriviXlsx(s: Scambio): Promise<Uint8Array> {
   const origine = s.fogli.length > 0 ? s.fogli : [foglioVuoto(NOME_FOGLIO_PREDEFINITO)];
   const nomi = nomiFoglioXlsx(origine.map((f) => f.nome));
   const indiceAttivo = Math.max(0, origine.findIndex((f) => f.nome === s.foglioAttivo));
-  const stili = new TabellaStili();
+  const stili = new TabellaStili(carattereBaseValido(s.carattere) ?? CARATTERE_BASE_PMB);
   const stringhe: string[] = [];
   const indiciStringhe = new Map<string, number>();
   const conCommenti = origine.map((f) => commentiXml(f) !== null);

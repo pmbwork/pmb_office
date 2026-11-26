@@ -17,7 +17,7 @@ const pausa = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 describe('T490: i selettori di colore della barra si aprono davvero', () => {
   it.each([['text-color', 'text'], ['fill-color', 'fill']])('un clic su "%s" mostra la tavolozza (non solo il suo contenitore vuoto)', async (id, modo) => {
     const tb = await toolbar();
-    (tb.renderRoot.querySelector(`#btn-${id}`) as HTMLElement).click();
+    (tb.renderRoot.querySelector(`#btn-${id}-scegli`) as HTMLElement).click();
     await tb.updateComplete; await pausa();
     const picker = tb.renderRoot.querySelector('free-color-picker') as HTMLElement & { updateComplete: Promise<unknown>; renderRoot: ShadowRoot; open: boolean };
     expect(picker).toBeTruthy();
@@ -32,7 +32,7 @@ describe('T490: i selettori di colore della barra si aprono davvero', () => {
     const tb = await toolbar();
     const azioni: Array<{ action: string; value?: string }> = [];
     tb.addEventListener('toolbar-action', (e) => azioni.push((e as CustomEvent).detail));
-    (tb.renderRoot.querySelector('#btn-fill-color') as HTMLElement).click();
+    (tb.renderRoot.querySelector('#btn-fill-color-scegli') as HTMLElement).click();
     await tb.updateComplete; await pausa();
     const picker = tb.renderRoot.querySelector('free-color-picker') as HTMLElement & { updateComplete: Promise<unknown>; renderRoot: ShadowRoot };
     await picker.updateComplete;
@@ -45,7 +45,7 @@ describe('T490: i selettori di colore della barra si aprono davvero', () => {
 
   it('un secondo clic sul bottone la richiude', async () => {
     const tb = await toolbar();
-    const bottone = tb.renderRoot.querySelector('#btn-text-color') as HTMLElement;
+    const bottone = tb.renderRoot.querySelector('#btn-text-color-scegli') as HTMLElement;
     bottone.click(); await tb.updateComplete;
     expect(tb.renderRoot.querySelector('free-color-picker')).toBeTruthy();
     bottone.click(); await tb.updateComplete;

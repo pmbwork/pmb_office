@@ -10,6 +10,7 @@
  * Modulo puro e deterministico; non tocca il filesystem.
  */
 
+import { carattereBaseValido, type CarattereBase } from './carattere-base';
 import { pulsantiDaDati, type PulsanteConfig } from './pulsanti';
 import { copiaGruppi, gruppiValidi, type Gruppi } from './gruppi';
 import { copiaProtezione, protezioneValida, type ProtezioneCartella, type ProtezioneFoglio } from './protezione';
@@ -43,6 +44,7 @@ export interface SheetDocumentData {
   freezeCols?: number;
   coloreScheda?: string;
   nascosto?: boolean;
+  senzaGriglia?: boolean;
   /** viste filtro salvate del foglio attivo */
   visteFiltro?: VistaFiltro[];
   /** impostazione di pagina del foglio attivo */
@@ -50,6 +52,8 @@ export interface SheetDocumentData {
   /** protezione del foglio attivo e della struttura della cartella */
   protezione?: ProtezioneFoglio;
   protezioneCartella?: ProtezioneCartella;
+  /** il carattere base della cartella (senza: quello di pmb_sheets) */
+  carattere?: CarattereBase;
   /** righe e colonne raggruppate del foglio attivo */
   gruppi?: Gruppi;
   activeSheetName: string;
@@ -127,11 +131,13 @@ export async function extractDocumentData(
     freezeCols: doc.freezeCols || 0,
     ...(doc.coloreScheda ? { coloreScheda: doc.coloreScheda } : {}),
     ...(doc.nascosto ? { nascosto: true } : {}),
+    ...(doc.senzaGriglia ? { senzaGriglia: true } : {}),
     ...(doc.visteFiltro && doc.visteFiltro.length > 0 ? { visteFiltro: JSON.parse(JSON.stringify(doc.visteFiltro)) } : {}),
     ...(doc.impostaPagina && !eDiPartenza(doc.impostaPagina) ? { impostaPagina: copiaPagina(doc.impostaPagina) } : {}),
     ...(doc.protezione ? { protezione: copiaProtezione(doc.protezione) } : {}),
     ...(copiaGruppi(doc.gruppi) ? { gruppi: copiaGruppi(doc.gruppi) } : {}),
     ...(doc.protezioneCartella ? { protezioneCartella: copiaProtezione(doc.protezioneCartella) } : {}),
+    ...(carattereBaseValido(doc.carattere) ? { carattere: carattereBaseValido(doc.carattere) } : {}),
     activeSheetName: doc.activeSheetName || 'Foglio1',
     merges: doc.merges ? [...doc.merges] : [],
     dataValidations: validationsObj,
@@ -198,11 +204,13 @@ export function deserializeSheetDocumentData(json: string): SheetDocumentData {
     freezeCols: typeof parsed.freezeCols === 'number' ? parsed.freezeCols : 0,
     ...(typeof parsed.coloreScheda === 'string' && /^#[0-9a-fA-F]{6}$/.test(parsed.coloreScheda) ? { coloreScheda: parsed.coloreScheda } : {}),
     ...(parsed.nascosto === true ? { nascosto: true } : {}),
+    ...(parsed.senzaGriglia === true ? { senzaGriglia: true } : {}),
     ...(vistePulite(parsed.visteFiltro).length > 0 ? { visteFiltro: vistePulite(parsed.visteFiltro) } : {}),
     ...(parsed.impostaPagina && typeof parsed.impostaPagina === 'object' ? { impostaPagina: ripulisciPagina(parsed.impostaPagina) } : {}),
     ...(protezioneValida(parsed.protezione) ? { protezione: protezioneValida(parsed.protezione) } : {}),
     ...(gruppiValidi(parsed.gruppi) ? { gruppi: gruppiValidi(parsed.gruppi) } : {}),
     ...(protezioneValida(parsed.protezioneCartella) ? { protezioneCartella: protezioneValida(parsed.protezioneCartella) } : {}),
+    ...(carattereBaseValido(parsed.carattere) ? { carattere: carattereBaseValido(parsed.carattere) } : {}),
     activeSheetName: typeof parsed.activeSheetName === 'string' ? parsed.activeSheetName : 'Foglio1',
     merges: Array.isArray(parsed.merges) ? parsed.merges : [],
     dataValidations: parsed.dataValidations && typeof parsed.dataValidations === 'object' ? parsed.dataValidations : {},

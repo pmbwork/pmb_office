@@ -462,7 +462,8 @@ export class FreeSheetGrid extends LinguaElement {
       color: var(--color-text);
       overflow: hidden;
       white-space: nowrap;
-      text-overflow: ellipsis;
+      /* come in Excel il testo che non entra si taglia, senza puntini */
+      text-overflow: clip;
       outline: none;
       cursor: cell;
       user-select: none;
@@ -479,6 +480,9 @@ export class FreeSheetGrid extends LinguaElement {
       background-image: linear-gradient(225deg, #f9ab00 0, #f9ab00 6px, transparent 6px);
     }
 
+    /* la griglia nascosta (Visualizza › Mostra griglia): restano solo i bordi messi alle celle */
+    .sheet-table.senza-griglia td.sheet-cell { border-right-color: transparent; border-bottom-color: transparent; }
+
     /* il testo lungo di una cella esce sulle celle vuote a destra, come in Excel e Fogli */
     td.sheet-cell.trabocca {
       overflow: visible;
@@ -490,7 +494,7 @@ export class FreeSheetGrid extends LinguaElement {
       pointer-events: none; /* il testo che esce sulle celle vicine non deve rubare i clic alla cella sotto */
       display: block;
       overflow: hidden;
-      text-overflow: ellipsis;
+      text-overflow: clip;
       white-space: nowrap;
     }
 
@@ -893,6 +897,18 @@ export class FreeSheetGrid extends LinguaElement {
     return this.mostraFormule;
   }
   public formuleVisibili(): boolean { return this.mostraFormule; }
+
+  /** Visualizza › Mostra griglia: la griglia del foglio attivo si vede o no (si salva con il foglio, come in Excel). */
+  public alternaGriglia(): boolean {
+    const doc = this.getDoc();
+    const prima: true | undefined = doc.senzaGriglia ? true : undefined;
+    const nuovo = prima ? undefined : true;
+    const applica = (v: true | undefined) => { doc.senzaGriglia = v; this.emitSheets(); this.requestUpdate(); };
+    applica(nuovo);
+    doc.history.pushStep({ description: 'Griglia', undoAction: async () => applica(prima), redoAction: async () => applica(nuovo) });
+    this.avvisaStato(nuovo ? t('Griglia nascosta') : t('Griglia visibile'));
+    return !nuovo;
+  }
 
   /** Dati › Ricerca obiettivo: cambia la cella «variabile» perché la formula di «obiettivo» dia «valore». Il risultato si tiene (un passo
    *  di annulla); se non si trova, la cella torna com'era. Restituisce il messaggio per l'utente (già tradotto) e se ha trovato. */
@@ -1354,6 +1370,19 @@ export class FreeSheetGrid extends LinguaElement {
     const doc = this.getDoc();
     let extra = 0;
     for (let k = c + 1; k <= ultimaColonna; k++) {
+      const vicina = this.getCellData(r, k);
+      if (vicina.raw !== '' || vicina.value.kind !== 'empty') break;
+      if (getCellMergeInfo(r, k, doc.merges)) break;
+      extra += getColWidth(k, this.larghezzeEffettive()) * zoomFactor;
+    }
+    return extra;
+  }
+
+  /** Come spazioLiberoADestra, verso sinistra (il testo allineato a destra esce a sinistra, quello centrato da tutte e due le parti). */
+  private spazioLiberoASinistra(r: number, c: number, primaColonna: number, zoomFactor: number): number {
+    const doc = this.getDoc();
+    let extra = 0;
+    for (let k = c - 1; k >= primaColonna && k >= 1; k--) {
       const vicina = this.getCellData(r, k);
       if (vicina.raw !== '' || vicina.value.kind !== 'empty') break;
       if (getCellMergeInfo(r, k, doc.merges)) break;
@@ -6124,7 +6153,7 @@ export class FreeSheetGrid extends LinguaElement {
             style=${styleMap({ top: `${v.topOffset - altezzaInTesta}px`, left: `${v.leftOffset - larghezzaInTesta}px` })}
           >
             <table
-              class="sheet-table"
+              class="sheet-table${doc.senzaGriglia ? ' senza-griglia' : ''}"
               role="grid"
               aria-label="Foglio di calcolo"
               aria-rowcount="1048577"
@@ -6269,9 +6298,16 @@ export class FreeSheetGrid extends LinguaElement {
                         const effectiveColor = condStyle?.textColor || coloreDelNumero || (cellStyle.link && (!cellStyle.color || cellStyle.color === 'auto') ? COLORE_LINK : resolveEffectiveTextColor(cellStyle.color, effectiveBg));
                         const effectiveBold = condStyle?.bold !== undefined ? condStyle.bold : cellStyle.bold;
 
-                        const lasciaSpazio = !minigrafico && cellData.value.kind === 'text' && cellData.value.value !== '' && !cellStyle.wrap && (cellStyle.hAlign || 'left') === 'left'
+                        // il testo lungo esce sulle celle vuote vicine come in Excel: a destra se è allineato a sinistra, a sinistra se è allineato
+                        // a destra, da tutte e due le parti (quanto c'è di libero dalla parte più stretta) se è centrato
+                        const allineamentoTesto = cellStyle.hAlign || 'left';
+                        const lasciaSpazio = !minigrafico && cellData.value.kind === 'text' && cellData.value.value !== '' && !cellStyle.wrap && ['left', 'right', 'center'].includes(allineamentoTesto)
                           && !isChk && colSpan === 1 && !(isAct && this.isEditing);
-                        const extraPx = lasciaSpazio ? this.spazioLiberoADestra(r, c, cols[cols.length - 1] ?? c, zoomFactor) : 0;
+                        const liberoDx = lasciaSpazio && allineamentoTesto !== 'right' ? this.spazioLiberoADestra(r, c, cols[cols.length - 1] ?? c, zoomFactor) : 0;
+                        const liberoSx = lasciaSpazio && allineamentoTesto !== 'left' ? this.spazioLiberoASinistra(r, c, cols[0] ?? c, zoomFactor) : 0;
+                        const traboccaSx = allineamentoTesto === 'right' ? liberoSx : allineamentoTesto === 'center' ? Math.min(liberoSx, liberoDx) : 0;
+                        const traboccaDx = allineamentoTesto === 'left' ? liberoDx : allineamentoTesto === 'center' ? Math.min(liberoSx, liberoDx) : 0;
+                        const extraPx = traboccaSx + traboccaDx;
                         const larghezzaTesto = getColWidth(c, this.larghezzeEffettive()) * zoomFactor + extraPx - 8;
 
                         return html`
@@ -6295,8 +6331,9 @@ export class FreeSheetGrid extends LinguaElement {
                               fontWeight: effectiveBold ? '700' : 'normal',
                               fontStyle: cellStyle.italic ? 'italic' : 'normal',
                               textDecoration: textDecStr,
-                              fontFamily: cellStyle.fontFamily || undefined,
-                              fontSize: cellStyle.fontSize ? `${cellStyle.fontSize * zoomFactor}px` : undefined,
+                              // il carattere della cella, o quello base della cartella; la dimensione è in punti, come in Excel (11 = 14,67 pixel)
+                              fontFamily: cellStyle.fontFamily || doc.carattere?.nome || undefined,
+                              fontSize: (cellStyle.fontSize ?? doc.carattere?.dimensione) ? `${Math.round((cellStyle.fontSize ?? doc.carattere!.dimensione) * 4 / 3 * zoomFactor * 100) / 100}px` : undefined,
                               color: effectiveColor,
                               backgroundColor: effectiveBg,
                               backgroundImage: condStyle?.dataBar && !isSel ? `linear-gradient(to right, ${condStyle.dataBar.color} ${condStyle.dataBar.percent}%, transparent ${condStyle.dataBar.percent}%)` : undefined,
@@ -6306,6 +6343,8 @@ export class FreeSheetGrid extends LinguaElement {
                               borderTop: borderTopStr,
                               borderLeft: borderLeftStr,
                               ...stileCong(r, c),
+                              // nelle righe e colonne bloccate le celle sono tutte sovrapposte: quella con il testo che esce sta sopra le vicine
+                              ...(extraPx > 0 && (r <= fr || c <= fc) ? { zIndex: r <= fr && c <= fc ? '4' : '3' } : {}),
                             })}
                             data-row="${r}"
                             data-col="${c}"
@@ -6321,7 +6360,7 @@ export class FreeSheetGrid extends LinguaElement {
                                   ? html`<svg class="sheet-checkbox checked" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
                                   : html`<svg class="sheet-checkbox unchecked" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>`}
                               </span>
-                            ` : isAct && validationRule?.type === 'list' ? html`<span class="freccia-elenco" role="button" aria-label="Apri l'elenco" @mousedown=${(e: MouseEvent) => e.stopPropagation()} @click=${(e: MouseEvent) => this.apriElenco(r, c, e)}>▾</span>${formattedText}` : extraPx > 0 ? html`<span class="testo-trabocca" style=${styleMap({ width: `${larghezzaTesto}px` })}>${formattedText}</span>` : partiRiempimento ? html`<span class="riempimento"><span>${partiRiempimento[0]}</span><span>${partiRiempimento[1]}</span></span>` : formattedText}
+                            ` : isAct && validationRule?.type === 'list' ? html`<span class="freccia-elenco" role="button" aria-label="Apri l'elenco" @mousedown=${(e: MouseEvent) => e.stopPropagation()} @click=${(e: MouseEvent) => this.apriElenco(r, c, e)}>▾</span>${formattedText}` : extraPx > 0 ? html`<span class="testo-trabocca" style=${styleMap({ width: `${larghezzaTesto}px`, marginLeft: traboccaSx > 0 ? `${-traboccaSx}px` : undefined, textAlign: allineamentoTesto })}>${formattedText}</span>` : partiRiempimento ? html`<span class="riempimento"><span>${partiRiempimento[0]}</span><span>${partiRiempimento[1]}</span></span>` : formattedText}
                             ${isFilterHeaderRow && !(isAct && this.isEditing) ? html`
                               <span
                                 class="cell-filter-btn ${isFilterActiveOnCol ? 'active' : ''}"
@@ -6555,8 +6594,8 @@ export class FreeSheetGrid extends LinguaElement {
           left: `${left}px`,
           width: `${width}px`,
           height: `${height}px`,
-          fontFamily: actStyle.fontFamily || undefined,
-          fontSize: actStyle.fontSize ? `${actStyle.fontSize * zF}px` : undefined,
+          fontFamily: actStyle.fontFamily || doc.carattere?.nome || undefined,
+          fontSize: (actStyle.fontSize ?? doc.carattere?.dimensione) ? `${Math.round((actStyle.fontSize ?? doc.carattere!.dimensione) * 4 / 3 * zF * 100) / 100}px` : undefined,
           fontWeight: actStyle.bold ? '700' : undefined,
           fontStyle: actStyle.italic ? 'italic' : undefined,
         })}

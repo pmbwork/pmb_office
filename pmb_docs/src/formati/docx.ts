@@ -17,6 +17,7 @@
 // con i campi PAGE (numero della pagina) e NUMPAGES (numero delle pagine); si importano quelli "default" della sezione finale, anche di
 // Word e Google Documenti (campi semplici e campi complessi), ridotti a testo semplice: allineamento, grassetto, corsivo, sottolineato,
 // carattere, corpo e colori; senza link, immagini e tabelle, al massimo 3 paragrafi e 300 caratteri per paragrafo.
+import { misurePagina, paginaDaMisure } from '../modello/pagina';
 import { numeriDidascalie } from '../modello/didascalie';
 import { testiRiferimenti } from '../modello/riferimenti';
 import { leggiZip, scriviZip, type VoceZip } from '@comune/formati/zip';
@@ -367,7 +368,9 @@ function stileXml(id: string, nome: string, extra: { pPr?: string[]; rPr?: strin
 /** Uno stile personale come lo scrive Word: customStyle, basato sullo stile già fatto che gli fa da base (Titolo 1 dà il livello nel
  *  sommario), con spazi, interlinea e allineamento nel pPr e carattere, grassetto, corsivo, colore, corpo e sottolineato nel rPr. */
 function stilePersonaleXml(s: StilePersonale): string {
+  const giaFatto = s.id === ID_STILE[s.base];
   const pPr: string[] = [];
+  if (giaFatto && s.base !== 'n') { pPr.push(elemento('w:keepNext'), elemento('w:keepLines')); }
   if (s.sb !== undefined || s.sa !== undefined || s.ls !== undefined) {
     pPr.push(elemento('w:spacing', {
       ...(s.sb !== undefined ? { 'w:before': Math.round(s.sb * 20) } : {}),
@@ -376,6 +379,7 @@ function stilePersonaleXml(s: StilePersonale): string {
     }));
   }
   if (s.al !== undefined && s.al !== 'sx') pPr.push(elemento('w:jc', { 'w:val': s.al === 'ce' ? 'center' : s.al === 'dx' ? 'right' : 'both' }));
+  if (giaFatto && ['1', '2', '3'].includes(s.base)) pPr.push(elemento('w:outlineLvl', { 'w:val': Number(s.base) - 1 }));
   const rPr: string[] = [];
   if (s.f !== undefined) rPr.push(elemento('w:rFonts', { 'w:ascii': s.f, 'w:hAnsi': s.f, 'w:cs': s.f }));
   if (s.g) rPr.push(elemento('w:b'));
@@ -384,6 +388,26 @@ function stilePersonaleXml(s: StilePersonale): string {
   if (s.z !== undefined) rPr.push(elemento('w:sz', { 'w:val': Math.round(s.z * 2) }), elemento('w:szCs', { 'w:val': Math.round(s.z * 2) }));
   if (s.s) rPr.push(elemento('w:u', { 'w:val': 'single' }));
   const base = ID_STILE[s.base] ?? 'Normal';
+  if (giaFatto) {
+    // la definizione del file per Titolo, Titolo 1...: con il nome di Word, basata su Normale (corpo e spazi sono tutti scritti)
+    const z = s.z ?? ASPETTO_GIA_FATTO[s.base as Exclude<StileParagrafo, 'n'>].z;
+    const spazi = { sb: s.sb ?? ASPETTO_GIA_FATTO[s.base as Exclude<StileParagrafo, 'n'>].sb, sa: s.sa ?? ASPETTO_GIA_FATTO[s.base as Exclude<StileParagrafo, 'n'>].sa };
+    const pPrG = pPr.filter((x) => !x.startsWith('<w:spacing'));
+    pPrG.splice(2, 0, elemento('w:spacing', { 'w:before': Math.round(spazi.sb * 20), 'w:after': Math.round(spazi.sa * 20), ...(s.ls !== undefined ? { 'w:line': Math.round(s.ls * 240), 'w:lineRule': 'auto' } : {}) }));
+    // ordine dello schema di Word: rFonts, b, i, color, sz, szCs, u
+    const rPrG = rPr.filter((x) => !x.startsWith('<w:sz') && !x.startsWith('<w:u '));
+    if (s.k === undefined && ASPETTO_GIA_FATTO[s.base as Exclude<StileParagrafo, 'n'>].k) rPrG.push(elemento('w:color', { 'w:val': ASPETTO_GIA_FATTO[s.base as Exclude<StileParagrafo, 'n'>].k!.slice(1).toUpperCase() }));
+    rPrG.push(elemento('w:sz', { 'w:val': Math.round(z * 2) }), elemento('w:szCs', { 'w:val': Math.round(z * 2) }));
+    if (s.s) rPrG.push(elemento('w:u', { 'w:val': 'single' }));
+    return elemento('w:style', { 'w:type': 'paragraph', 'w:styleId': s.id }, [
+      elemento('w:name', { 'w:val': s.base === 't' ? 'Title' : s.base === 's' ? 'Subtitle' : `heading ${s.base}` }),
+      elemento('w:basedOn', { 'w:val': 'Normal' }),
+      elemento('w:next', { 'w:val': 'Normal' }),
+      elemento('w:qFormat'),
+      elemento('w:pPr', {}, pPrG),
+      elemento('w:rPr', {}, rPrG),
+    ]);
+  }
   return elemento('w:style', { 'w:type': 'paragraph', 'w:customStyle': 1, 'w:styleId': s.id }, [
     elemento('w:name', { 'w:val': s.nome }),
     elemento('w:basedOn', { 'w:val': base }),
@@ -415,6 +439,9 @@ function stiliXml(conLink = false, conSommario = false, personali: StilePersonal
     ])]),
     elemento('w:pPrDefault', {}, [elemento('w:pPr', {}, [elemento('w:spacing', { 'w:after': 0, 'w:line': 276, 'w:lineRule': 'auto' })])]),
   ]);
+  // gli stili già fatti ridefiniti dal documento prendono il posto della definizione di pmb_docs
+  const ridefiniti = new Set(personali.filter((s) => s.id === ID_STILE[s.base]).map((s) => s.id));
+  for (let k = stili.length - 1; k >= 0; k--) { const id = /w:styleId="([^"]+)"/.exec(stili[k])?.[1]; if (id && ridefiniti.has(id)) stili.splice(k, 1); }
   for (const s of personali) stili.push(stilePersonaleXml(s));
   if (conSommario) {
     // voci del sommario: rientro per livello e tabulazione a destra con i puntini (come gli stili «toc 1-3» di Word)
@@ -620,8 +647,15 @@ export async function esportaDocx(doc: Documento): Promise<Uint8Array> {
   ]));
   const sezione = elemento('w:sectPr', {}, [
     ...margini.map((m) => elemento(m.riferimento, { 'w:type': 'default', 'r:id': m.id })),
-    elemento('w:pgSz', { 'w:w': 11906, 'w:h': 16838 }),
-    elemento('w:pgMar', { 'w:top': 1440, 'w:right': 1440, 'w:bottom': 1440, 'w:left': 1440, 'w:header': 708, 'w:footer': 708, 'w:gutter': 0 }),
+    // la pagina del documento (twip = 1/20 di punto: 1 mm = 56,69 twip)
+    ...(() => {
+      const m = misurePagina(doc.pagina);
+      const tw = (mm: number): number => Math.round(mm * 1440 / 25.4);
+      return [
+        elemento('w:pgSz', { 'w:w': tw(m.w), 'w:h': tw(m.h), ...(m.w > m.h ? { 'w:orient': 'landscape' } : {}) }),
+        elemento('w:pgMar', { 'w:top': tw(m.alto), 'w:right': tw(m.destro), 'w:bottom': tw(m.basso), 'w:left': tw(m.sinistro), 'w:header': 708, 'w:footer': 708, 'w:gutter': 0 }),
+      ];
+    })(),
     // le colonne del testo, come le scrive Word (spazio tra le colonne 1,25 cm)
     ...(doc.colonne ? [elemento('w:cols', { 'w:num': doc.colonne, 'w:space': 708 })] : []),
   ]);
@@ -698,6 +732,8 @@ interface Contesto {
   immagini: Map<string, string>;
   /** dentro un'intestazione o un piè di pagina: i campi PAGE e NUMPAGES diventano i campi del numero di pagina */
   campi?: boolean;
+  /** dentro una cella di tabella (una cella tiene sempre i suoi paragrafi) */
+  inCella?: boolean;
   /** i segnalibri letti (in minuscolo): il segnalibro del paragrafo a cui portano, e se prendono solo etichetta e numero di una didascalia */
   alias: Map<string, { sg: string; e: boolean }>;
   /** un'interruzione di pagina (w:br type=page) è stata letta: il prossimo paragrafo comincia su un foglio nuovo */
@@ -705,7 +741,9 @@ interface Contesto {
   /** un'interruzione di colonna (w:br type=column) è stata letta: il prossimo paragrafo comincia nella colonna dopo */
   colonnaPendente?: boolean;
   /** spaziatura (prima, dopo, interlinea, spaziatura contestuale) in vigore per uno stile di paragrafo, o per lo stile predefinito se manca */
-  spazio?: (stile?: string) => SpazioStile;
+  spazio?: (stile?: string, tabella?: string) => SpazioStile;
+  /** lo stile della tabella di cui si stanno leggendo le celle (i suoi spazi dei paragrafi valgono sopra quelli del documento) */
+  stileTabella?: string;
   /** note a piè di pagina e di chiusura: testi per chiave (f<id>, e<id>) e note incontrate nel testo, nell'ordine */
   note?: { testi: Map<string, string>; usate: Array<{ numero: number; testo: string }> };
   /** dentro w:ins o w:del: la modifica registrata dei tratti letti */
@@ -816,32 +854,42 @@ function leggiSpazio(sp: NodoXml | undefined | null): SpazioStile {
   return o;
 }
 /** Costruisce la funzione che dà la spaziatura effettiva di uno stile: predefiniti del documento, poi la catena degli stili da cui deriva. */
-function creaSpazio(radice: NodoXml | null): (stile?: string) => SpazioStile {
+function creaSpazio(radice: NodoXml | null): (stile?: string, tabella?: string) => SpazioStile {
   if (!radice) return () => ({});
   const predefiniti = leggiSpazio(trova(radice, 'w:docDefaults/w:pPrDefault/w:pPr/w:spacing'));
   const stili = new Map<string, { base?: string; sp: SpazioStile }>();
+  const tabelle = new Map<string, { base?: string; sp: SpazioStile }>();
   let predefinito: string | undefined;
   for (const s of figliElemento(radice, 'w:style')) {
-    if (s.attributi['w:type'] !== 'paragraph') continue;
+    const tipo = s.attributi['w:type'];
+    if (tipo !== 'paragraph' && tipo !== 'table') continue;
     const id = s.attributi['w:styleId'];
     if (!id) continue;
     const sp = leggiSpazio(trova(s, 'w:pPr/w:spacing'));
+    if (tipo === 'table') { tabelle.set(id, { base: val(trova(s, 'w:basedOn')), sp }); continue; }
     const cs = trova(s, 'w:pPr/w:contextualSpacing');
     if (cs) sp.contestuale = val(cs) !== '0' && val(cs) !== 'false';
     stili.set(id, { base: val(trova(s, 'w:basedOn')), sp });
     if (s.attributi['w:default'] === '1' || s.attributi['w:default'] === 'true') predefinito = id;
   }
-  return (id) => {
+  const catenaDi = (mappa: Map<string, { base?: string; sp: SpazioStile }>, inizio: string | undefined, salta?: string): SpazioStile[] => {
     const catena: SpazioStile[] = [];
     const visti = new Set<string>();
-    for (let cur = id ?? predefinito; cur !== undefined && !visti.has(cur); ) {
-      const x = stili.get(cur);
+    for (let cur = inizio; cur !== undefined && !visti.has(cur); ) {
+      const x = mappa.get(cur);
       if (!x) break;
       visti.add(cur);
-      catena.unshift(x.sp);
+      if (cur !== salta) catena.unshift(x.sp);
       cur = x.base;
     }
-    return Object.assign({}, predefiniti, ...catena) as SpazioStile;
+    return catena;
+  };
+  // in una tabella, come in Word: predefiniti del documento, stile Normale, stile della tabella (Griglia tabella: nessuno spazio dopo,
+  // interlinea singola), poi gli altri stili del paragrafo; quello che è scritto nel paragrafo vince comunque
+  return (id, tabella) => {
+    if (tabella === undefined || !tabelle.has(tabella)) return Object.assign({}, predefiniti, ...catenaDi(stili, id ?? predefinito)) as SpazioStile;
+    const normale = predefinito !== undefined ? stili.get(predefinito)?.sp ?? {} : {};
+    return Object.assign({}, predefiniti, normale, ...catenaDi(tabelle, tabella), ...catenaDi(stili, id ?? predefinito, predefinito)) as SpazioStile;
   };
 }
 
@@ -876,7 +924,24 @@ function stilePersonaleDaWord(id: string, ctx: Contesto): StilePersonale | undef
   pid = pid.slice(0, 36);
   const usati = new Set(P.ordine.map((x) => x.id));
   for (let k = 2, radice = pid; usati.has(pid); k++) pid = `${radice}${k}`;
-  const s: Record<string, unknown> = { id: pid, nome, base };
+  const s: Record<string, unknown> = { id: pid, nome, base, ...aspettoDaCatena(catena, ctx) };
+  if (typeof s.f === 'string' && s.f.toLowerCase() === ctx.carattere.toLowerCase()) delete s.f;
+  if (s.z === ctx.corpo) delete s.z;
+  // spazi e interlinea: solo quelli scritti negli stili personali della catena (quelli dello stile di base li dà già la base)
+  const sp: SpazioStile = Object.assign({}, ...catena.map((n) => leggiSpazio(trova(n, 'w:pPr/w:spacing'))));
+  if (sp.sb !== undefined) s.sb = sp.sb;
+  if (sp.sa !== undefined) s.sa = sp.sa;
+  if (sp.line !== undefined && sp.line > 0) { const ls = Math.round(sp.line * 100) / 100; if (ls >= 0.5 && ls <= 5 && ls !== 1.15) s.ls = ls; }
+  const valido = stileValido(s);
+  if (!valido) return undefined;
+  P.creati.set(id, valido);
+  P.ordine.push(valido);
+  return valido;
+}
+
+/** Carattere, corpo, colore, grassetto, corsivo, sottolineato e allineamento di una catena di stili di Word (il più vicino vince). */
+function aspettoDaCatena(catena: NodoXml[], ctx: Contesto): Record<string, unknown> {
+  const s: Record<string, unknown> = {};
   for (const n of catena) {
     const rPr = trova(n, 'w:rPr');
     if (rPr) {
@@ -897,13 +962,52 @@ function stilePersonaleDaWord(id: string, ctx: Contesto): StilePersonale | undef
     const jc = val(trova(n, 'w:pPr/w:jc'));
     if (jc === 'center') s.al = 'ce'; else if (jc === 'right' || jc === 'end') s.al = 'dx'; else if (jc === 'both' || jc === 'distribute') s.al = 'gi'; else if (jc === 'left' || jc === 'start') delete s.al;
   }
+  return s;
+}
+
+/** L'aspetto che pmb_docs dà da sé agli stili già fatti (il disegno di docs-editor e le definizioni che scrive stiliXml). */
+export const ASPETTO_GIA_FATTO: Record<Exclude<StileParagrafo, 'n'>, { z: number; k?: string; sb: number; sa: number }> = {
+  t: { z: 26, sb: 0, sa: 3 }, s: { z: 15, k: '#666666', sb: 0, sa: 16 }, '1': { z: 20, sb: 20, sa: 6 }, '2': { z: 16, sb: 18, sa: 6 }, '3': { z: 14, k: '#434343', sb: 16, sa: 4 },
+};
+const NOME_GIA_FATTO: Record<Exclude<StileParagrafo, 'n'>, string> = { t: 'Titolo', s: 'Sottotitolo', '1': 'Titolo 1', '2': 'Titolo 2', '3': 'Titolo 3' };
+
+/** Uno stile già fatto (Titolo, Sottotitolo, Titolo 1-3) come lo definisce il file: se il suo aspetto (carattere, corpo, colore,
+ *  grassetto, spazi, interlinea) non è quello che pmb_docs gli dà da sé, il documento tiene la definizione del file come stile con
+ *  l'identificativo di Word (Heading1, Title...), che si riscrive al suo posto. Altrimenti undefined (vale l'aspetto di pmb_docs). */
+function stileGiaFattoDaWord(id: string, st: Exclude<StileParagrafo, 'n'>, ctx: Contesto): StilePersonale | undefined {
+  const P = ctx.personali;
+  if (!P) return undefined;
+  if (P.creati.has(id)) return P.creati.get(id);
+  const catena: NodoXml[] = [];
+  const visti = new Set<string>();
+  for (let cur: string | undefined = id; cur !== undefined && !visti.has(cur) && cur !== P.predefinito;) {
+    visti.add(cur);
+    const n = P.definizioni.get(cur);
+    if (!n) break;
+    catena.unshift(n);
+    cur = val(trova(n, 'w:basedOn'));
+  }
+  const pid = ID_STILE[st] as string;
+  if (P.ordine.some((x) => x.id === pid)) return undefined;
+  const a = ASPETTO_GIA_FATTO[st];
+  const s: Record<string, unknown> = { id: pid, nome: NOME_GIA_FATTO[st], base: st, ...aspettoDaCatena(catena, ctx) };
   if (typeof s.f === 'string' && s.f.toLowerCase() === ctx.carattere.toLowerCase()) delete s.f;
-  if (s.z === ctx.corpo) delete s.z;
-  // spazi e interlinea: solo quelli scritti negli stili personali della catena (quelli dello stile di base li dà già la base)
-  const sp: SpazioStile = Object.assign({}, ...catena.map((n) => leggiSpazio(trova(n, 'w:pPr/w:spacing'))));
-  if (sp.sb !== undefined) s.sb = sp.sb;
-  if (sp.sa !== undefined) s.sa = sp.sa;
-  if (sp.line !== undefined && sp.line > 0) { const ls = Math.round(sp.line * 100) / 100; if (ls >= 0.5 && ls <= 5 && ls !== 1.15) s.ls = ls; }
+  const z = typeof s.z === 'number' ? s.z : ctx.corpo;
+  if (z !== a.z) s.z = z; else delete s.z;
+  const k = typeof s.k === 'string' ? s.k : '#000000';
+  if (k !== (a.k ?? '#000000')) s.k = k; else delete s.k;
+  if (!s.g) delete s.g;
+  if (!s.c) delete s.c;
+  if (!s.s) delete s.s;
+  if (s.al === 'sx') delete s.al;
+  // spazi in vigore (stile, stili da cui deriva, predefiniti del documento) e interlinea (senza = singola, come in Word)
+  const eff = ctx.spazio ? ctx.spazio(id) : {};
+  const sb = Math.round((eff.sb ?? 0) * 2) / 2, sa = Math.round((eff.sa ?? 0) * 2) / 2;
+  if (sb !== a.sb) s.sb = Math.min(sb, 200);
+  if (sa !== a.sa) s.sa = Math.min(sa, 200);
+  const riga = eff.line !== undefined && eff.line > 0 ? Math.round(eff.line * 100) / 100 : 1;
+  if (riga !== 1.15 && riga >= 0.5 && riga <= 5) s.ls = riga;
+  if (Object.keys(s).length <= 3) { P.creati.set(id, undefined as unknown as StilePersonale); return undefined; }
   const valido = stileValido(s);
   if (!valido) return undefined;
   P.creati.set(id, valido);
@@ -930,19 +1034,45 @@ function leggiPPr(pPr: NodoXml | undefined, ctx: Contesto): AttributiParagrafo {
   }
   const stile = val(trova(pPr, 'w:pStyle'));
   const st = stile !== undefined ? ctx.stili.get(stile) : undefined;
-  const personale = !st && stile !== undefined ? stilePersonaleDaWord(stile, ctx) : undefined;
-  if (st) a.st = st;
+  const personale = !st && stile !== undefined ? stilePersonaleDaWord(stile, ctx) : st && st !== 'n' && stile !== undefined ? stileGiaFattoDaWord(stile, st, ctx) : undefined;
+  if (st) { a.st = st; if (personale) a.su = personale.id; }
   else if (personale) { a.su = personale.id; if (personale.base !== 'n') a.st = personale.base; }
+  // il bordo sotto scritto nello stile (il Titolo di Word ha una linea sotto) è la linea orizzontale, se il paragrafo non ha bordi suoi
+  if (!pBdr && stile !== undefined && ctx.personali && a.bd === undefined) {
+    const visti = new Set<string>();
+    for (let cur: string | undefined = stile; cur !== undefined && !visti.has(cur);) {
+      visti.add(cur);
+      const n = ctx.personali.definizioni.get(cur);
+      if (!n) break;
+      const b = trova(n, 'w:pPr/w:pBdr');
+      if (b) { const sotto = trova(b, 'w:bottom'); if (sotto && !['nil', 'none'].includes(sotto.attributi['w:val'] ?? 'single') && !trova(b, 'w:top')) a.hr = true; break; }
+      cur = val(trova(n, 'w:basedOn'));
+    }
+  }
   const jc = val(trova(pPr, 'w:jc'));
   if (jc === 'center') a.al = 'ce';
   else if (jc === 'right' || jc === 'end') a.al = 'dx';
   else if (jc === 'both' || jc === 'distribute') a.al = 'gi';
   else if (jc === undefined && personale?.al !== undefined) a.al = personale.al;
   aggiungiSpazio(a, trova(pPr, 'w:spacing'), stile, ctx);
-  const numPr = trova(pPr, 'w:numPr');
+  // l'elenco: quello del paragrafo, oppure quello dello stile (Elenco puntato di Word ha la numerazione nello stile, non nel paragrafo)
+  let numPr = trova(pPr, 'w:numPr');
+  let numIdStile: string | undefined;
+  if (stile !== undefined && ctx.personali && (!numPr || val(trova(numPr, 'w:numId')) === undefined)) {
+    const visti = new Set<string>();
+    for (let cur: string | undefined = stile; cur !== undefined && !visti.has(cur);) {
+      visti.add(cur);
+      const n = ctx.personali.definizioni.get(cur);
+      if (!n) break;
+      const np = trova(n, 'w:pPr/w:numPr');
+      const id = np ? val(trova(np, 'w:numId')) : undefined;
+      if (np && id !== undefined) { numIdStile = id; if (!numPr) numPr = np; break; }
+      cur = val(trova(n, 'w:basedOn'));
+    }
+  }
   let inElenco = false;
   if (numPr) {
-    const numId = val(trova(numPr, 'w:numId'));
+    const numId = val(trova(numPr, 'w:numId')) ?? numIdStile;
     const livello = Math.min(8, Math.max(0, Number(val(trova(numPr, 'w:ilvl')) ?? 0) || 0));
     const formato = numId !== undefined && numId !== '0' ? ctx.numeri.get(numId)?.get(livello) : undefined;
     if (formato !== undefined && formato !== 'none') {
@@ -961,14 +1091,15 @@ function leggiPPr(pPr: NodoXml | undefined, ctx: Contesto): AttributiParagrafo {
 
 /** Mette nel paragrafo prima/dopo e interlinea: quelli scritti nel paragrafo, altrimenti quelli dello stile (stili con aspetto proprio come Titolo: margini già nel disegno). */
 function aggiungiSpazio(a: AttributiConStile, sp: NodoXml | undefined, stile: string | undefined, ctx: Contesto): void {
-  const eff = ctx.spazio ? ctx.spazio(stile) : {};
+  const eff = ctx.spazio ? ctx.spazio(stile, ctx.stileTabella) : {};
   const dir = leggiSpazio(sp);
   const proprio = a.st !== undefined && a.st !== 'n';
   const sb = spazioValido(dir.sb ?? (proprio ? undefined : eff.sb));
   const sa = spazioValido(dir.sa ?? (proprio ? undefined : eff.sa));
   if (sb !== undefined) a.sb = sb;
   if (sa !== undefined) a.sa = sa;
-  const riga = dir.line ?? (proprio ? undefined : eff.line);
+  // senza interlinea scritta (né nel paragrafo, né negli stili, né nei predefiniti) Word usa l'interlinea singola
+  const riga = dir.line ?? (proprio ? undefined : eff.line ?? 1);
   if (riga !== undefined && riga > 0) {
     const ls = Math.round(riga * 100) / 100;
     if (ls >= 0.5 && ls <= 5 && ls !== 1.15) a.ls = ls;
@@ -991,7 +1122,10 @@ function leggiFormatoRun(rPr: NodoXml | undefined, ctx: Contesto): Omit<Run, 't'
   const f: Omit<Run, 't'> = { g: false, c: false, s: false };
   const sp = ctx.stileParagrafo;
   let carattere = sp?.f ?? ctx.carattere;
-  let corpo = sp?.z ?? ctx.corpo;
+  // nei titoli (Titolo, Titolo 1...) il corpo che vale senza un formato proprio è quello dello stile, non quello del testo normale
+  const corpoStile = sp?.z ?? (sp && sp.base !== 'n' ? ASPETTO_GIA_FATTO[sp.base].z : undefined);
+  let corpo = corpoStile ?? ctx.corpo;
+  let szScritto = false;
   if (rPr) {
     f.g = attivo(trova(rPr, 'w:b'));
     f.c = attivo(trova(rPr, 'w:i'));
@@ -1011,7 +1145,7 @@ function leggiFormatoRun(rPr: NodoXml | undefined, ctx: Contesto): Omit<Run, 't'
       else if (tema) carattere = (tema.startsWith('major') ? ctx.tema.maggiore : ctx.tema.minore) ?? carattere;
     }
     const sz = Number(val(trova(rPr, 'w:sz')));
-    if (Number.isFinite(sz) && sz > 0) corpo = sz / 2;
+    if (Number.isFinite(sz) && sz > 0) { corpo = sz / 2; szScritto = true; }
     const colore = val(trova(rPr, 'w:color'));
     if (colore && /^[0-9a-fA-F]{6}$/.test(colore)) f.k = `#${colore.toLowerCase()}`;
     const ev = val(trova(rPr, 'w:highlight'));
@@ -1020,7 +1154,9 @@ function leggiFormatoRun(rPr: NodoXml | undefined, ctx: Contesto): Omit<Run, 't'
     else if (sfondo && /^[0-9a-fA-F]{6}$/.test(sfondo)) f.h = `#${sfondo.toLowerCase()}`;
   }
   if (sp?.f !== undefined ? carattere !== sp.f : carattere.toLowerCase() !== CARATTERE_NORMALE.toLowerCase()) f.f = carattere;
-  if ((sp?.z !== undefined ? corpo !== sp.z : corpo !== CORPO_NORMALE) && corpo >= 1 && corpo <= 400) f.z = corpo;
+  // un corpo scritto nel tratto di un titolo si tiene (anche se è quello dello stile); senza, vale quello dello stile
+  const proprio = corpoStile !== undefined ? szScritto : corpo !== CORPO_NORMALE;
+  if (proprio && corpo >= 1 && corpo <= 400) f.z = corpo;
   return f;
 }
 
@@ -1181,7 +1317,8 @@ interface CampoAperto { istruzione: string; tipo: TipoCampo; risultato: boolean;
 
 function convertiParagrafo(p: NodoXml, ctx: Contesto): Paragrafo[] {
   const attrs = leggiPPr(trova(p, 'w:pPr'), ctx);
-  ctx.stileParagrafo = attrs.su !== undefined ? ctx.personali?.ordine.find((s) => s.id === attrs.su) : undefined;
+  ctx.stileParagrafo = attrs.su !== undefined ? ctx.personali?.ordine.find((s) => s.id === attrs.su)
+    : attrs.st !== undefined && attrs.st !== 'n' ? { id: '', nome: '', base: attrs.st } : undefined;
   try { return convertiParagrafoCon(p, ctx, attrs); } finally { ctx.stileParagrafo = undefined; }
 }
 
@@ -1285,7 +1422,11 @@ function convertiParagrafoCon(p: NodoXml, ctx: Contesto, attrs: AttributiParagra
   };
   visita(p);
   // un'interruzione di pagina in fondo al paragrafo non lascia un paragrafo vuoto: il salto passa al paragrafo che segue
-  if (!((ctx.saltoPendente === true || ctx.colonnaPendente === true) && corrente.length === 0 && risultato.length > 0)) chiudi();
+  // un paragrafo fatto solo dell'interruzione di pagina: Word la mostra in fondo alla pagina prima, insieme al segno di paragrafo, e la
+  // pagina nuova comincia con il paragrafo che segue; qui il paragrafo non resta (vuoto in cima alla pagina) e il salto passa al successivo
+  const soloSalto = (ctx.saltoPendente === true || ctx.colonnaPendente === true) && corrente.length === 0;
+  if (soloSalto && risultato.length === 0 && !ctx.inCella) return [];
+  if (!(soloSalto && risultato.length > 0)) chiudi();
   // lo spazio dopo conta solo sull'ultimo pezzo
   for (let k = 0; k < risultato.length - 1; k++) if (risultato[k].sa !== undefined) { const senza = { ...risultato[k] }; delete senza.sa; risultato[k] = senza; }
   // il segnalibro (quelli di Word che cominciano con _ sono interni: _GoBack, _Toc...) va solo sul primo dei paragrafi nati da questo
@@ -1331,7 +1472,7 @@ function convertiParagrafoCon(p: NodoXml, ctx: Contesto, attrs: AttributiParagra
 function appiattisciCorpo(n: NodoXml, ctx: Contesto, out: Paragrafo[]): void {
   for (const f of n.figli) {
     if (typeof f === 'string') continue;
-    if (f.nome === 'w:p') out.push(...convertiParagrafo(f, ctx));
+    if (f.nome === 'w:p') { const prima = ctx.inCella; ctx.inCella = true; try { out.push(...convertiParagrafo(f, ctx)); } finally { ctx.inCella = prima; } }
     else if (segnaCommento(f, ctx)) continue;
     else if (CONTENITORI_CORPO.has(f.nome)) appiattisciCorpo(f, ctx, out);
   }
@@ -1342,6 +1483,12 @@ const COLONNE_MASSIME_IMPORT = 100;
 const VUOTA = (): Paragrafo[] => [{ runs: [] }];
 
 function convertiTabella(tbl: NodoXml, ctx: Contesto, out: Paragrafo[], id: number): void {
+  const stileTabellaPrima = ctx.stileTabella;
+  ctx.stileTabella = val(trova(tbl, 'w:tblPr/w:tblStyle'));
+  try { convertiTabellaCon(tbl, ctx, out, id); } finally { ctx.stileTabella = stileTabellaPrima; }
+}
+
+function convertiTabellaCon(tbl: NodoXml, ctx: Contesto, out: Paragrafo[], id: number): void {
   const griglia: Paragrafo[][][] = [];
   const unioni: Unione[][] = [];
   // le righe di intestazione (w:tblHeader) contano solo in cima alla tabella, come in Word
@@ -1624,6 +1771,8 @@ export async function importaDocx(bytes: Uint8Array): Promise<Documento> {
   leggiNote(leggi(parte('endnotes', predef('endnotes.xml'))), 'w:endnote', 'e', ctx.note!.testi);
   const paragrafi: Paragrafo[] = [];
   convertiCorpo(corpo, ctx, paragrafi, { prossima: 0 });
+  // un'interruzione di pagina in fondo al documento: il paragrafo vuoto sulla pagina nuova resta
+  if (ctx.saltoPendente) { paragrafi.push({ sp: true, runs: [] }); ctx.saltoPendente = false; }
   paragrafi.push(...paragrafiNote(ctx.note!.usate));
   const tutti = risolviRiferimenti(paragrafoDopoLeTabelle(applicaSpazioContestuale(paragrafi)), ctx.alias);
   let documento: Documento = { paragrafi: tutti.length > 0 ? tutti : [{ runs: [] }] };
@@ -1635,6 +1784,15 @@ export async function importaDocx(bytes: Uint8Array): Promise<Documento> {
   const protezione = impostazioni ? leggiProtezione(trova(impostazioni, 'w:documentProtection')) : undefined;
   if (protezione) documento.protezione = protezione;
   const sezione = trova(corpo, 'w:sectPr');
+  // la pagina: formato, orientamento e margini della sezione (in twip)
+  if (sezione) {
+    const sz = trova(sezione, 'w:pgSz'), mg = trova(sezione, 'w:pgMar');
+    const mm = (v: string | undefined, predefinito: number): number => { const n = Number(v); return Number.isFinite(n) && v !== undefined ? Math.abs(n) * 25.4 / 1440 : predefinito; };
+    if (sz || mg) {
+      const p = paginaDaMisure(mm(sz?.attributi['w:w'], 210), mm(sz?.attributi['w:h'], 297), mm(mg?.attributi['w:top'], 25.4), mm(mg?.attributi['w:bottom'], 25.4), mm(mg?.attributi['w:left'], 25.4), mm(mg?.attributi['w:right'], 25.4));
+      if (p) documento.pagina = p;
+    }
+  }
   const numeroColonne = Number(sezione ? trova(sezione, 'w:cols')?.attributi['w:num'] : undefined);
   if (numeroColonne === 2 || numeroColonne === 3) documento.colonne = numeroColonne;
   const margine = (riferimento: string): Paragrafo[] | undefined => {

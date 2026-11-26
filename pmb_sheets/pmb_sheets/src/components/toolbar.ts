@@ -1,3 +1,4 @@
+import { COLORI_INIZIALI, conStriscia } from '@comune/icone';
 import { css } from "lit";
 import { html } from "../i18n/html";
 import { LinguaElement } from "../i18n/lingua-element";
@@ -427,6 +428,10 @@ export class FreeToolbar extends LinguaElement {
       position: relative;
       display: inline-block;
     }
+    /* pulsanti divisi dei colori: l'icona applica il colore della striscia, la freccia apre la tavolozza */
+    .color-picker-container.diviso { display: inline-flex; align-items: center; }
+    .color-picker-container.diviso .tool-btn.colore { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .color-picker-container.diviso .tool-btn.freccia-colore { width: 14px; min-width: 14px; padding: 0; font-size: 10px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 
     .overflow-container {
       position: relative;
@@ -592,8 +597,25 @@ export class FreeToolbar extends LinguaElement {
     );
   }
 
+  /** Il colore che applica l'icona dei pulsanti divisi (testo, riempimento, bordo): l'ultimo scelto dalla tavolozza, all'inizio quelli di Excel. */
+  @state() private ultimiColori: Record<'text' | 'fill' | 'border', string> = { text: COLORI_INIZIALI.testo, fill: COLORI_INIZIALI.riempimento, border: COLORI_INIZIALI.bordo };
+
+  /** L'icona di un pulsante diviso applica il colore della sua striscia, come in Excel e LibreOffice. */
+  private applicaUltimoColore(mode: 'text' | 'fill' | 'border') {
+    this.pickerOpenMode = null;
+    if (this.overflowMenuOpen) this.overflowMenuOpen = false;
+    const color = this.ultimiColori[mode];
+    const action = mode === 'text' ? 'change-text-color' : (mode === 'fill' ? 'change-fill-color' : 'change-border-color');
+    this.dispatchEvent(new CustomEvent("toolbar-action", {
+      detail: { action, value: color, label: t("Colore {}: {}", t(mode === 'text' ? 'testo' : mode === 'fill' ? 'riempimento' : 'bordo'), color) },
+      bubbles: true, composed: true,
+    }));
+  }
+
   private handleColorSelect(e: CustomEvent<{ color: string; mode: 'text' | 'fill' | 'border' }>) {
     const { color, mode } = e.detail;
+    // un colore scelto diventa quello dell'icona (Automatico e Nessuno si applicano senza cambiarla)
+    if (/^#[0-9a-fA-F]{6}$/.test(color)) this.ultimiColori = { ...this.ultimiColori, [mode]: color.toLowerCase() };
     this.pickerOpenMode = null;
     if (this.overflowMenuOpen) {
       this.overflowMenuOpen = false;
@@ -709,16 +731,25 @@ export class FreeToolbar extends LinguaElement {
       const mode = item.id === 'text-color' ? 'text' : (item.id === 'fill-color' ? 'fill' : 'border');
       const isOpen = this.pickerOpenMode === mode;
       return html`
-        <div class="color-picker-container">
+        <div class="color-picker-container diviso">
           <button
-            class="tool-btn ${isOpen ? 'active' : ''}"
+            class="tool-btn colore"
             id="btn-${item.id}${isInOverflow ? '-overflow' : ''}"
             data-item-id=${item.id}
-            title="${tEtichetta(item.tooltip || item.label)}"
-            aria-label="${tEtichetta(item.label)}"
+            title="${tEtichetta(item.tooltip || item.label)} (${this.ultimiColori[mode]})"
+            aria-label="${tEtichetta(item.label)}: ${this.ultimiColori[mode]}"
+            @click=${() => this.applicaUltimoColore(mode)}
+            .innerHTML=${item.icon ? conStriscia(item.icon, this.ultimiColori[mode]) : tEtichetta(item.label)}
+          ></button><button
+            class="tool-btn freccia-colore ${isOpen ? 'active' : ''}"
+            id="btn-${item.id}-scegli${isInOverflow ? '-overflow' : ''}"
+            data-item-id="${item.id}-scegli"
+            title="${t('Scegli: {}', tEtichetta(item.label))}"
+            aria-label="${t('Scegli: {}', tEtichetta(item.label))}"
+            aria-haspopup="true"
+            aria-expanded="${isOpen ? 'true' : 'false'}"
             @click=${() => this.handleAction(item)}
-            .innerHTML=${item.icon || tEtichetta(item.label)}
-          ></button>
+          >▾</button>
           ${isOpen
             ? html`
                 <free-color-picker

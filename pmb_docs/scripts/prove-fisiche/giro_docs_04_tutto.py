@@ -246,6 +246,12 @@ for bid in pulsanti:
     if errori[n_err:]: esito(f'barra › {bid}', False, 'errore: ' + '; '.join(errori[n_err:][:2]))
     else: esito(f'barra › {bid}', bool(eff), '; '.join(eff) or 'nessun effetto visibile')
 
+# ---------------------------------------------------------------- le frecce dei pulsanti divisi dei colori aprono la tavolozza
+for fid in js("() => [...G.shadowRoot.querySelector('docs-toolbar').shadowRoot.querySelectorAll('button.freccia-colore[data-id]')].map(b => b.dataset.id)"):
+    chiudi_tutto(); prepara('formato', '')
+    pg.locator(f'docs-toolbar button.freccia-colore[data-id="{fid}"]').first.click(timeout=3000); pg.wait_for_timeout(500)
+    esito(f'barra › {fid} apre la tavolozza', pg.locator('docs-popup button.colore').count() > 1, snap().get('popup'))
+
 # ---------------------------------------------------------------- scorciatoie da tastiera principali
 for tasti, controllo, nome in [
     ('Control+b', lambda: run0().get('g') is True, 'Ctrl+B grassetto'), ('Control+i', lambda: run0().get('c') is True, 'Ctrl+I corsivo'),

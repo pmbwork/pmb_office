@@ -83,3 +83,12 @@ export const ICONE = {
 export function iconaDiMisura(svg: string, lato: number): string {
   return svg.replace(/width="\d+" height="\d+"/, `width="${lato}" height="${lato}"`);
 }
+
+/** I pulsanti dei colori (testo, evidenziazione, riempimento, bordo) sono divisi come in Word e LibreOffice: l'icona applica il colore
+ *  della sua striscia (l'ultimo scelto), la freccia accanto apre la tavolozza. Questa è l'icona con la striscia del colore dato. */
+export function conStriscia(svg: string, colore: string | undefined): string {
+  if (!colore || !/^#[0-9a-fA-F]{6}$/.test(colore)) return svg;
+  return svg.replace(/(<path d="M0 20h24v4H0z" fill=")#[0-9a-fA-F]{6}(")/, `$1${colore}$2`);
+}
+/** I colori con cui cominciano i pulsanti divisi (come Word ed Excel): testo rosso, evidenziazione e riempimento gialli, bordo nero. */
+export const COLORI_INIZIALI = { testo: '#ff0000', evidenzia: '#ffff00', riempimento: '#ffff00', bordo: '#000000' } as const;

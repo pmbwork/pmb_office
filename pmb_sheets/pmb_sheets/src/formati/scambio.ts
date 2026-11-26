@@ -2,6 +2,7 @@
 // i dati del documento (SheetDocumentData). Tutto puro: niente file, niente motore di calcolo.
 // Il testo di una cella è quello che scrive l'utente ("12", "ciao", "=SUM(A1:A3)", funzioni col nome inglese). Righe e colonne partono da 1.
 // Ogni foglio ha i suoi stili, larghezze, altezze, celle unite e righe/colonne bloccate (vedi sheet/stato-fogli.ts).
+import { carattereBaseValido, type CarattereBase } from '../sheet/carattere-base';
 import type { CellStyle } from '../sheet/styles';
 import { StyleRegistry, cellKey, parseCellKey } from '../sheet/styles';
 import type { SheetDocumentData } from '../sheet/document-data';
@@ -42,6 +43,8 @@ export interface FoglioScambio {
   colonneNascoste?: number[];
   /** il foglio è nascosto (Nascondi foglio; nei .xlsx state="hidden", nei .ods table:display="false") */
   nascosto?: boolean;
+  /** la griglia del foglio non si vede (Visualizza › Mostra griglia; nei .xlsx showGridLines="0") */
+  senzaGriglia?: boolean;
   /** convalide dei dati: ogni voce è un intervallo con la sua regola */
   convalide?: ConvalidaScambio[];
   /** formattazioni condizionali */
@@ -72,7 +75,7 @@ export type ValoreCalcolato = { tipo: 'n' | 'str' | 'b' | 'e'; valore: string };
 /** Un nome definito: l'intervallo è locale al foglio ("C2:C4", senza $) */
 export interface NomeScambio { nome: string; foglio: string; riferimento: string }
 
-export interface Scambio { fogli: FoglioScambio[]; foglioAttivo: string; nomi?: NomeScambio[]; /** struttura della cartella protetta */ protezioneCartella?: ProtezioneCartella }
+export interface Scambio { fogli: FoglioScambio[]; foglioAttivo: string; nomi?: NomeScambio[]; /** struttura della cartella protetta */ protezioneCartella?: ProtezioneCartella; /** il carattere base della cartella (senza: quello di pmb_sheets) */ carattere?: CarattereBase }
 
 export const NOME_FOGLIO_PREDEFINITO = 'Foglio1';
 
@@ -113,7 +116,7 @@ function leggiCartella(json: string): Array<{ nome: string; celle: Record<string
 }
 
 /** La parte di uno stato di foglio che il modello di scambio conosce. */
-type StatoScambio = Pick<StatoFoglioDati, 'cellStyles' | 'rowStyles' | 'colStyles' | 'colWidths' | 'rowHeights' | 'freezeRows' | 'freezeCols' | 'merges' | 'hiddenRows' | 'hiddenCols' | 'dataValidations' | 'conditionalFormats' | 'coloreScheda' | 'nascosto' | 'filters' | 'impostaPagina' | 'protezione' | 'gruppi'>;
+type StatoScambio = Pick<StatoFoglioDati, 'cellStyles' | 'rowStyles' | 'colStyles' | 'colWidths' | 'rowHeights' | 'freezeRows' | 'freezeCols' | 'merges' | 'hiddenRows' | 'hiddenCols' | 'dataValidations' | 'conditionalFormats' | 'coloreScheda' | 'nascosto' | 'senzaGriglia' | 'filters' | 'impostaPagina' | 'protezione' | 'gruppi'>;
 
 /** Dai dati del documento al modello di scambio. Ogni foglio porta i suoi stili, larghezze, altezze, unioni e blocchi. */
 export function scambioDaDocumento(data: SheetDocumentData): Scambio {
@@ -124,7 +127,7 @@ export function scambioDaDocumento(data: SheetDocumentData): Scambio {
   // i campi di primo livello sono quelli del foglio attivo, gli altri fogli stanno in fogliStato
   const stati: Record<string, Partial<StatoScambio>> = {
     ...(data.fogliStato ?? {}),
-    [attivo]: { cellStyles: data.cellStyles, rowStyles: data.rowStyles, colStyles: data.colStyles, colWidths: data.colWidths, rowHeights: data.rowHeights, freezeRows: data.freezeRows, freezeCols: data.freezeCols, merges: data.merges, hiddenRows: data.hiddenRows, hiddenCols: data.hiddenCols, dataValidations: data.dataValidations, conditionalFormats: data.conditionalFormats, coloreScheda: data.coloreScheda, nascosto: data.nascosto, filters: data.filters, impostaPagina: data.impostaPagina, protezione: data.protezione, gruppi: data.gruppi },
+    [attivo]: { cellStyles: data.cellStyles, rowStyles: data.rowStyles, colStyles: data.colStyles, colWidths: data.colWidths, rowHeights: data.rowHeights, freezeRows: data.freezeRows, freezeCols: data.freezeCols, merges: data.merges, hiddenRows: data.hiddenRows, hiddenCols: data.hiddenCols, dataValidations: data.dataValidations, conditionalFormats: data.conditionalFormats, coloreScheda: data.coloreScheda, nascosto: data.nascosto, senzaGriglia: data.senzaGriglia, filters: data.filters, impostaPagina: data.impostaPagina, protezione: data.protezione, gruppi: data.gruppi },
   };
   const stile = (id: unknown): CellStyle | undefined => {
     if (!intero(id, 1, data.styles.length - 1)) return undefined;
@@ -156,6 +159,7 @@ export function scambioDaDocumento(data: SheetDocumentData): Scambio {
     f.colonneCongelate = intero(d.freezeCols, 0, MAX_COLS) ? (d.freezeCols as number) : 0;
     if (typeof d.coloreScheda === 'string' && /^#[0-9a-fA-F]{6}$/.test(d.coloreScheda)) f.colore = d.coloreScheda;
     if (d.nascosto === true) f.nascosto = true;
+    if (d.senzaGriglia === true) f.senzaGriglia = true;
     if (d.impostaPagina && !eDiPartenza(d.impostaPagina)) f.pagina = copiaPagina(d.impostaPagina);
     if (protezioneValida(d.protezione)) f.protezione = protezioneValida(d.protezione);
     if (gruppiValidi(d.gruppi)) f.gruppi = gruppiValidi(d.gruppi);
@@ -196,7 +200,8 @@ export function scambioDaDocumento(data: SheetDocumentData): Scambio {
     .filter((n: NamedRange) => fogli.some((f) => f.nome === n.sheetName))
     .map((n: NamedRange) => ({ nome: n.name, foglio: n.sheetName, riferimento: n.rangeString.includes('!') ? n.rangeString.slice(n.rangeString.lastIndexOf('!') + 1) : n.rangeString }));
   const cartella = protezioneValida(data.protezioneCartella);
-  return { fogli, foglioAttivo: attivo, ...(nomi.length > 0 ? { nomi } : {}), ...(cartella ? { protezioneCartella: cartella } : {}) };
+  const carattere = carattereBaseValido(data.carattere);
+  return { fogli, foglioAttivo: attivo, ...(nomi.length > 0 ? { nomi } : {}), ...(cartella ? { protezioneCartella: cartella } : {}), ...(carattere ? { carattere } : {}) };
 }
 
 /** Tutto l'intervallo usato del foglio, dalla riga 1 e dalla colonna A: dove lavorava il filtro prima che avesse un'area. */
@@ -256,6 +261,7 @@ export function documentoDaScambio(s: Scambio): SheetDocumentData {
       freezeCols: intero(f.colonneCongelate, 0, MAX_COLS) ? f.colonneCongelate : 0,
       ...(typeof f.colore === 'string' && /^#[0-9a-fA-F]{6}$/.test(f.colore) ? { coloreScheda: f.colore } : {}),
       ...(f.nascosto === true ? { nascosto: true } : {}),
+      ...(f.senzaGriglia === true ? { senzaGriglia: true } : {}),
       ...(f.pagina && !eDiPartenza(f.pagina) ? { impostaPagina: copiaPagina(f.pagina) } : {}),
       ...(protezioneValida(f.protezione) ? { protezione: protezioneValida(f.protezione) } : {}),
       ...(gruppiValidi(f.gruppi) ? { gruppi: gruppiValidi(f.gruppi) } : {}),
@@ -318,6 +324,7 @@ export function documentoDaScambio(s: Scambio): SheetDocumentData {
     ...(pulsanti.length > 0 ? { buttons: pulsantiDaDati(pulsanti) } : {}),
     fogliStato,
     ...(protezioneValida(s.protezioneCartella) ? { protezioneCartella: copiaProtezione(protezioneValida(s.protezioneCartella)) } : {}),
+    ...(carattereBaseValido(s.carattere) ? { carattere: carattereBaseValido(s.carattere) } : {}),
   };
 }
 

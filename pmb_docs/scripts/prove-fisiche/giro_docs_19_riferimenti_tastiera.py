@@ -4,6 +4,10 @@ tipo (Didascalie) e modo (Tutta la didascalia); Esc chiude senza inserire e il c
 Solo l'apertura del menu e il posizionamento del cursore si fanno con il mouse simulato (il menu non ha la navigazione da tastiera).
 Uso: python giro_docs_19_riferimenti_tastiera.py   (non toccare mouse e tastiera durante la prova)"""
 import ctypes, ctypes.wintypes as W, os, subprocess, time
+import os, sys
+# guardia: i tasti e i clic veri vanno solo al programma in prova (comune/scripts/guardia_prove_fisiche.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'comune', 'scripts'))
+import guardia_prove_fisiche as GUARDIA
 from playwright.sync_api import sync_playwright
 
 EXE = os.environ.get('PMB_DOCS_EXE', r'C:\Program Files\pmb_office\pmb_docs\pmb-docs-shell.exe')
@@ -59,6 +63,7 @@ env = dict(os.environ)
 env['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = f'--remote-debugging-port={PORTA}'
 env['WEBVIEW2_USER_DATA_FOLDER'] = os.path.join(os.environ['TEMP'], f'pmb_docs_giro19_{int(time.time())}')
 p = subprocess.Popen([EXE], env=env)
+GUARDIA.proteggi(p.pid)
 pw = sync_playwright().start()
 for _ in range(80):
     try: browser = pw.chromium.connect_over_cdp(f'http://127.0.0.1:{PORTA}'); break

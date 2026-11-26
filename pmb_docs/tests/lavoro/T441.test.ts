@@ -86,7 +86,8 @@ describe('T441: disegno', () => {
     disegna(z, doc);
     const p = z.querySelectorAll('p');
     expect([p[0].style.marginTop, p[0].style.marginBottom]).toEqual(['6pt', '12pt']);
-    expect(p[1].style.lineHeight).toBe('1.08');
+    // dal 2026-11-25 l'interlinea è il multiplo --ls dell'altezza naturale della riga del carattere (come in Word)
+    expect(p[1].style.getPropertyValue('--ls')).toBe('1.08');
     expect(p[1].style.marginTop).toBe('');
   });
 });

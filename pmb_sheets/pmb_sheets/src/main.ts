@@ -1271,6 +1271,11 @@ export class FreeApp extends LinguaElement {
         if (grid && typeof grid.togliTracce === "function") grid.togliTracce();
         break;
       }
+      case "toggle-gridlines": {
+        const grid: any = this.getActiveGrid();
+        if (grid && typeof grid.alternaGriglia === "function") grid.alternaGriglia();
+        break;
+      }
       case "show-formulas": {
         const grid: any = this.getActiveGrid();
         if (grid && typeof grid.alternaMostraFormule === "function") grid.alternaMostraFormule();

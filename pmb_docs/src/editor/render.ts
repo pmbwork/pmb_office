@@ -9,6 +9,7 @@
 // Il paragrafo porta le classi dell'allineamento (al-ce, al-dx, al-gi), dell'interlinea (ls-100, ls-150, ls-200, ...),
 // dello stile (st-t, st-s, st-1, st-2, st-3), del rientro (ri-1 ... ri-8) e dell'elenco (el); il punto o il numero
 // della voce sta in data-m. Un paragrafo vuoto contiene solo un <br>, così ha l'altezza di una riga.
+import { rigaNaturale } from '../modello/riga';
 import { testiRiferimenti, testoRiferimentoMancante } from '../modello/riferimenti';
 import { numeriElenco, type CellaTabella, type Documento, type Paragrafo, type Posizione } from '../modello/documento';
 import { famigliaCss } from '../guscio/caratteri';
@@ -57,6 +58,27 @@ export function marcatore(par: Paragrafo, numero: number | null): string {
   return '';
 }
 
+/** L'altezza naturale della riga di un carattere come la disegna questa pagina (in corpi), misurata una volta per carattere; dove non si
+ *  può misurare (prove automatiche) quella della tabella. Serve all'interlinea come in Word (vedi modello/riga.ts). */
+const RIGHE_MISURATE = new Map<string, number>();
+export function rigaDelCarattere(d: Document, f: string): number {
+  const chiave = f.trim().toLowerCase();
+  const nota = RIGHE_MISURATE.get(chiave);
+  if (nota !== undefined) return nota;
+  let r = rigaNaturale(f);
+  try {
+    const s = d.createElement('span');
+    s.style.cssText = `position: absolute; visibility: hidden; font-family: ${famigliaCss(f)}; font-size: 1000px; line-height: normal; white-space: nowrap`;
+    s.textContent = 'Hg';
+    (d.body ?? d.documentElement).appendChild(s);
+    const h = s.getBoundingClientRect().height / 1000;
+    s.remove();
+    if (h > 0.8 && h < 2.5) r = Math.round(h * 1000) / 1000;
+  } catch { /* si tiene la tabella */ }
+  RIGHE_MISURATE.set(chiave, r);
+  return r;
+}
+
 export function classiParagrafo(par: Paragrafo): string {
   const c: string[] = [];
   if (par.al === 'ce' || par.al === 'dx' || par.al === 'gi') c.push(`al-${par.al}`);
@@ -91,7 +113,7 @@ function disegnaParagrafo(d: Document, par: Paragrafo, i: number, numero: number
   if (par.bd !== undefined) p.style.border = `${par.bd.w}pt ${par.bd.s === 't' ? 'dashed' : par.bd.s === 'p' ? 'dotted' : 'solid'} ${par.bd.c}`;
   if (par.sb !== undefined) p.style.marginTop = `${par.sb}pt`;
   if (par.sa !== undefined) p.style.marginBottom = `${par.sa}pt`;
-  if (par.ls !== undefined && ![1, 1.15, 1.5, 2].includes(par.ls)) p.style.lineHeight = String(par.ls);
+  if (par.ls !== undefined && ![1, 1.15, 1.5, 2].includes(par.ls)) p.style.setProperty('--ls', String(par.ls));
   const m = marcatore(par, numero);
   if (m !== '') p.setAttribute('data-m', m);
   if (par.runs.length === 0) p.appendChild(d.createElement('br'));
@@ -119,7 +141,7 @@ function disegnaParagrafo(d: Document, par: Paragrafo, i: number, numero: number
     if (r.cm !== undefined) s.setAttribute('data-cm', r.cm);
     if (r.rv) s.title = `${r.rv.t === 'i' ? t('Inserito da {}', r.rv.a) : t('Cancellato da {}', r.rv.a)} · ${dataBreve(r.rv.d)}`;
     if (r.z !== undefined) s.style.fontSize = `${r.v !== undefined ? Math.round(r.z * 0.58 * 10) / 10 : r.z}pt`;
-    if (r.f !== undefined) s.style.fontFamily = famigliaCss(r.f);
+    if (r.f !== undefined) { s.style.fontFamily = famigliaCss(r.f); s.style.setProperty('--rn', String(rigaDelCarattere(d, r.f))); }
     if (r.k !== undefined) s.style.color = r.k;
     if (r.h !== undefined) s.style.backgroundColor = r.h;
     if (r.sq !== undefined) {

@@ -84,6 +84,7 @@ const REGOLE: Array<[RegExp, Nome]> = [
   [/maiuscoletto/, 'text_fields'],
   [/data e ora/, 'event'],
   [/didascalia/, 'short_text'],
+  [/mostra griglia/, 'border_clear'],
   [/riferimento incrociato/, 'call_made'],
   [/testo alternativo/, 'short_text'],
   [/spazio non divisibile/, 'space_bar'],

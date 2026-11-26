@@ -9,6 +9,10 @@ export interface Riga {
   saltoForzato?: boolean;
   /** true se questa riga è già stata portata in cima al foglio dopo da un giro di impaginazione precedente (un salto forzato non va ripetuto) */
   spinta?: boolean;
+  /** il paragrafo della riga (numero d'ordine): le righe dello stesso paragrafo hanno lo stesso numero (righe isolate, come in Word) */
+  par?: number;
+  /** il paragrafo resta sulla stessa pagina del successivo (i titoli: «mantieni con il successivo» di Word) */
+  tieni?: boolean;
 }
 export interface GeometriaPagine {
   /** altezza di un foglio */
@@ -85,20 +89,70 @@ export function altezzaFogli(pagine: number, g: GeometriaPagine = GEOMETRIA_A4):
   return pagine * g.altezzaPagina + Math.max(0, pagine - 1) * g.spazio;
 }
 
+/** Da quale riga deve cominciare la pagina nuova quando la riga i non entra (come Word): un paragrafo non lascia una riga sola in fondo
+ *  alla pagina (orfana) né in cima alla successiva (vedova), e un titolo va con il paragrafo che lo segue. Non si risale oltre l'inizio
+ *  della pagina (inizio = la prima riga della pagina) né oltre un salto già fatto. */
+function inizioCatena(righe: Riga[], i: number, inizio: number): number {
+  const stesso = (a: number, b: number): boolean => righe[a].par !== undefined && righe[a].par === righe[b].par;
+  let j = i;
+  for (let giri = 0; giri < 1000; giri++) {
+    let k = j;
+    // righe del paragrafo prima di j e dopo j (j compresa)
+    let primo = j; while (primo > inizio && stesso(primo - 1, j)) primo--;
+    let ultimo = j; while (ultimo + 1 < righe.length && stesso(ultimo + 1, j)) ultimo++;
+    if (righe[j].par !== undefined && j > primo) {
+      // la riga resterebbe sola in fondo (orfana): va anche lei; ne passerebbe una sola alla pagina dopo (vedova): ne passano due
+      if (j - primo === 1) k = primo;
+      else if (j === ultimo && ultimo - primo >= 2) k = j - 1;
+    }
+    // la prima riga di un paragrafo che segue un titolo: il titolo va con lei
+    if (k === primo || righe[k].par === undefined) {
+      const prima = k - 1;
+      if (prima >= inizio && righe[prima].tieni && righe[prima].par !== righe[k].par) {
+        let p0 = prima; while (p0 > inizio && stesso(p0 - 1, prima)) p0--;
+        k = p0;
+      }
+    }
+    if (k === j || k <= inizio) return k <= inizio ? i : k;
+    j = k;
+  }
+  return i;
+}
+
 export function impagina(righe: Riga[], g: GeometriaPagine = GEOMETRIA_A4): Impaginazione {
   const salti: Salto[] = [];
   const paginaDiRiga: number[] = [];
   let pagina = 0;
   let extra = 0;
   let ultimoBasso = 0;
+  // la prima riga della pagina corrente (oltre la quale le righe isolate e i titoli non risalgono)
+  let inizioPaginaRiga = 0;
   for (let i = 0; i < righe.length; i++) {
     let alto = righe[i].alto + extra;
     let basso = righe[i].basso + extra;
     const cima = (n: number): number => inizioPagina(n, g) + g.margineAlto;
     const fondo = (n: number): number => inizioPagina(n, g) + g.altezzaPagina - g.margineBasso;
+    // la riga non entra in fondo alla pagina: con le righe isolate e i titoli la pagina nuova può cominciare qualche riga prima
+    if (!righe[i].saltoForzato && basso > fondo(pagina) + TOLLERANZA && alto > cima(pagina) + TOLLERANZA && alto < inizioPagina(pagina + 1, g) - TOLLERANZA) {
+      const j = inizioCatena(righe, i, inizioPaginaRiga);
+      if (j < i) {
+        // le righe da j in poi si rifanno: tornano indietro alla riga j, che comincia la pagina nuova
+        paginaDiRiga.length = j;
+        const h = cima(pagina + 1) - (righe[j].alto + extra);
+        salti.push({ riga: j, altezza: h });
+        extra += h;
+        pagina++;
+        inizioPaginaRiga = j;
+        paginaDiRiga.push(pagina);
+        ultimoBasso = righe[j].basso + extra;
+        i = j;
+        continue;
+      }
+    }
     // una riga che comincia già in una pagina più avanti (dopo un blocco molto alto) conta per quella pagina
     while (alto >= inizioPagina(pagina + 1, g) - TOLLERANZA) pagina++;
     // una riga con salto pagina forzato va in cima alla pagina successiva
+    const paginaPrima = pagina;
     if (righe[i].saltoForzato && !righe[i].spinta) {
       const h = cima(pagina + 1) - alto;
       salti.push({ riga: i, altezza: h });
@@ -116,6 +170,7 @@ export function impagina(righe: Riga[], g: GeometriaPagine = GEOMETRIA_A4): Impa
       basso += h;
       pagina++;
     }
+    if (pagina !== paginaPrima || i === 0) inizioPaginaRiga = i;
     // dopo un blocco molto alto una riga può ritrovarsi nel margine alto del foglio: la si porta dove comincia il testo
     if (alto < cima(pagina) - TOLLERANZA) {
       const h = cima(pagina) - alto;

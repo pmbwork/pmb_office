@@ -10,7 +10,7 @@ const AUTORI_SENZA_AVVISO = 'Gli autori del progetto (nessun avviso indicato nel
 const PREMESSA_LICENZA = "Copyright (c) i rispettivi titolari indicati nell'elenco dei componenti";
 import { t, linguaCorrente } from '../i18n/lingua';
 
-export const VERSIONE_APP = '0.4.21';
+export const VERSIONE_APP = '0.4.22';
 const ORIGINI: Record<string, string> = { rust: 'Rust', npm: 'JavaScript', carattere: 'Carattere', icone: 'Icone' };
 
 /** Finestra "Informazioni": che cos'è il programma, condizioni d'uso (software gratuito e open source con licenza GPL-3.0, nessuna garanzia) e tutte le licenze di terze parti. */

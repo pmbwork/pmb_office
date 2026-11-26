@@ -6,6 +6,7 @@
  * Zero DOM, zero Lit, interamente testabile in ambiente Node.
  */
 
+import type { CarattereBase } from './carattere-base';
 import type { PulsanteConfig } from './pulsanti';
 import type { ImpostaPagina } from './pagina';
 import { EngineClient, InlineEngineClient } from './engine-client';
@@ -43,6 +44,8 @@ export interface SheetDocument {
   coloreScheda?: string;
   /** il foglio attivo è nascosto (succede solo mentre lo si nasconde: il foglio attivo è sempre uno visibile) */
   nascosto?: boolean;
+  /** la griglia del foglio attivo non si vede (Visualizza › Mostra griglia) */
+  senzaGriglia?: boolean;
   /** viste filtro salvate del foglio attivo */
   visteFiltro?: VistaFiltro[];
   /** la tabella su cui lavora il filtro del foglio attivo (senza: tutto il foglio, con l'intestazione in riga 1) */
@@ -57,6 +60,8 @@ export interface SheetDocument {
   protezione?: ProtezioneFoglio;
   /** struttura della cartella protetta (senza: non protetta) */
   protezioneCartella?: ProtezioneCartella;
+  /** il carattere base della cartella (senza: quello di pmb_sheets); vedi carattere-base.ts */
+  carattere?: CarattereBase;
   history: HistoryManager;
   activeSheetName: string;
   styles: SheetStyles;

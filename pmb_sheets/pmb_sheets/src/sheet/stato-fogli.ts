@@ -33,6 +33,8 @@ export interface StatoFoglio {
   coloreScheda?: string;
   /** il foglio è nascosto (Nascondi foglio) */
   nascosto?: boolean;
+  /** la griglia del foglio non si vede */
+  senzaGriglia?: boolean;
   /** viste filtro salvate del foglio */
   visteFiltro?: VistaFiltro[];
   /** la tabella su cui lavora il filtro (senza: tutto il foglio, con l'intestazione in riga 1) */
@@ -66,6 +68,7 @@ export interface StatoFoglioDati {
   coloreScheda?: string;
   /** il foglio è nascosto (Nascondi foglio) */
   nascosto?: boolean;
+  senzaGriglia?: boolean;
   visteFiltro?: VistaFiltro[];
   impostaPagina?: ImpostaPagina;
   protezione?: ProtezioneFoglio;
@@ -99,6 +102,7 @@ export function clonaStato(s: StatoFoglio): StatoFoglio {
     isFilterActive: s.isFilterActive,
     coloreScheda: s.coloreScheda,
     nascosto: s.nascosto,
+    senzaGriglia: s.senzaGriglia,
     ...(s.visteFiltro ? { visteFiltro: copiaJson(s.visteFiltro) } : {}),
     ...(s.filterArea ? { filterArea: { ...s.filterArea } } : {}),
     ...(s.impostaPagina ? { impostaPagina: copiaPagina(s.impostaPagina) } : {}),
@@ -118,6 +122,7 @@ export function statoCorrente(doc: SheetDocument): StatoFoglio {
     activeFilters: doc.activeFilters, isFilterActive: doc.isFilterActive,
     coloreScheda: doc.coloreScheda,
     nascosto: doc.nascosto,
+    senzaGriglia: doc.senzaGriglia,
     visteFiltro: doc.visteFiltro,
     filterArea: doc.filterArea,
     impostaPagina: doc.impostaPagina,
@@ -144,6 +149,7 @@ export function applicaStato(doc: SheetDocument, s: StatoFoglio): void {
   doc.isFilterActive = s.isFilterActive;
   doc.coloreScheda = s.coloreScheda;
   doc.nascosto = s.nascosto;
+  doc.senzaGriglia = s.senzaGriglia;
   doc.visteFiltro = s.visteFiltro;
   doc.filterArea = s.filterArea;
   doc.impostaPagina = s.impostaPagina;
@@ -256,6 +262,7 @@ export function statoADati(s: StatoFoglio): StatoFoglioDati {
     },
     ...(s.coloreScheda ? { coloreScheda: s.coloreScheda } : {}),
     ...(s.nascosto ? { nascosto: true } : {}),
+    ...(s.senzaGriglia ? { senzaGriglia: true } : {}),
     ...(s.visteFiltro && s.visteFiltro.length > 0 ? { visteFiltro: copiaJson(s.visteFiltro) } : {}),
     ...(s.impostaPagina && !eDiPartenza(s.impostaPagina) ? { impostaPagina: copiaPagina(s.impostaPagina) } : {}),
     ...(s.protezione ? { protezione: copiaProtezione(s.protezione) } : {}),
@@ -284,6 +291,7 @@ export function datiAStato(d: Partial<StatoFoglioDati> | undefined): StatoFoglio
     ...(areaFiltroValida(d.filters?.area) ? { filterArea: areaFiltroValida(d.filters?.area) } : {}),
     ...(typeof d.coloreScheda === 'string' && /^#[0-9a-fA-F]{6}$/.test(d.coloreScheda) ? { coloreScheda: d.coloreScheda } : {}),
     ...(d.nascosto === true ? { nascosto: true } : {}),
+    ...(d.senzaGriglia === true ? { senzaGriglia: true } : {}),
     ...(vistePulite(d.visteFiltro).length > 0 ? { visteFiltro: vistePulite(d.visteFiltro) } : {}),
     ...(d.impostaPagina && typeof d.impostaPagina === 'object' ? { impostaPagina: ripulisciPagina(d.impostaPagina) } : {}),
     ...(protezioneValida(d.protezione) ? { protezione: protezioneValida(d.protezione) } : {}),

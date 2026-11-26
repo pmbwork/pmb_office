@@ -5,7 +5,7 @@ import { css, unsafeCSS, type PropertyValues } from 'lit';
 import { html } from '../i18n/html';
 import { LinguaElement } from '../i18n/lingua-element';
 import { customElement, property } from 'lit/decorators.js';
-import { disegna, domDaPosizione, paragrafiDom, posizioneDaDom } from './render';
+import { disegna, domDaPosizione, paragrafiDom, posizioneDaDom, rigaDelCarattere } from './render';
 import { disegnaMargini } from './margini';
 import {
   GEOMETRIA_A4, GEOMETRIA_STAMPA, altezzaFogli, calcolaGeometria, impagina, inizioPagina,
@@ -24,6 +24,7 @@ import { azioneDaComandoFormato, azioneDaTastoFormato, eseguiAzioneFormato, type
 import { impostaTestoAlternativo as impostaTestoAlternativoA, inserisciCampoUnione as inserisciCampoUnioneA, inserisciDidascalia as inserisciDidascaliaA, inserisciRiferimento as inserisciRiferimentoA, type ModoRiferimento } from '../modello/documento';
 import { alternaFatto, collassata, elencoSegnalibri, impostaSegnalibro, togliSegnalibro, type VoceSegnalibro, formatoDaCopiare, filigranaValida, immagineSelezionata as immagineSelezionataDi, incollaFormato, sostituisciImmagine, type Immagine, ordina, type FormatoCopiato, testoParagrafo, urlValido, type Posizione, type Stato, type Run, type Paragrafo } from '../modello/documento';
 import { statoLink as statoLinkDi, type StatoLink } from './link';
+import { paginaPredefinita, type PaginaDocumento } from '../modello/documento';
 import { controllaNativo, type ErroreNativo } from './ortografia-nativa';
 import { inserisciBlocco, prossimoIdTabella } from './blocchi';
 import { inIntestazione, inTabella as inTabellaStato, motivoTabella, type OperazioneTabella } from './tabelle';
@@ -105,7 +106,7 @@ export class DocsEditor extends LinguaElement {
     :host([alto-contrasto]) .errore-ort { height: 3px; background: repeating-linear-gradient(135deg, #b00020 0 3px, transparent 3px 6px); }
 
     :host { display: block; position: relative; box-sizing: border-box; padding: var(--margine-alto, 96px) var(--margine-destro, 96px) var(--margine-basso, 96px) var(--margine-sinistro, 96px); cursor: text; color: #000000;
-      font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.15; }
+      font-family: Arial, Helvetica, sans-serif; font-size: 11pt; --ls: 1.15; --rn: 1.15; line-height: calc(var(--ls) * var(--rn)); }
     .fogli { position: absolute; left: 0; top: 0; width: 100%; z-index: 0; pointer-events: none; }
     .foglio { position: absolute; left: 0; width: 100%; box-sizing: border-box; background: #ffffff; border: 1px solid #dadce0; overflow: hidden; }
     .foglio .filigrana { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-45deg); white-space: nowrap; font: 700 96px Arial, sans-serif;
@@ -117,9 +118,16 @@ export class DocsEditor extends LinguaElement {
     .testo p.al-ce { text-align: center; }
     .testo p.al-dx { text-align: right; }
     .testo p.al-gi { text-align: justify; }
-    .testo p.ls-100 { line-height: 1; }
-    .testo p.ls-150 { line-height: 1.5; }
-    .testo p.ls-200 { line-height: 2; }
+    /* interlinea come in Word: il multiplo (--ls) dell'altezza naturale della riga del carattere (--rn, vedi modello/riga.ts); i tratti
+       con un carattere loro portano il loro --rn */
+    .testo p span { line-height: calc(var(--ls) * var(--rn)); }
+    /* come in Word l'altezza della riga è quella dei tratti che vi stanno (una riga a 9 punti in un paragrafo a 11 è più bassa): il
+       paragrafo da sé non aggiunge altezza, tranne quando è vuoto */
+    .testo p { line-height: 0; }
+    .testo p:not(:has(span)) { line-height: calc(var(--ls) * var(--rn)); }
+    .testo p.ls-100 { --ls: 1; }
+    .testo p.ls-150 { --ls: 1.5; }
+    .testo p.ls-200 { --ls: 2; }
     .testo p.st-t { font-size: 26pt; margin-bottom: 3pt; }
     .testo p.st-s { font-size: 15pt; color: #666666; margin-bottom: 16pt; }
     .testo p.st-1 { font-size: 20pt; margin-top: 20pt; margin-bottom: 6pt; }
@@ -163,15 +171,16 @@ export class DocsEditor extends LinguaElement {
     :host([senza-pagine]) .salto { display: none !important; }
     :host([senza-pagine]) .margini { display: none !important; }
     .testo p.el { padding-left: 48px; }
-    .testo p.el::before { content: attr(data-m); position: absolute; left: 0; width: 36px; box-sizing: border-box; padding-right: 8px; text-align: right; }
+    .testo p.el::before { content: attr(data-m); position: absolute; left: 0; line-height: calc(var(--ls) * var(--rn)); width: 36px; box-sizing: border-box; padding-right: 8px; text-align: right; }
     .testo p.el.att::before { cursor: pointer; font-size: 1.1em; line-height: 1; padding-right: 6px; }
     .testo p.el.fatto { text-decoration: line-through; color: #80868b; }
     ${unsafeCSS(regoleRientro())}
     .testo table.tabella { border-collapse: collapse; width: 100%; table-layout: fixed; }
-    .testo table.tabella td { border: 1px solid #000000; padding: 5px 7px; vertical-align: top; overflow-wrap: anywhere; }
+    /* margini delle celle come in Word: niente sopra e sotto, 0,19 cm (108 twip) ai lati */
+    .testo table.tabella td { border: 1px solid #000000; padding: 0 7px; vertical-align: top; overflow-wrap: anywhere; }
     .testo table.tabella td.coperta { display: none; }
     .testo tr.salto-riga td { border: 0; padding: 0; }
-    .testo tr.salto-riga.intestazione-ripetuta td { border: 1px solid #000000; padding: 5px 7px; pointer-events: none; user-select: none; }
+    .testo tr.salto-riga.intestazione-ripetuta td { border: 1px solid #000000; padding: 0 7px; pointer-events: none; user-select: none; }
     .testo tr.salto-riga.intestazione-ripetuta td.coperta { display: none; }
     .testo .g { font-weight: 700; }
     .testo .c { font-style: italic; }
@@ -267,6 +276,36 @@ export class DocsEditor extends LinguaElement {
 
   @property({ type: Number, reflect: true, attribute: 'colonne' })
   colonne = 1;
+
+  /** La pagina del documento (formato, orientamento, margini; File › Imposta pagina, righelli): si salva con il documento ed è un passo
+   *  di annulla. Il colore dello sfondo resta una preferenza del programma. */
+  impostaPaginaDocumento(imp: ImpostazioniPagina): boolean {
+    const p: PaginaDocumento = { f: imp.formato, o: imp.orientamento === 'orizzontale' ? 'o' : 'v', ma: Math.round(imp.margineAlto), mb: Math.round(imp.margineBasso), ms: Math.round(imp.margineSinistro), md: Math.round(imp.margineDestro) };
+    return this.cambiaDocumento((d) => {
+      const vecchia = d.pagina;
+      if (paginaPredefinita(vecchia) && paginaPredefinita(p)) return d;
+      if (vecchia && !paginaPredefinita(p) && JSON.stringify(vecchia) === JSON.stringify(p)) return d;
+      const nuovo = { ...d };
+      if (paginaPredefinita(p)) delete nuovo.pagina; else nuovo.pagina = p;
+      return nuovo;
+    }, 'pagina');
+  }
+
+  /** Porta le impostazioni della pagina a quelle del documento (dopo Apri, Annulla, Ripeti, cambio di scheda) e lo dice al guscio. */
+  private sincronizzaPagina(): void {
+    const p = this.stato.doc.pagina;
+    const sfondo = this.impostazioniPagina.coloreSfondo;
+    const voluta: ImpostazioniPagina = p && !paginaPredefinita(p)
+      ? { formato: p.f, orientamento: p.o === 'o' ? 'orizzontale' : 'verticale', margineAlto: p.ma, margineBasso: p.mb, margineSinistro: p.ms, margineDestro: p.md, coloreSfondo: sfondo }
+      : { ...IMPOSTAZIONI_PREDEFINITE, coloreSfondo: sfondo };
+    const ora = this.impostazioniPagina;
+    if (voluta.formato === ora.formato && voluta.orientamento === ora.orientamento && voluta.margineAlto === ora.margineAlto && voluta.margineBasso === ora.margineBasso
+      && voluta.margineSinistro === ora.margineSinistro && voluta.margineDestro === ora.margineDestro) return;
+    this.impostazioniPagina = voluta;
+    this.geometria = calcolaGeometria(voluta);
+    this.aggiornaStileMargini();
+    this.dispatchEvent(new CustomEvent('pagina-documento', { detail: { impostazioni: voluta }, bubbles: true, composed: true }));
+  }
 
   /** Il testo su 1, 2 o 3 colonne: si salva con il documento ed è un passo di annulla. */
   impostaColonne(n: number): boolean {
@@ -422,7 +461,7 @@ export class DocsEditor extends LinguaElement {
         this.foglioStili = new CSSStyleSheet();
         radice.adoptedStyleSheets = [...radice.adoptedStyleSheets, this.foglioStili];
       }
-      this.foglioStili.replaceSync(cssStili(stili, famigliaCss));
+      this.foglioStili.replaceSync(cssStili(stili, famigliaCss, (f) => rigaDelCarattere(document, f)));
     } catch { /* senza fogli costruibili (prove automatiche) gli stili non si disegnano */ }
   }
 
@@ -1174,8 +1213,9 @@ export class DocsEditor extends LinguaElement {
   }
 
   private ridisegna(): void {
-    // le colonne vengono dal documento (anche dopo Apri, Annulla e Ripeti)
+    // le colonne e la pagina vengono dal documento (anche dopo Apri, Annulla e Ripeti)
     this.colonne = this.stato.doc.colonne ?? 1;
+    this.sincronizzaPagina();
     const zona = this.zonaTesto();
     if (!zona) return;
     this.aggiornaFoglioStili();
@@ -1486,9 +1526,12 @@ export class DocsEditor extends LinguaElement {
         out.push({ riga: { alto: r.top - origine + riempimento, basso: r.bottom - origine, ...(saltoForzato ? { saltoForzato: true, ...(riempimento > 0 ? { spinta: true } : {}) } : {}) }, paragrafo: p, primaDelParagrafo: true, nodo: null, topSchermo: r.top, inizioNodo: true });
         continue;
       }
+      // righe isolate e titoli come in Word: il paragrafo della riga e se resta con il successivo (i titoli)
+      const par = out.length;
+      const tieni = /\bst-[ts123]\b/.test(p.className);
       raggruppaFrammenti(frammenti).forEach((gruppo, k) => {
         const prima = provenienza[gruppo[0]];
-        out.push({ riga: { ...misuraRiga(frammenti, gruppo), ...(k === 0 && saltoForzato ? { saltoForzato: true, ...((parseFloat(p.style.paddingTop) || 0) > 0 ? { spinta: true } : {}) } : {}) }, paragrafo: p, primaDelParagrafo: k === 0, nodo: prima.nodo, topSchermo: prima.top, inizioNodo: prima.indice === 0 });
+        out.push({ riga: { ...misuraRiga(frammenti, gruppo), par, ...(tieni ? { tieni: true } : {}), ...(k === 0 && saltoForzato ? { saltoForzato: true, ...((parseFloat(p.style.paddingTop) || 0) > 0 ? { spinta: true } : {}) } : {}) }, paragrafo: p, primaDelParagrafo: k === 0, nodo: prima.nodo, topSchermo: prima.top, inizioNodo: prima.indice === 0 });
       });
     }
     return out;

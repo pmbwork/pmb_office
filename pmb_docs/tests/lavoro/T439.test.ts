@@ -32,10 +32,18 @@ describe('T439: interruzione di pagina di Word', () => {
     expect(testi(d)).toEqual(['uno', 'due']);
     expect(salti(d)).toEqual([false, true]);
   });
-  it('un paragrafo con la sola interruzione resta un paragrafo vuoto che apre il foglio nuovo', async () => {
+  // dal 2026-11-25, come Word: un paragrafo con la sola interruzione non lascia una riga vuota in cima al foglio nuovo (Word mostra il segno
+  // di paragrafo in fondo al foglio prima; nel PDF di Word il titolo dopo l'interruzione sta alla stessa altezza di uno in cima a una
+  // pagina qualsiasi, 99,7 contro 99,5 pixel): il foglio nuovo comincia con il paragrafo che segue
+  it('un paragrafo con la sola interruzione: il foglio nuovo comincia con il paragrafo che segue', async () => {
     const d = await conCorpo(`<w:p>${T('prima')}</w:p><w:p>${BR}</w:p><w:p>${T('dopo')}</w:p>`);
-    expect(testi(d)).toEqual(['prima', '', 'dopo']);
-    expect(salti(d)).toEqual([false, true, false]);
+    expect(testi(d)).toEqual(['prima', 'dopo']);
+    expect(salti(d)).toEqual([false, true]);
+  });
+  it('un\'interruzione da sola in fondo al documento: resta il paragrafo vuoto sul foglio nuovo', async () => {
+    const d = await conCorpo(`<w:p>${T('prima')}</w:p><w:p>${BR}</w:p>`);
+    expect(testi(d)).toEqual(['prima', '']);
+    expect(salti(d)).toEqual([false, true]);
   });
   it('più interruzioni: ogni foglio nuovo è segnato una sola volta', async () => {
     const d = await conCorpo(`<w:p>${T('a')}${BR}${T('b')}${BR}${T('c')}</w:p>`);

@@ -142,16 +142,28 @@ describe('T071: impaginazione nell\'editor', () => {
     installaBrowserFinto();
     const el = await monta();
     const lungo = 'abcdefghij'.repeat(40);
-    carica(el, `${righe(45)}\n${lungo}\nfine`);
+    // dal 2026-11-25 come in Word un paragrafo non lascia una riga sola in fondo al foglio: qui ne restano due
+    carica(el, `${righe(44)}\n${lungo}\nfine`);
     expect(el.pagine).toBe(2);
-    const p = paragrafi(el)[45];
+    const p = paragrafi(el)[44];
     const salti = Array.from(p.querySelectorAll('.salto')) as HTMLElement[];
     expect(salti.length).toBe(1);
     expect(salti[0].style.height).toBe('215px');
     const nodi = Array.from(salti[0].parentNode!.childNodes).map((n) => (n.nodeType === 3 ? (n.nodeValue ?? '').length : 'salto'));
-    expect(nodi).toEqual([40, 'salto', 360]);
+    expect(nodi).toEqual([80, 'salto', 320]);
     expect(p.textContent).toBe(lungo);
     expect(p.style.paddingTop).toBe('');
+    expect(testoDi(el.stato.doc)).toBe(`${righe(44)}\n${lungo}\nfine`);
+  });
+
+  it('righe isolate come in Word: un paragrafo che lascerebbe una riga sola in fondo al foglio passa tutto al foglio dopo', async () => {
+    installaBrowserFinto();
+    const el = await monta();
+    const lungo = 'abcdefghij'.repeat(40);
+    carica(el, `${righe(45)}\n${lungo}\nfine`);
+    const p = paragrafi(el)[45];
+    expect(p.querySelectorAll('.salto').length).toBe(0);
+    expect(parseFloat(p.style.paddingTop)).toBeGreaterThan(0);
     expect(testoDi(el.stato.doc)).toBe(`${righe(45)}\n${lungo}\nfine`);
   });
 

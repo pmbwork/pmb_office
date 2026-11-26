@@ -112,7 +112,12 @@ export async function esporta(doc: Documento, formato: FormatoId): Promise<Uint8
   if (formato === 'docx') return esportaDocx(doc);
   if (formato === 'odt') return esportaOdt(doc);
   // PDF e testo non conoscono commenti e modifiche registrate: si scrive il documento come sarà accettando le modifiche, senza commenti
-  if (formato === 'pdf') return esportaPdf(senzaStiliPersonali(versioneFinale(conDidascalieComeTesto(conRiferimentiComeTesto(conCampiComeTesto(doc))))));
+  if (formato === 'pdf') {
+    // la pagina del documento (formato, orientamento, margini)
+    const p = doc.pagina;
+    const imp = p ? { formato: p.f, orientamento: p.o === 'o' ? 'orizzontale' as const : 'verticale' as const, margineAlto: p.ma, margineBasso: p.mb, margineSinistro: p.ms, margineDestro: p.md, coloreSfondo: '#ffffff' } : undefined;
+    return esportaPdf(senzaStiliPersonali(versioneFinale(conDidascalieComeTesto(conRiferimentiComeTesto(conCampiComeTesto(doc))))), imp);
+  }
   if (formato === 'fdoc') return new TextEncoder().encode(serializza(doc));
   return new TextEncoder().encode(testoDi(versioneFinale(conDidascalieComeTesto(conRiferimentiComeTesto(conCampiComeTesto(doc))))).replace(/\n/g, '\r\n'));
 }

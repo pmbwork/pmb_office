@@ -322,4 +322,6 @@ export const EN_INTERFACCIA: Record<string, string> = {
   'Riferimento incrociato a «{}»': 'Cross-reference to “{}”',
   'Errore: riferimento non trovato': 'Error! Reference source not found.',
   'Documento non valido: riferimento incrociato': 'Invalid document: cross-reference',
+  'Documento non valido: pagina': 'Invalid document: page',
+  'Scegli: {}': 'Choose: {}',
 };

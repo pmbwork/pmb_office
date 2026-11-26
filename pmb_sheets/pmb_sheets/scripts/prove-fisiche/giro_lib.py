@@ -1,5 +1,8 @@
 """Banco di prova fisico per pmb_sheets: avvia il programma installato, lo comanda con il mouse reale e legge il risultato dal disegno."""
-import os, subprocess, time, json, traceback
+import os, sys, subprocess, time, json, traceback
+# guardia: i tasti e i clic veri vanno solo al programma in prova (comune/scripts/guardia_prove_fisiche.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'comune', 'scripts'))
+import guardia_prove_fisiche as GUARDIA
 from playwright.sync_api import sync_playwright
 
 # il programma da provare: di serie quello di costruisci-installa-e-prova.ps1; PMB_SHEETS_EXE per quello installato con la suite (Program Files)
@@ -35,6 +38,7 @@ class Banco:
         # un profilo nuovo a ogni giro: una copia di emergenza lasciata da un giro interrotto fermerebbe i controlli del recupero (giro_13)
         env['WEBVIEW2_USER_DATA_FOLDER'] = os.path.join(TMP, f'pmb_giro_{self.porta}_{int(time.time())}')
         self.p = subprocess.Popen([EXE, *self.argomenti], env=env)
+        GUARDIA.proteggi(self.p.pid)
         self.pw = sync_playwright().start()
         for _ in range(60):
             try: b = self.pw.chromium.connect_over_cdp(f'http://127.0.0.1:{self.porta}'); break

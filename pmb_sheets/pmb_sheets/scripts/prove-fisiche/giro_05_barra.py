@@ -69,7 +69,8 @@ with Banco(9551, '05 Barra degli strumenti') as b:
         seleziona_voce(b, 'font-family', 'monospace'); f = stile_cella(b, 4, 1, 'fontFamily')
         b.ok('barra > Carattere "Monospace"', 'monospace' in f.lower(), f)
         seleziona_voce(b, 'font-size', '24'); s = stile_cella(b, 4, 1, 'fontSize')
-        b.ok('barra > Dimensione 24', s == '24px', s)
+        # dal 2026-11-26 la dimensione è in punti come in Excel: 24 punti = 32 pixel
+        b.ok('barra > Dimensione 24', s == '32px', s)
         r = b.rect(4, 1)
         b.nota('altezza della riga con carattere 24 (le righe non crescono da sole)', r['h'])
     prova(b, 'Carattere', carattere)
@@ -77,7 +78,8 @@ with Banco(9551, '05 Barra degli strumenti') as b:
     def colori():
         for id_, prop in [('fill-color', 'backgroundColor'), ('text-color', 'color')]:
             b.clic_cella_os(5, 1)
-            clic_barra(b, id_)
+            # pulsante diviso (come Excel e LibreOffice): la freccia apre la tavolozza, l'icona applica il colore della striscia
+            clic_barra(b, id_ + '-scegli')
             sw = b.js("() => { const t = APP.shadowRoot.querySelector('free-toolbar').shadowRoot.querySelector('free-color-picker'); const s = t && t.shadowRoot && t.shadowRoot.querySelectorAll('.color-swatch'); if (!s || !s.length) return null; const x = s[12].getBoundingClientRect(); return {x: x.left + x.width/2, y: x.top + x.height/2, n: s.length}; }")
             b.ok(f'barra > {id_} apre la tavolozza', sw is not None, sw)
             if sw:
@@ -86,6 +88,11 @@ with Banco(9551, '05 Barra degli strumenti') as b:
                 b.clic_cella_os(6, 3)
                 v = stile_cella(b, 6, 3, prop) if False else b.js("([p]) => getComputedStyle(GR.renderRoot.querySelector('td[data-row=\"5\"][data-col=\"1\"]'))[p]", [prop])
                 b.ok(f'  scegliere un colore cambia {prop} della cella', v not in ('rgba(0, 0, 0, 0)', 'rgb(255, 255, 255)', 'rgb(15, 23, 42)') or prop == 'color', v)
+                # l'icona ora applica lo stesso colore a un'altra cella, senza aprire la tavolozza
+                b.clic_cella_os(7, 1); clic_barra(b, id_); b.clic_cella_os(6, 3)
+                aperta = b.js("() => !!APP.shadowRoot.querySelector('free-toolbar').shadowRoot.querySelector('free-color-picker')")
+                w = b.js("([p]) => getComputedStyle(GR.renderRoot.querySelector('td[data-row=\"7\"][data-col=\"1\"]'))[p]", [prop])
+                b.ok(f'  l\'icona {id_} applica l\'ultimo colore senza aprire la tavolozza', w == v and not aperta, [w, v, aperta])
     prova(b, 'Colori', colori)
 
     def allineamento():

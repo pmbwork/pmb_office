@@ -224,10 +224,13 @@ describe('T052: documenti fatti da Word', () => {
     });
     const d = await importaDocx(f);
     const cp = (i: number) => ({ ...d.paragrafi[i] });
-    expect(cp(0)).toEqual({ st: '1', runs: [plain('Titolo')] });
-    expect(cp(1)).toEqual({ st: 't', al: 'dx', runs: [plain('Gran titolo')] });
-    expect(cp(2)).toEqual({ st: 's', runs: [plain('Sotto')] });
-    expect(cp(3)).toEqual({ st: '3', runs: [plain('Livello cinque')] });
+    // dal 2026-11-25 gli stili già fatti definiti dal file con un aspetto diverso da quello di pmb_docs restano come stili del documento
+    // (qui sono vuoti: in Word hanno l'aspetto del testo normale, 11 punti, senza spazi, interlinea singola)
+    expect(cp(0)).toEqual({ st: '1', su: 'Heading1', runs: [plain('Titolo')] });
+    expect(cp(1)).toEqual({ st: 't', su: 'Title', al: 'dx', runs: [plain('Gran titolo')] });
+    expect(cp(2)).toEqual({ st: 's', su: 'Subtitle', runs: [plain('Sotto')] });
+    expect(d.stili?.find((s) => s.id === 'Heading1')).toEqual({ id: 'Heading1', nome: 'Titolo 1', base: '1', z: 11, sb: 0, sa: 0, ls: 1 });
+    expect(cp(3)).toEqual({ st: '3', su: 'Heading3', runs: [plain('Livello cinque')] });
     expect(cp(4)).toEqual({
       ls: 1.5, al: 'gi',
       runs: [plain('Grassetto ', { g: true, z: 14, k: '#ff0000' }), plain('collegamento', { s: true }), plain('giallo', { f: 'Verdana', h: '#ffff00' }), plain('\tazzurro', { h: '#cceeff' }),
@@ -238,12 +241,13 @@ describe('T052: documenti fatti da Word', () => {
     expect(cp(6)).toEqual({ ri: 2, runs: [plain('Dopo')] });
     // l'interruzione di pagina di Word (w:br type=page) porta "Pagina" su un foglio nuovo
     expect(cp(7)).toEqual({ ri: 2, sp: true, runs: [plain('Pagina')] });
-    expect(cp(8)).toEqual({ el: 'p', runs: [plain('punto')] });
-    expect(cp(9)).toEqual({ el: 'p', ri: 1, runs: [plain('sotto-punto')] });
-    expect(cp(10)).toEqual({ el: 'n', runs: [plain('numero')] });
-    expect(cp(11)).toEqual({ el: 'n', ri: 1, runs: [plain('lettera')] });
-    expect(cp(12)).toEqual({ runs: [plain('senza segno')] });
-    expect(cp(13)).toEqual({ runs: [plain('fuori elenco')] });
+    // dal 2026-11-25: il file non scrive l'interlinea (né nei paragrafi, né negli stili, né nei predefiniti), quindi è singola come in Word
+    expect(cp(8)).toEqual({ ls: 1, el: 'p', runs: [plain('punto')] });
+    expect(cp(9)).toEqual({ ls: 1, el: 'p', ri: 1, runs: [plain('sotto-punto')] });
+    expect(cp(10)).toEqual({ ls: 1, el: 'n', runs: [plain('numero')] });
+    expect(cp(11)).toEqual({ ls: 1, el: 'n', ri: 1, runs: [plain('lettera')] });
+    expect(cp(12)).toEqual({ ls: 1, runs: [plain('senza segno')] });
+    expect(cp(13)).toEqual({ ls: 1, runs: [plain('fuori elenco')] });
     expect(d.paragrafi.slice(14).map((p) => testoDi({ paragrafi: [p] }))).toEqual(['cella A', 'cella B', 'controllo', '']);
     expect(d.paragrafi.length).toBe(18);
   });

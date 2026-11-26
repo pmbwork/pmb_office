@@ -27,10 +27,18 @@ describe('un documento vero creato da LibreOffice', () => {
         return;
       }
       // il .doc non legge gli stili del documento: il confronto è senza lo stile personale del paragrafo (Table Contents)
-      const { su, ...senzaStile } = atteso; void su;
+      const { su, ...senzaStile } = atteso;
+      // dal 2026-11-25 il .docx tiene l'aspetto dei titoli definito dal file (qui Title e Heading 1-2 di LibreOffice: Liberation Sans,
+      // grassetto, 28/18/16 punti); il .doc, che non legge gli stili, scrive nei tratti il carattere e il corpo del testo normale
+      if (su !== undefined && ['Title', 'Heading1', 'Heading2', 'Heading3'].includes(su)) {
+        const nudi = (x: Paragrafo) => ({ ...x, runs: x.runs.map(({ f, z, g, ...r }) => { void f; void z; void g; return r; }) });
+        expect(nudi(p), `paragrafo ${i}`).toEqual(nudi(senzaStile));
+        return;
+      }
       expect(p, `paragrafo ${i}`).toEqual(senzaStile);
     });
-    expect(docx.stili?.map((s) => s.nome)).toEqual(['Table Heading', 'Table Contents']);
+    expect(docx.stili?.map((s) => s.nome)).toEqual(['Titolo', 'Titolo 1', 'Titolo 2', 'Titolo 3', 'Table Heading', 'Table Contents']);
+    expect(docx.stili?.[0]).toMatchObject({ id: 'Title', base: 't', f: 'Liberation Sans', z: 28, g: true });
     expect(avvisi).toEqual(["È un documento del vecchio Word 97-2003 (.doc): Salva lo salva in .docx con un nome nuovo e l'originale non cambia."]);
     // alcuni controlli espliciti
     const per = (testo: string): Paragrafo => doc.paragrafi.find((p) => testoDi({ paragrafi: [p] }).includes(testo))!;

@@ -29,6 +29,7 @@ import {
   type AttributiParagrafo, type Commento, type Documento, type Paragrafo, type Revisione, type Run, type StileParagrafo, type StilePersonale,
 } from '../modello/documento';
 import { motivoNome } from '../modello/stili';
+import { misurePagina, paginaDaMisure } from '../modello/pagina';
 import { numeriDidascalie } from '../modello/didascalie';
 import { testiRiferimenti } from '../modello/riferimenti';
 import { tipoDaByte } from './immagine';
@@ -421,10 +422,14 @@ export async function esportaOdt(doc: Documento): Promise<Uint8Array> {
     ]),
     // la pagina (A4, margini di un pollice come in pmb_docs): senza le pagine maestre LibreOffice non collega gli stili ai loro genitori
     elemento('office:automatic-styles', {}, [
-      elemento('style:page-layout', { 'style:name': 'pm1' }, [elemento('style:page-layout-properties', {
-        'fo:page-width': '21cm', 'fo:page-height': '29.7cm', 'style:print-orientation': 'portrait',
-        'fo:margin-top': '2.54cm', 'fo:margin-bottom': '2.54cm', 'fo:margin-left': '2.54cm', 'fo:margin-right': '2.54cm',
-      }, doc.colonne ? [elemento('style:columns', { 'fo:column-count': doc.colonne, 'fo:column-gap': '1.25cm' })] : [])]),
+      elemento('style:page-layout', { 'style:name': 'pm1' }, [elemento('style:page-layout-properties', (() => {
+        const m = misurePagina(doc.pagina);
+        const cm = (mm: number): string => `${Math.round(mm * 100) / 1000}cm`;
+        return {
+          'fo:page-width': cm(m.w), 'fo:page-height': cm(m.h), 'style:print-orientation': m.w > m.h ? 'landscape' : 'portrait',
+          'fo:margin-top': cm(m.alto), 'fo:margin-bottom': cm(m.basso), 'fo:margin-left': cm(m.sinistro), 'fo:margin-right': cm(m.destro),
+        };
+      })(), doc.colonne ? [elemento('style:columns', { 'fo:column-count': doc.colonne, 'fo:column-gap': '1.25cm' })] : [])]),
     ]),
     elemento('office:master-styles', {}, [elemento('style:master-page', { 'style:name': 'Standard', 'style:page-layout-name': 'pm1' })]),
   ]);
@@ -966,5 +971,14 @@ function documentoDaContenutoOdt(xmlStr: string, stiliXml?: string, immagini: Ma
   const colonne = (stiliXml ? /<style:page-layout-properties[^>]*>[\s\S]*?<style:columns[^>]*fo:column-count="([23])"/.exec(stiliXml) : null)
     ?? /<style:style[^>]*style:family="section"[^>]*>[\s\S]*?<style:columns[^>]*fo:column-count="([23])"/.exec(xmlStr);
   if (colonne) documento.colonne = Number(colonne[1]) as 2 | 3;
+  // la pagina (la prima page-layout di styles.xml, come la scrivono LibreOffice e pmb_docs)
+  const layout = stiliXml ? /<style:page-layout-properties\b([^>]*)>/.exec(stiliXml) : null;
+  if (layout) {
+    const attr = (n: string): string | undefined => new RegExp(`${n}="([^"]*)"`).exec(layout[1])?.[1];
+    const mm = (n: string, predefinito: number): number => { const pt = inPunti(attr(n)); return pt !== undefined ? pt * 25.4 / 72 : predefinito; };
+    const margine = (lato: string): number => mm(`fo:margin-${lato}`, inPunti(attr('fo:margin')) !== undefined ? mm('fo:margin', 25.4) : 25.4);
+    const p = paginaDaMisure(mm('fo:page-width', 210), mm('fo:page-height', 297), margine('top'), margine('bottom'), margine('left'), margine('right'));
+    if (p) documento.pagina = p;
+  }
   return documento;
 }
